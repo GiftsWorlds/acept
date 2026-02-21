@@ -1642,32 +1642,40 @@
             const u=document.getElementById('l-user').value.trim().toLowerCase();
             const p=document.getElementById('l-pass').value.trim();
             const errEl=document.getElementById('l-err');
+            const btn=document.querySelector('#form-login .btn');
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
+            btn.disabled=true; btn.innerText='⏳ Входим...';
             try {
-                alert('🔄 Подключаюсь к базе...');
                 const s=await get(ref(db,'users/'+u));
-                alert('✅ Ответ получен. Пользователь существует: ' + s.exists());
                 if(s.exists()&&s.val().password==p){ loginOk(s.val().username,u); }
                 else { errEl.innerText='❌ Неверный логин или пароль'; document.getElementById('l-pass').value=''; }
             } catch(e) {
-                alert('❌ ОШИБКА: ' + e.message + ' | Код: ' + e.code);
-                errEl.innerText='❌ ' + e.message;
+                errEl.innerText='❌ Ошибка подключения: ' + e.message;
+            } finally {
+                btn.disabled=false; btn.innerText='Войти →';
             }
         } else {
             const u=document.getElementById('r-user').value.trim().toLowerCase();
             const p=document.getElementById('r-pass').value.trim();
             const errEl=document.getElementById('r-err');
+            const btn=document.querySelector('#form-reg .btn');
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
             if(u.length<3){ errEl.innerText='❌ Логин минимум 3 символа'; return; }
             if(p.length<4){ errEl.innerText='❌ Пароль минимум 4 символа'; return; }
-            const ip=await getIP(), ipKey=ip.replace(/\./g,'_'), r=ref(db,'users/'+u), s=await get(r);
-            if(s.exists()){ errEl.innerText='❌ Этот ник уже занят'; return; }
-            const ipsS=await get(ref(db,'ips/'+ipKey));
-            if(ipsS.exists()&&Object.keys(ipsS.val()).length>=3){ errEl.innerText='❌ С этого IP уже 3 аккаунта'; return; }
-            await set(r,{username:u,password:p,balance:1000,cloudInv:[],pinnedInsts:[],pic:"",bio:"",ip});
-            await update(ref(db,`ips/${ipKey}`),{[u]:true});
-            spawnConfetti(window.innerWidth/2, window.innerHeight/2, 30);
-            loginOk(u,u);
+            btn.disabled=true; btn.innerText='⏳ Регистрация...';
+            try {
+                const ip=await getIP(), ipKey=ip.replace(/\./g,'_'), r=ref(db,'users/'+u), s=await get(r);
+                if(s.exists()){ errEl.innerText='❌ Этот ник уже занят'; btn.disabled=false; btn.innerText='Зарегистрироваться →'; return; }
+                const ipsS=await get(ref(db,'ips/'+ipKey));
+                if(ipsS.exists()&&Object.keys(ipsS.val()).length>=3){ errEl.innerText='❌ С этого IP уже 3 аккаунта'; btn.disabled=false; btn.innerText='Зарегистрироваться →'; return; }
+                await set(r,{username:u,password:p,balance:1000,cloudInv:[],pinnedInsts:[],pic:"",bio:"",ip});
+                await update(ref(db,`ips/${ipKey}`),{[u]:true});
+                spawnConfetti(window.innerWidth/2, window.innerHeight/2, 30);
+                loginOk(u,u);
+            } catch(e) {
+                errEl.innerText='❌ Ошибка: ' + e.message;
+                btn.disabled=false; btn.innerText='Зарегистрироваться →';
+            }
         }
     };
 
@@ -5674,17 +5682,17 @@
                 const d = new Date(e.time);
                 const timeStr = d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) + ' ' + d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
                 const def = typeMap[e.type] || { icon:'📌', color:'rgba(255,255,255,0.04)', fmt: e => e.type };
-                return \`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;background:\${def.color};border:1px solid rgba(255,255,255,0.04);">
+                return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;background:\${def.color};border:1px solid rgba(255,255,255,0.04);">
                     <span style="font-size:15px;flex-shrink:0;">\${def.icon}</span>
                     <div style="flex:1;min-width:0;">
                         <div style="font-size:12px;line-height:1.5;">\${def.fmt(e)}</div>
                         <div style="font-size:10px;color:var(--secondary);margin-top:1px;font-family:monospace;">🕐 \${timeStr}</div>
                     </div>
-                </div>\`;
+                </div>`;
             }).join('');
         } catch(err) {
             const body = document.getElementById('user-log-body');
-            if (body) body.innerHTML = \`<div style="color:var(--err);text-align:center;padding:20px;">\${err.message}</div>\`;
+            if (body) body.innerHTML = `<div style="color:var(--err);text-align:center;padding:20px;">\${err.message}</div>`;
         }
     };
 
