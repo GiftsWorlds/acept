@@ -1377,7 +1377,7 @@
             if (!raw['_daily'] || raw['_daily'].date !== todayKey) {
                 const newDailyPrices = {};
                 for (const c of catalog) {
-                    newDailyPrices[String(c.id)] = getPrice(String(c.id));
+                    if (!c.nft) newDailyPrices[String(c.id)] = getPrice(String(c.id));
                 }
                 _dailyPrices = newDailyPrices;
                 try { await update(ref(db, 'shopPrices'), { '_daily': { date: todayKey, prices: newDailyPrices } }); } catch(e) {}
@@ -1404,10 +1404,11 @@
     }
 
     function getPrice(id) {
+        // NFT всегда возвращают фиксированную цену из каталога
+        const catItem = catalog.find(x => String(x.id) === String(id));
+        if (catItem && catItem.nft) return catItem.price || 0;
         const entry = _shopPriceCache[String(id)];
         if (!entry) {
-            // Fallback to catalog price if cache not loaded yet
-            const catItem = catalog.find(x => String(x.id) === String(id));
             return (catItem && catItem.price) ? catItem.price : BASE_PRICE;
         }
         return Math.max(PRICE_MIN, Math.min(PRICE_MAX, entry.price || BASE_PRICE));
@@ -1428,10 +1429,11 @@
         _shopPriceCache[sid] = { price: newPrice, buyCount };
         const updates = { ['i_' + sid]: { price: newPrice, buyCount } };
 
-        // Все остальные -1
+        // Все остальные -1 (кроме NFT — у них фиксированная цена)
         for (const c of catalog) {
             const cid = String(c.id);
             if (cid === sid) continue;
+            if (c.nft) continue; // NFT цена не меняется
             const cp = getPrice(cid);
             if (cp <= PRICE_MIN) continue;
             const np = Math.max(PRICE_MIN, cp - 1);
@@ -2183,7 +2185,8 @@
     };
 
     function renderShopCards() {
-        let items = [...catalog];
+        // Показываем только товары с inShop!==false и без nft (NFT рендерятся отдельно)
+        let items = catalog.filter(x => x.inShop !== false && !x.nft);
         if(shopFilter.q) items = items.filter(x=>x.n.toLowerCase().includes(shopFilter.q));
         if(shopFilter.sort==='cheap') items.sort((a,b)=>getPrice(a.id)-getPrice(b.id));
         else if(shopFilter.sort==='expensive') items.sort((a,b)=>getPrice(b.id)-getPrice(a.id));
@@ -4794,7 +4797,7 @@
             img: catalogImgBase64,
             rarity: rarity,
             nft: isNft,
-            inShop: catalogShopEnabled,
+            inShop: !!catalogShopEnabled,
             price: price,
             createdAt: Date.now()
         };
@@ -4968,7 +4971,7 @@
                 const ov = ovSnap.val()||{};
                 Object.entries(ov).forEach(([id,d])=>{
                     const c=catalog.find(x=>String(x.id)===String(id));
-                    if(c) Object.assign(c,{n:d.name||c.n,i:d.emoji||c.i,img:d.img||c.img,rarity:d.rarity!==undefined?d.rarity:c.rarity,nft:d.nft||false,price:d.price||0,inShop:d.inShop!==false,releaseAt:d.releaseAt||null});
+                    if(c) Object.assign(c,{n:d.name||c.n,i:d.emoji||c.i,img:d.img||c.img,rarity:d.rarity!==undefined?d.rarity:c.rarity,nft:d.nft||false,price:d.price||0,inShop:'inShop' in d ? !!d.inShop : c.inShop!==false,releaseAt:d.releaseAt||null});
                 });
             } catch(e){}
             refreshBcastGiftSelect();
@@ -5077,7 +5080,7 @@
 
         const isNft=_editType==='nft';
         const rarity=isNft?3:parseInt(document.getElementById('edit-rarity').value||0);
-        const updates={name,emoji:emoji||'\uD83C\uDF81',price,rarity,nft:isNft,inShop:_editShop};
+        const updates={name,emoji:emoji||'\uD83C\uDF81',price,rarity,nft:isNft,inShop:!!_editShop};
         if(_editImgB64) updates.img=_editImgB64;
         if(isNft){
             const rel=document.getElementById('edit-nft-release').value;
@@ -5091,12 +5094,12 @@
             if(builtinId){
                 await update(ref(db,'builtinOverrides/'+builtinId),updates);
                 const c=catalog.find(x=>String(x.id)===String(builtinId));
-                if(c) Object.assign(c,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:_editShop,releaseAt:updates.releaseAt||null});
+                if(c) Object.assign(c,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:!!_editShop,releaseAt:updates.releaseAt||null});
                 if(_editImgB64&&c) c.img=_editImgB64;
             } else if(fbId){
                 await update(ref(db,'customCatalog/'+fbId),updates);
                 const ci=_allCustomItems.find(i=>i.fbId===fbId); if(ci) Object.assign(ci,updates);
-                const cc=catalog.find(c=>c.fbId===fbId); if(cc) Object.assign(cc,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:_editShop});
+                const cc=catalog.find(c=>c.fbId===fbId); if(cc) Object.assign(cc,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:!!_editShop});
                 if(_editImgB64&&cc) cc.img=_editImgB64;
             }
             refreshBcastGiftSelect();
