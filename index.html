@@ -397,7 +397,7 @@
             border-radius:10px; padding:2px 8px; font-size:12px; font-weight:700;
         }
         .tg-gifts-grid {
-            display:grid; grid-template-columns:repeat(3,1fr); gap:6px;
+            display:grid; grid-template-columns:repeat(3,1fr); gap:5px;
             padding:0 6px 6px;
         }
         /* NFT animations */
@@ -419,11 +419,11 @@
         .tg-gift-cell:hover { border-color:rgba(255,255,255,0.22); box-shadow:0 8px 24px rgba(0,0,0,0.55); transform:scale(1.05) translateY(-3px); }
         .tg-gift-cell:active { transform:scale(0.91); }
         .tg-gift-inner {
-            position:absolute; top:0; left:0; right:0; bottom:16px;
+            position:absolute; top:0; left:0; right:0; bottom:18px;
             display:flex; flex-direction:column; align-items:center; justify-content:center;
-            padding:8px; z-index:1;
+            padding:4px; z-index:1;
         }
-        .tg-gift-inner img { width:56px; height:56px; object-fit:contain; filter:drop-shadow(0 3px 12px rgba(0,0,0,0.45)); transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        .tg-gift-inner img { width:52px; height:52px; object-fit:contain; filter:drop-shadow(0 3px 12px rgba(0,0,0,0.45)); transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
         .tg-gift-cell:hover .tg-gift-inner img { transform:scale(1.15) translateY(-3px); }
         .tg-gift-name { position:absolute; bottom:3px; left:0; right:0; font-size:10px; color:var(--secondary); text-align:center; padding:0 4px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; z-index:2; }
 
@@ -440,8 +440,7 @@
             background-size:200% 100%; animation:nftGoldShimmer 2.5s linear infinite;
             will-change:background-position;
         }
-        .tg-gift-nft .tg-gift-inner { z-index:1; top:18px; bottom:34px; }
-        .tg-gift-nft .tg-gift-name { bottom:17px; }
+        .tg-gift-nft .tg-gift-inner { z-index:1; }
         .tg-gift-nft .tg-gift-inner img { animation:nftImgFloat 3s ease-in-out infinite; filter:drop-shadow(0 4px 16px rgba(255,215,0,0.55)); will-change:transform; }
         .tg-gift-nft .tg-gift-name {
             background:linear-gradient(90deg,#ffd700,#ffb347,#ffd700);
