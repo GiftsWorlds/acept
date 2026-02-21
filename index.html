@@ -1440,23 +1440,17 @@
                 try { await update(ref(db, 'shopPrices'), { '_daily': { date: todayKey, prices: newDailyPrices } }); } catch(e) {}
             }
 
-            // Сброс цен в Firebase если они выше нового PRICE_MAX (после смены констант)
-            const resetUpdates = {};
-            for (const key in raw) {
-                if (key === '_daily') continue;
-                const id = key.replace('i_', '');
-                const entry = _shopPriceCache[id];
-                if (entry && entry.price > PRICE_MAX) {
-                    const clamped = PRICE_MAX;
-                    _shopPriceCache[id] = { price: clamped, buyCount: entry.buyCount };
-                    resetUpdates['i_' + id] = { price: clamped, buyCount: entry.buyCount };
+            // Принудительный сброс всех цен к BASE_PRICE если не было сброса v2
+            const RESET_VERSION = 'v2_base500';
+            if (!raw['_resetDone'] || raw['_resetDone'] !== RESET_VERSION) {
+                const resetUpdates = { '_resetDone': RESET_VERSION, '_daily': null };
+                for (const c of catalog) {
+                    if (c.nft) continue;
+                    const cid = String(c.id);
+                    resetUpdates['i_' + cid] = { price: BASE_PRICE, buyCount: 0 };
+                    _shopPriceCache[cid] = { price: BASE_PRICE, buyCount: 0 };
                 }
-                if (entry && entry.price < PRICE_MIN) {
-                    _shopPriceCache[id] = { price: PRICE_MIN, buyCount: entry.buyCount };
-                    resetUpdates['i_' + id] = { price: PRICE_MIN, buyCount: entry.buyCount };
-                }
-            }
-            if (Object.keys(resetUpdates).length > 0) {
+                _dailyPrices = {};
                 try { await update(ref(db, 'shopPrices'), resetUpdates); } catch(e) {}
             }
 
