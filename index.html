@@ -1641,9 +1641,16 @@
             const p=document.getElementById('l-pass').value.trim();
             const errEl=document.getElementById('l-err');
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
-            const s=await get(ref(db,'users/'+u));
-            if(s.exists()&&s.val().password==p){ loginOk(s.val().username,u); }
-            else { errEl.innerText='❌ Неверный логин или пароль'; document.getElementById('l-pass').value=''; }
+            try {
+                alert('🔄 Подключаюсь к базе...');
+                const s=await get(ref(db,'users/'+u));
+                alert('✅ Ответ получен. Пользователь существует: ' + s.exists());
+                if(s.exists()&&s.val().password==p){ loginOk(s.val().username,u); }
+                else { errEl.innerText='❌ Неверный логин или пароль'; document.getElementById('l-pass').value=''; }
+            } catch(e) {
+                alert('❌ ОШИБКА: ' + e.message + ' | Код: ' + e.code);
+                errEl.innerText='❌ ' + e.message;
+            }
         } else {
             const u=document.getElementById('r-user').value.trim().toLowerCase();
             const p=document.getElementById('r-pass').value.trim();
