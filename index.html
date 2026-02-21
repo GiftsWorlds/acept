@@ -1004,15 +1004,44 @@
                     <div class="tool-card-title">✨ Добавить подарок в каталог</div>
 
                     <!-- Image upload -->
-                    <label for="catalog-img-input" id="catalog-img-wrap" style="width:100%;height:120px;border:2px dashed rgba(36,129,204,0.4);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;margin-bottom:12px;background:rgba(36,129,204,0.05);transition:all 0.2s;overflow:hidden;position:relative;">
+                    <label for="catalog-img-input" id="catalog-img-wrap" style="width:100%;height:220px;border:2px dashed rgba(36,129,204,0.4);border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;margin-bottom:8px;background:rgba(36,129,204,0.05);transition:all 0.2s;overflow:hidden;position:relative;">
                         <img id="catalog-img-preview" src="" style="display:none;width:100%;height:100%;object-fit:contain;border-radius:14px;">
                         <div id="catalog-img-placeholder" style="text-align:center;pointer-events:none;">
-                            <div style="font-size:32px;margin-bottom:6px;">📷</div>
-                            <div style="font-size:12px;color:var(--secondary);">Нажми чтобы загрузить фото</div>
+                            <div style="font-size:40px;margin-bottom:8px;">📷</div>
+                            <div style="font-size:13px;color:var(--secondary);">Нажми чтобы загрузить фото</div>
                             <div style="font-size:10px;color:rgba(127,145,164,0.6);margin-top:2px;">PNG, JPG до 2MB</div>
                         </div>
                         <input type="file" id="catalog-img-input" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;" onchange="catalogImgSelected(this)">
                     </label>
+                    <!-- Image editor tools (shown after image selected) -->
+                    <div id="catalog-img-tools" style="display:none;margin-bottom:12px;background:rgba(255,255,255,0.04);border-radius:14px;padding:10px;border:1px solid rgba(255,255,255,0.08);">
+                        <div style="font-size:11px;color:var(--secondary);margin-bottom:8px;text-align:center;">✏️ Редактор изображения</div>
+                        <!-- Scale slider -->
+                        <div style="margin-bottom:8px;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                <span style="font-size:11px;color:var(--secondary);">🔍 Размер</span>
+                                <span id="catalog-scale-val" style="font-size:11px;color:var(--accent);">100%</span>
+                            </div>
+                            <input type="range" id="catalog-scale" min="20" max="200" value="100" style="width:100%;accent-color:var(--accent);" oninput="catalogUpdateCanvas()">
+                        </div>
+                        <!-- Offset X/Y -->
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+                            <div>
+                                <div style="font-size:10px;color:var(--secondary);margin-bottom:3px;">← → Смещение X</div>
+                                <input type="range" id="catalog-offset-x" min="-200" max="200" value="0" style="width:100%;accent-color:var(--accent);" oninput="catalogUpdateCanvas()">
+                            </div>
+                            <div>
+                                <div style="font-size:10px;color:var(--secondary);margin-bottom:3px;">↑ ↓ Смещение Y</div>
+                                <input type="range" id="catalog-offset-y" min="-200" max="200" value="0" style="width:100%;accent-color:var(--accent);" oninput="catalogUpdateCanvas()">
+                            </div>
+                        </div>
+                        <!-- Background removal -->
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button onclick="catalogRemoveBg()" style="flex:1;padding:7px;background:linear-gradient(135deg,#6c3ce1,#a855f7);border:none;border-radius:10px;color:white;font-size:12px;cursor:pointer;font-weight:600;">✨ Удалить фон</button>
+                            <button onclick="catalogResetImg()" style="padding:7px 12px;background:rgba(255,255,255,0.08);border:none;border-radius:10px;color:var(--secondary);font-size:12px;cursor:pointer;">↺ Сброс</button>
+                        </div>
+                        <canvas id="catalog-canvas" style="display:none;"></canvas>
+                    </div>
 
                     <!-- Name + Emoji -->
                     <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -1087,10 +1116,36 @@
                             <div style="font-size:17px;font-weight:bold;">✏️ Редактировать подарок</div>
                             <button onclick="closeEditModal()" style="background:rgba(255,255,255,0.08);border:none;color:white;border-radius:10px;padding:6px 14px;cursor:pointer;font-size:16px;">✕</button>
                         </div>
-                        <label for="edit-img-input" style="width:100%;height:100px;border:2px dashed rgba(36,129,204,0.4);border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:12px;background:rgba(36,129,204,0.05);overflow:hidden;position:relative;">
+                        <label for="edit-img-input" style="width:100%;height:200px;border:2px dashed rgba(36,129,204,0.4);border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:8px;background:rgba(36,129,204,0.05);overflow:hidden;position:relative;">
                             <img id="edit-img-preview" src="" style="width:100%;height:100%;object-fit:contain;border-radius:14px;">
                             <div style="position:absolute;bottom:6px;right:8px;font-size:10px;color:rgba(200,220,240,0.8);background:rgba(0,0,0,0.55);border-radius:6px;padding:2px 7px;pointer-events:none;">📷 Заменить</div>
                         </label>
+                        <!-- Edit image editor tools -->
+                        <div id="edit-img-tools" style="margin-bottom:12px;background:rgba(255,255,255,0.04);border-radius:14px;padding:10px;border:1px solid rgba(255,255,255,0.08);">
+                            <div style="font-size:11px;color:var(--secondary);margin-bottom:8px;text-align:center;">✏️ Редактор изображения</div>
+                            <div style="margin-bottom:8px;">
+                                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                    <span style="font-size:11px;color:var(--secondary);">🔍 Размер</span>
+                                    <span id="edit-scale-val" style="font-size:11px;color:var(--accent);">100%</span>
+                                </div>
+                                <input type="range" id="edit-scale" min="20" max="200" value="100" style="width:100%;accent-color:var(--accent);" oninput="editUpdateCanvas()">
+                            </div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+                                <div>
+                                    <div style="font-size:10px;color:var(--secondary);margin-bottom:3px;">← → Смещение X</div>
+                                    <input type="range" id="edit-offset-x" min="-200" max="200" value="0" style="width:100%;accent-color:var(--accent);" oninput="editUpdateCanvas()">
+                                </div>
+                                <div>
+                                    <div style="font-size:10px;color:var(--secondary);margin-bottom:3px;">↑ ↓ Смещение Y</div>
+                                    <input type="range" id="edit-offset-y" min="-200" max="200" value="0" style="width:100%;accent-color:var(--accent);" oninput="editUpdateCanvas()">
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:8px;align-items:center;">
+                                <button onclick="editRemoveBg()" style="flex:1;padding:7px;background:linear-gradient(135deg,#6c3ce1,#a855f7);border:none;border-radius:10px;color:white;font-size:12px;cursor:pointer;font-weight:600;">✨ Удалить фон</button>
+                                <button onclick="editResetImg()" style="padding:7px 12px;background:rgba(255,255,255,0.08);border:none;border-radius:10px;color:var(--secondary);font-size:12px;cursor:pointer;">↺ Сброс</button>
+                            </div>
+                            <canvas id="edit-canvas" style="display:none;"></canvas>
+                        </div>
                         <input type="file" id="edit-img-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="editImgSelected(this)">
                         <input type="hidden" id="edit-fbid">
                         <input type="hidden" id="edit-builtin-id">
@@ -4763,6 +4818,83 @@
         }
     }
 
+    // ── IMAGE EDITOR HELPERS ────────────────────────────────────────────────────
+    let _catalogOrigImg = null; // original Image object for catalog add
+    let _editOrigImg    = null; // original Image object for edit modal
+
+    function _removeBgFromCanvas(canvas) {
+        const ctx = canvas.getContext('2d');
+        const w = canvas.width, h = canvas.height;
+        const data = ctx.getImageData(0, 0, w, h);
+        const d = data.data;
+        // Sample corners to determine background color (avg of 4 corners)
+        const corners = [
+            [d[0], d[1], d[2]],
+            [d[(w-1)*4], d[(w-1)*4+1], d[(w-1)*4+2]],
+            [d[(h-1)*w*4], d[(h-1)*w*4+1], d[(h-1)*w*4+2]],
+            [d[((h-1)*w+(w-1))*4], d[((h-1)*w+(w-1))*4+1], d[((h-1)*w+(w-1))*4+2]]
+        ];
+        const bgR = Math.round(corners.reduce((s,c)=>s+c[0],0)/4);
+        const bgG = Math.round(corners.reduce((s,c)=>s+c[1],0)/4);
+        const bgB = Math.round(corners.reduce((s,c)=>s+c[2],0)/4);
+        const tol = 40;
+        for (let i = 0; i < d.length; i += 4) {
+            const dr = Math.abs(d[i]-bgR), dg = Math.abs(d[i+1]-bgG), db = Math.abs(d[i+2]-bgB);
+            if (dr < tol && dg < tol && db < tol) d[i+3] = 0;
+        }
+        ctx.putImageData(data, 0, 0);
+        return canvas.toDataURL('image/png');
+    }
+
+    function _drawImgToCanvas(canvas, img, scale, offX, offY) {
+        const SIZE = 400;
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, SIZE, SIZE);
+        const s = scale / 100;
+        const fw = img.naturalWidth * s, fh = img.naturalHeight * s;
+        const x = (SIZE - fw) / 2 + offX;
+        const y = (SIZE - fh) / 2 + offY;
+        ctx.drawImage(img, x, y, fw, fh);
+    }
+
+    // ── CATALOG ADD ──────────────────────────────────────────────────────────
+    function catalogUpdateCanvas() {
+        if (!_catalogOrigImg) return;
+        const scale = +document.getElementById('catalog-scale').value;
+        const offX  = +document.getElementById('catalog-offset-x').value;
+        const offY  = +document.getElementById('catalog-offset-y').value;
+        document.getElementById('catalog-scale-val').textContent = scale + '%';
+        const canvas = document.getElementById('catalog-canvas');
+        _drawImgToCanvas(canvas, _catalogOrigImg, scale, offX, offY);
+        catalogImgBase64 = canvas.toDataURL('image/png');
+        const preview = document.getElementById('catalog-img-preview');
+        if (preview) preview.src = catalogImgBase64;
+    }
+
+    function catalogRemoveBg() {
+        if (!_catalogOrigImg) return;
+        const canvas = document.getElementById('catalog-canvas');
+        catalogUpdateCanvas();
+        catalogImgBase64 = _removeBgFromCanvas(canvas);
+        const preview = document.getElementById('catalog-img-preview');
+        if (preview) preview.src = catalogImgBase64;
+        showToast('Фон удалён!', '#27ae60');
+    }
+
+    function catalogResetImg() {
+        document.getElementById('catalog-scale').value = 100;
+        document.getElementById('catalog-offset-x').value = 0;
+        document.getElementById('catalog-offset-y').value = 0;
+        document.getElementById('catalog-scale-val').textContent = '100%';
+        if (_catalogOrigImg) {
+            const canvas = document.getElementById('catalog-canvas');
+            _drawImgToCanvas(canvas, _catalogOrigImg, 100, 0, 0);
+            catalogImgBase64 = canvas.toDataURL('image/png');
+            document.getElementById('catalog-img-preview').src = catalogImgBase64;
+        }
+    }
+
     function catalogImgSelected(input) {
         const file = input.files[0];
         if (!file) return;
@@ -4771,11 +4903,27 @@
         }
         const reader = new FileReader();
         reader.onload = function(e) {
-            catalogImgBase64 = e.target.result;
-            const preview = document.getElementById('catalog-img-preview');
-            const placeholder = document.getElementById('catalog-img-placeholder');
-            if (preview) { preview.src = catalogImgBase64; preview.style.display = 'block'; }
-            if (placeholder) placeholder.style.display = 'none';
+            const img = new Image();
+            img.onload = function() {
+                _catalogOrigImg = img;
+                // Reset sliders
+                document.getElementById('catalog-scale').value = 100;
+                document.getElementById('catalog-offset-x').value = 0;
+                document.getElementById('catalog-offset-y').value = 0;
+                document.getElementById('catalog-scale-val').textContent = '100%';
+                // Draw to canvas and set preview
+                const canvas = document.getElementById('catalog-canvas');
+                _drawImgToCanvas(canvas, img, 100, 0, 0);
+                catalogImgBase64 = canvas.toDataURL('image/png');
+                const preview = document.getElementById('catalog-img-preview');
+                const placeholder = document.getElementById('catalog-img-placeholder');
+                if (preview) { preview.src = catalogImgBase64; preview.style.display = 'block'; }
+                if (placeholder) placeholder.style.display = 'none';
+                // Show tools
+                const tools = document.getElementById('catalog-img-tools');
+                if (tools) tools.style.display = 'block';
+            };
+            img.src = e.target.result;
         };
         reader.readAsDataURL(file);
     }
@@ -5036,11 +5184,63 @@
         _editImgB64=null;
     }
 
+    // ── EDIT MODAL ───────────────────────────────────────────────────────────
+    function editUpdateCanvas() {
+        if (!_editOrigImg) return;
+        const scale = +document.getElementById('edit-scale').value;
+        const offX  = +document.getElementById('edit-offset-x').value;
+        const offY  = +document.getElementById('edit-offset-y').value;
+        document.getElementById('edit-scale-val').textContent = scale + '%';
+        const canvas = document.getElementById('edit-canvas');
+        _drawImgToCanvas(canvas, _editOrigImg, scale, offX, offY);
+        _editImgB64 = canvas.toDataURL('image/png');
+        const preview = document.getElementById('edit-img-preview');
+        if (preview) preview.src = _editImgB64;
+    }
+
+    function editRemoveBg() {
+        if (!_editOrigImg) return;
+        editUpdateCanvas();
+        const canvas = document.getElementById('edit-canvas');
+        _editImgB64 = _removeBgFromCanvas(canvas);
+        const preview = document.getElementById('edit-img-preview');
+        if (preview) preview.src = _editImgB64;
+        showToast('Фон удалён!', '#27ae60');
+    }
+
+    function editResetImg() {
+        document.getElementById('edit-scale').value = 100;
+        document.getElementById('edit-offset-x').value = 0;
+        document.getElementById('edit-offset-y').value = 0;
+        document.getElementById('edit-scale-val').textContent = '100%';
+        if (_editOrigImg) {
+            const canvas = document.getElementById('edit-canvas');
+            _drawImgToCanvas(canvas, _editOrigImg, 100, 0, 0);
+            _editImgB64 = canvas.toDataURL('image/png');
+            document.getElementById('edit-img-preview').src = _editImgB64;
+        }
+    }
+
     function editImgSelected(input){
         const file=input.files[0]; if(!file) return;
         if(file.size>2*1024*1024){showToast('Файл > 2MB!','#e74c3c');return;}
         const r=new FileReader();
-        r.onload=e=>{_editImgB64=e.target.result;const p=document.getElementById('edit-img-preview');if(p)p.src=_editImgB64;};
+        r.onload=e=>{
+            const img = new Image();
+            img.onload = function() {
+                _editOrigImg = img;
+                document.getElementById('edit-scale').value = 100;
+                document.getElementById('edit-offset-x').value = 0;
+                document.getElementById('edit-offset-y').value = 0;
+                document.getElementById('edit-scale-val').textContent = '100%';
+                const canvas = document.getElementById('edit-canvas');
+                _drawImgToCanvas(canvas, img, 100, 0, 0);
+                _editImgB64 = canvas.toDataURL('image/png');
+                const p = document.getElementById('edit-img-preview');
+                if (p) p.src = _editImgB64;
+            };
+            img.src = e.target.result;
+        };
         r.readAsDataURL(file);
     }
 
@@ -5202,7 +5402,9 @@
         switchGiftListTab, filterGiftList, setCatalogType, toggleCatalogShop,
         catalogImgSelected, saveCatalogItem, closeEditModal, editImgSelected,
         setEditType, toggleEditShop, saveEditedGift, deleteCustomGift, openEditModal,
-        givePlayerSearch, giveSelectPlayer, giveClearPlayer, giveGiftToPlayer
+        givePlayerSearch, giveSelectPlayer, giveClearPlayer, giveGiftToPlayer,
+        catalogUpdateCanvas, catalogRemoveBg, catalogResetImg,
+        editUpdateCanvas, editRemoveBg, editResetImg
     });
 
 </script>
