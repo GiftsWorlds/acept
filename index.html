@@ -5409,47 +5409,149 @@
     }
 
     // ── EDIT MODAL ─────────────────────────────────────────────
-    function openEditModal(builtinId, fbId) {
-        _editImgB64 = null;
-        document.getElementById('edit-fbid').value = fbId||'';
-        document.getElementById('edit-builtin-id').value = builtinId||'';
+    function _buildEditModalHTML(item, builtinId, fbId) {
+        const typeStr = item.nft?'nft':item.rarity===2?'epic':item.rarity===1?'rare':'common';
+        const shopOn = item.inShop!==false;
+        const imgSrc = item.img||'';
+        const releaseVal = item.releaseAt ? new Date(item.releaseAt).toISOString().slice(0,16) : '';
+        const typeColors = {common:'rgba(255,255,255,0.15)',rare:'rgba(52,152,219,0.3)',epic:'rgba(155,89,182,0.3)',nft:'rgba(255,215,0,0.2)'};
+        const typeBorders = {common:'rgba(255,255,255,0.5)',rare:'#3498db',epic:'#9b59b6',nft:'#ffd700'};
+        const labels = {common:'⚪ Обычный',rare:'🔵 Редкий',epic:'🟣 Эпик',nft:'✦ NFT'};
+        const typeBtns = ['common','rare','epic','nft'].map(t => {
+            const isActive = t===typeStr;
+            const bg = isActive ? typeColors[t] : (t==='nft'?'rgba(255,215,0,0.06)':'rgba(255,255,255,0.06)');
+            const bc = isActive ? typeBorders[t] : (t==='nft'?'rgba(255,215,0,0.3)':'rgba(255,255,255,0.2)');
+            const col = t==='nft'?'#ffd700':'white';
+            return `<button id="etype2-${t}" onclick="window._editSetType2('${t}')" style="flex:1;padding:8px;border-radius:10px;border:2px solid ${bc};background:${bg};color:${col};cursor:pointer;font-size:11px;font-weight:bold;">${labels[t]}</button>`;
+        }).join('');
+        return `<div style="padding:2px;">
+            <div style="font-size:16px;font-weight:bold;margin-bottom:12px;">✏️ Редактировать подарок</div>
+            <label for="edit2-img" style="width:100%;height:150px;border:2px dashed rgba(36,129,204,0.4);border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:8px;background:rgba(36,129,204,0.05);overflow:hidden;position:relative;">
+                <img id="edit2-img-preview" src="${imgSrc}" style="width:100%;height:100%;object-fit:contain;border-radius:14px;">
+                <div style="position:absolute;bottom:6px;right:8px;font-size:10px;color:rgba(200,220,240,0.8);background:rgba(0,0,0,0.55);border-radius:6px;padding:2px 7px;">📷 Заменить</div>
+            </label>
+            <input type="file" id="edit2-img" accept="image/*" style="display:none;" onchange="window._editImg2Selected(this)">
+            <div style="display:flex;gap:8px;margin-bottom:10px;">
+                <input type="text" id="edit2-name" placeholder="Название" value="${item.name||''}" style="margin:0;flex:1;">
+                <input type="text" id="edit2-emoji" placeholder="😀" maxlength="2" value="${item.emoji||''}" style="margin:0;width:60px;text-align:center;font-size:22px;">
+            </div>
+            <input type="number" id="edit2-price" placeholder="💰 Цена" value="${item.price||''}" style="margin:0 0 10px;">
+            <div style="display:flex;gap:5px;margin-bottom:10px;">${typeBtns}</div>
+            <div id="edit2-nft-opts" style="display:${typeStr==='nft'?'block':'none'};background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:14px;padding:12px;margin-bottom:10px;">
+                <div style="font-size:11px;color:#ffd700;font-weight:bold;margin-bottom:6px;">✦ Дата выхода NFT</div>
+                <input type="datetime-local" id="edit2-nft-release" value="${releaseVal}" style="margin:0 0 8px;font-size:13px;">
+                <input type="text" id="edit2-nft-desc" placeholder="Описание NFT..." value="${item.description||''}" style="margin:0;">
+            </div>
+            <div id="edit2-rarity-opts" style="display:${typeStr==='nft'?'none':'block'};margin-bottom:10px;">
+                <select id="edit2-rarity" style="margin:0;height:42px;border-radius:12px;">
+                    <option value="0" ${(item.rarity||0)==0?'selected':''}>⚪ Обычный</option>
+                    <option value="1" ${(item.rarity||0)==1?'selected':''}>🔵 Редкий</option>
+                    <option value="2" ${(item.rarity||0)==2?'selected':''}>🟣 Эпический</option>
+                    <option value="3" ${(item.rarity||0)==3?'selected':''}>🟡 Легендарный</option>
+                </select>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px 14px;margin-bottom:14px;">
+                <div style="font-size:13px;font-weight:bold;">🛍️ В магазине</div>
+                <div onclick="window._editToggleShop2()" id="edit2-shop-toggle" style="width:44px;height:24px;border-radius:12px;background:${shopOn?'#2ecc71':'rgba(255,255,255,0.15)'};cursor:pointer;position:relative;transition:background 0.2s;">
+                    <div style="position:absolute;width:20px;height:20px;background:white;border-radius:50%;top:2px;${shopOn?'right:2px':'left:2px'};transition:all 0.2s;"></div>
+                </div>
+            </div>
+            <input type="hidden" id="edit2-builtin-id" value="${builtinId||''}">
+            <input type="hidden" id="edit2-fbid" value="${fbId||''}">
+            <button class="btn" onclick="window._saveEditedGift2()" style="background:linear-gradient(135deg,var(--accent),#1a6aad);margin-bottom:6px;">💾 Сохранить</button>
+            <button class="btn" onclick="closeModal()" style="background:rgba(255,255,255,0.07);color:var(--secondary);">✕ Закрыть</button>
+        </div>`;
+    }
 
+    window._editSetType2 = (type) => {
+        window._editType2 = type;
+        const typeColors = {common:'rgba(255,255,255,0.15)',rare:'rgba(52,152,219,0.3)',epic:'rgba(155,89,182,0.3)',nft:'rgba(255,215,0,0.2)'};
+        const typeBorders = {common:'rgba(255,255,255,0.5)',rare:'#3498db',epic:'#9b59b6',nft:'#ffd700'};
+        ['common','rare','epic','nft'].forEach(t => {
+            const b = document.getElementById('etype2-'+t); if(!b) return;
+            const isActive = t===type;
+            b.style.background = isActive ? typeColors[t] : (t==='nft'?'rgba(255,215,0,0.06)':'rgba(255,255,255,0.06)');
+            b.style.borderColor = isActive ? typeBorders[t] : (t==='nft'?'rgba(255,215,0,0.3)':'rgba(255,255,255,0.2)');
+        });
+        const nftOpts = document.getElementById('edit2-nft-opts');
+        const rarOpts = document.getElementById('edit2-rarity-opts');
+        if(nftOpts) nftOpts.style.display = type==='nft'?'block':'none';
+        if(rarOpts) rarOpts.style.display = type==='nft'?'none':'block';
+    };
+
+    window._editToggleShop2 = () => {
+        window._editShop2 = !window._editShop2;
+        const t = document.getElementById('edit2-shop-toggle'); if(!t) return;
+        t.style.background = window._editShop2?'#2ecc71':'rgba(255,255,255,0.15)';
+        const k = t.querySelector('div');
+        if(k){ k.style.right=window._editShop2?'2px':''; k.style.left=window._editShop2?'':'2px'; }
+    };
+
+    window._editImg2Selected = (input) => {
+        const file = input.files[0]; if(!file) return;
+        if(file.size>2*1024*1024){showToast('Файл > 2MB!','#e74c3c');return;}
+        const r = new FileReader();
+        r.onload = ev => {
+            window._editImgB642 = ev.target.result;
+            const prev = document.getElementById('edit2-img-preview');
+            if(prev) prev.src = ev.target.result;
+        };
+        r.readAsDataURL(file);
+    };
+
+    window._saveEditedGift2 = async () => {
+        const name = (document.getElementById('edit2-name').value||'').trim();
+        const emoji = (document.getElementById('edit2-emoji').value||'').trim();
+        const price = parseInt(document.getElementById('edit2-price').value)||0;
+        const fbId = document.getElementById('edit2-fbid').value;
+        const builtinId = document.getElementById('edit2-builtin-id').value;
+        if(!name){showToast('Введи название!','#e74c3c');return;}
+        const type = window._editType2||'common';
+        const isNft = type==='nft';
+        const rarity = isNft ? 3 : parseInt(document.getElementById('edit2-rarity').value||0);
+        const inShop = window._editShop2!==undefined ? window._editShop2 : true;
+        const img = window._editImgB642||null;
+        const updates = {n:name, i:emoji, price, rarity, nft:isNft, inShop};
+        if(img) updates.img = img;
+        if(isNft){
+            const rel = document.getElementById('edit2-nft-release').value;
+            if(rel) updates.releaseAt = new Date(rel).getTime();
+            updates.description = document.getElementById('edit2-nft-desc').value||'';
+        }
+        try {
+            if(builtinId){
+                await update(ref(db,'builtinOverrides/'+builtinId), updates);
+                const c = catalog.find(x=>String(x.id)===String(builtinId));
+                if(c){Object.assign(c,{n:name,i:emoji,price,rarity,nft:isNft,inShop});if(img)c.img=img;}
+            } else if(fbId){
+                await update(ref(db,'customGifts/'+fbId), updates);
+                const ci = _allCustomItems.find(i=>i.fbId===fbId);
+                if(ci){Object.assign(ci,{name,emoji:emoji,price,rarity,nft:isNft,inShop});if(img)ci.img=img;}
+            }
+            showToast('✅ Сохранено!','#27ae60');
+            closeModal();
+            setTimeout(()=>{renderBuiltinList(); renderCustomList(); loadCustomCatalog();}, 300);
+        } catch(e){showToast('Ошибка: '+e.message,'#e74c3c');}
+    };
+
+    function openEditModal(builtinId, fbId) {
         let item = null;
         if (builtinId) {
             const c = catalog.find(x=>x.id==builtinId);
-            if (c) item={name:c.n,emoji:c.i,img:c.img,rarity:c.rarity||0,nft:c.nft||false,price:c.price||0,inShop:c.inShop!==false,releaseAt:c.releaseAt||null,description:''};
+            if (c) item={name:c.n, emoji:c.i, img:c.img||'', rarity:c.rarity||0, nft:c.nft||false, price:c.price||0, inShop:c.inShop!==false, releaseAt:c.releaseAt||null, description:''};
         } else if (fbId) {
             const ci = _allCustomItems.find(i=>i.fbId===fbId);
-            if (ci) item={...ci};
+            if (ci) item={name:ci.name||ci.n||'', emoji:ci.emoji||ci.i||'', img:ci.img||'', rarity:ci.rarity||0, nft:ci.nft||false, price:ci.price||0, inShop:ci.inShop!==false, releaseAt:ci.releaseAt||null, description:ci.description||''};
         }
         if (!item) return;
-
-        document.getElementById('edit-name').value=item.name||'';
-        document.getElementById('edit-emoji').value=item.emoji||'';
-        document.getElementById('edit-price').value=item.price||'';
-        document.getElementById('edit-nft-desc').value=item.description||'';
-        if(item.releaseAt){const d=new Date(item.releaseAt);document.getElementById('edit-nft-release').value=d.toISOString().slice(0,16);}
-        else document.getElementById('edit-nft-release').value='';
-
-        const prev=document.getElementById('edit-img-preview');
-        if(prev&&item.img){prev.src=item.img;}
-
-        setEditType(item.nft?'nft':item.rarity===2?'epic':item.rarity===1?'rare':'common');
-        document.getElementById('edit-rarity').value=item.rarity||0;
-
-        _editShop=item.inShop!==false;
-        const tog=document.getElementById('edit-shop-toggle');
-        if(tog){tog.style.background=_editShop?'#2ecc71':'rgba(255,255,255,0.15)';const k=tog.querySelector('div');if(k)k.style.right=_editShop?'2px':'20px';}
-
-        document.getElementById('catalog-edit-modal').style.display='block';
-        document.body.style.overflow='hidden';
+        window._editType2 = item.nft?'nft':item.rarity===2?'epic':item.rarity===1?'rare':'common';
+        window._editShop2 = item.inShop!==false;
+        window._editImgB642 = null;
+        document.getElementById('modal-content').innerHTML = _buildEditModalHTML(item, builtinId, fbId);
+        openModal();
     }
 
-    function closeEditModal(){
-        document.getElementById('catalog-edit-modal').style.display='none';
-        document.body.style.overflow='';
-        _editImgB64=null;
-    }
+    function closeEditModal(){ closeModal(); }
 
     // ── EDIT MODAL ───────────────────────────────────────────────────────────
     function editUpdateCanvas() {
