@@ -6003,23 +6003,23 @@ ID предмета: ${customInst !== null ? customInst : 'авто'}`,
         const banner = document.createElement('div');
         banner.id = 'pwa-install-banner';
         banner.style.cssText = `
-            position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-            width: calc(100% - 32px); max-width: 400px;
+            position: fixed; bottom: 80px; left: 16px; right: 16px;
             background: #111b21; border: 1px solid rgba(36,129,204,0.4);
             border-radius: 20px; padding: 14px 16px;
-            display: flex; align-items: center; gap: 12px;
+            display: flex; align-items: center; gap: 10px;
             z-index: 9999; box-shadow: 0 8px 32px rgba(0,0,0,0.6);
             animation: authSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+            box-sizing: border-box;
         `;
         banner.innerHTML = `
-            <span style="font-size:32px;flex-shrink:0;">🎁</span>
+            <span style="font-size:28px;flex-shrink:0;">🎁</span>
             <div style="flex:1;min-width:0;">
                 <div style="font-size:13px;font-weight:bold;color:white;margin-bottom:2px;">Установить Gifts World</div>
                 <div style="font-size:11px;color:var(--secondary);">Добавить на экран для быстрого доступа</div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;">
-                <button onclick="window._installPWA()" style="padding:7px 14px;background:var(--accent);border:none;border-radius:12px;color:white;font-size:12px;font-weight:bold;cursor:pointer;">Установить</button>
-                <button onclick="document.getElementById('pwa-install-banner').remove()" style="padding:5px 14px;background:rgba(255,255,255,0.06);border:none;border-radius:12px;color:var(--secondary);font-size:11px;cursor:pointer;">Не сейчас</button>
+            <div style="display:flex;gap:6px;flex-shrink:0;">
+                <button onclick="window._installPWA()" style="padding:8px 14px;background:var(--accent);border:none;border-radius:12px;color:white;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;">Установить</button>
+                <button onclick="document.getElementById('pwa-install-banner').remove()" style="padding:8px 10px;background:rgba(255,255,255,0.08);border:none;border-radius:12px;color:var(--secondary);font-size:16px;cursor:pointer;line-height:1;">✕</button>
             </div>
         `;
         document.body.appendChild(banner);
