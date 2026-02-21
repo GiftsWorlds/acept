@@ -778,7 +778,7 @@
                 <input type="password" id="l-pass" placeholder="Пароль" autocomplete="current-password" oninput="clearAuthErr('l-err')" onkeydown="if(event.key==='Enter') auth('login')">
             </div>
             <div class="auth-err" id="l-err"></div>
-            <button class="btn" style="background:var(--accent);" onclick="alert('клик!'); if(window.auth) auth('login'); else alert('auth не найден');">Войти →</button>
+            <button class="btn" style="background:var(--accent);" onclick="auth('login')">Войти →</button>
         </div>
 
         <!-- Register form -->
@@ -1239,7 +1239,6 @@
     };
     const fb = initializeApp(config);
     const db = getDatabase(fb);
-    alert('✅ Firebase инициализирован! Проект: gift-f97e9');
     let user = null, allUsersCache = {};
 
     const catalog = [
