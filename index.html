@@ -324,10 +324,10 @@
         .fly-emoji { position: fixed; font-size: 38px; pointer-events: none; z-index: 9999; animation: floatUp 0.95s cubic-bezier(0.25,0.46,0.45,0.94) forwards; }
         .confetti-piece { position: fixed; width: 9px; height: 9px; pointer-events: none; z-index: 9999; border-radius: 2px; animation: confettiFall linear forwards; }
         .balance-flash { animation: balanceFlash 0.65s cubic-bezier(0.34,1.56,0.64,1); }
-        .gift-img { width:74px; height:74px; object-fit:contain; display:block; margin:0 auto 8px; transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4)); flex-shrink:0; }
-        .gift-img-wrap { width:100%; height:96px; display:flex; align-items:center; justify-content:center; margin-bottom:6px; flex-shrink:0; overflow:hidden; }
-        .gift-img-wrap .gift-img { margin:0; width:74px; height:74px; }
-        .gift-img-wrap .gift-img-pony { width:90px; height:90px; }
+        .gift-img { width:110px; height:110px; object-fit:contain; display:block; margin:0 auto 8px; transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4)); flex-shrink:0; }
+        .gift-img-wrap { width:100%; height:130px; display:flex; align-items:center; justify-content:center; margin-bottom:6px; flex-shrink:0; overflow:hidden; }
+        .gift-img-wrap .gift-img { margin:0; width:110px; height:110px; }
+        .gift-img-wrap .gift-img-pony { width:120px; height:120px; }
         .card:hover .gift-img { transform:scale(1.18) translateY(-5px) rotate(3deg); }
         .gift-img-sm { width:46px; height:46px; object-fit:contain; display:block; margin:0 auto 4px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3)); flex-shrink:0; }
         .card-inner { display:flex; flex-direction:column; align-items:center; width:100%; }
@@ -516,9 +516,9 @@
                 margin: 0 auto;
             }
             .card { padding: 24px; border-radius: 28px; }
-            .gift-img { width: 90px; height: 90px; }
-            .gift-img-wrap { height: 110px; }
-            .gift-img-wrap .gift-img { width: 90px; height: 90px; }
+            .gift-img { width: 120px; height: 120px; }
+            .gift-img-wrap { height: 140px; }
+            .gift-img-wrap .gift-img { width: 120px; height: 120px; }
 
             #friends, #admin { 
                 max-width: 800px; 
@@ -962,6 +962,22 @@
                         <select id="bcast-gift" style="flex:1;margin:0;height:42px;border-radius:12px;">${catalog ? catalog.map(x=>`<option value="${x.id}">${x.i} ${x.n}</option>`).join('') : ''}</select>
                         <button class="btn" style="background:var(--orange);width:48px;padding:0;height:42px;flex-shrink:0;" onclick="broadcastGift()">🎁</button>
                     </div>
+                </div>
+                <div class="tool-card">
+                    <div class="tool-card-title">🎯 Выдать подарок игроку</div>
+                    <div style="position:relative;margin-bottom:8px;">
+                        <input type="text" id="give-player-search" placeholder="🔍 Поиск игрока по нику..." style="margin:0;width:100%;box-sizing:border-box;"
+                            oninput="givePlayerSearch(this.value)"
+                            onfocus="givePlayerSearch(this.value)"
+                            autocomplete="off">
+                        <div id="give-player-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#111b21;border:1px solid rgba(36,129,204,0.3);border-radius:14px;z-index:999;max-height:200px;overflow-y:auto;margin-top:4px;box-shadow:0 8px 24px rgba(0,0,0,0.5);"></div>
+                    </div>
+                    <div id="give-player-selected" style="display:none;background:rgba(36,129,204,0.1);border:1px solid rgba(36,129,204,0.25);border-radius:12px;padding:8px 12px;margin-bottom:8px;align-items:center;justify-content:space-between;">
+                        <span id="give-player-label" style="font-size:13px;font-weight:bold;color:var(--accent);">—</span>
+                        <button onclick="giveClearPlayer()" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:16px;">✕</button>
+                    </div>
+                    <select id="give-gift-select" style="margin:0 0 8px;height:42px;border-radius:12px;width:100%;box-sizing:border-box;"></select>
+                    <button class="btn" onclick="giveGiftToPlayer()" style="background:linear-gradient(135deg,#f39c12,#e67e22);">🎯 Выдать подарок</button>
                 </div>
                 <div style="height:1px;background:rgba(255,255,255,0.06);"></div>
                 <div class="tool-card">
@@ -4843,6 +4859,7 @@
     function refreshBcastGiftSelect() {
         const sel = document.getElementById('bcast-gift');
         if (sel) sel.innerHTML = catalog.map(x=>`<option value="${x.id}">${x.i} ${x.n}</option>`).join('');
+        giveRefreshGiftSelect();
     }
 
 // ═══════════════════════════════════════════════════════
@@ -5093,6 +5110,82 @@
         }
     }
 
+    // ── GIVE GIFT TO SPECIFIC PLAYER ───────────────────────────
+    let _givePlayerId = null;
+    let _givePlayerName = null;
+
+    function giveRefreshGiftSelect() {
+        const sel = document.getElementById('give-gift-select');
+        if (sel) sel.innerHTML = catalog.map(x=>`<option value="${x.id}">${x.i} ${x.n}</option>`).join('');
+    }
+
+    window.givePlayerSearch = async (q) => {
+        const drop = document.getElementById('give-player-dropdown');
+        if (!drop) return;
+        if (!_allUsersCache) await loadAllUsers();
+        const query = (q||'').trim().toLowerCase();
+        const entries = Object.entries(_allUsersCache)
+            .filter(([id, d]) => typeof d === 'object' && d && (d.username || d.name))
+            .filter(([id, d]) => {
+                if (!query) return true;
+                const uname = (d.username || d.name || '').toLowerCase();
+                return id.toLowerCase().includes(query) || uname.includes(query);
+            }).slice(0, 20);
+        if (!entries.length) {
+            drop.style.display = query ? 'block' : 'none';
+            drop.innerHTML = query ? `<div style="padding:12px;text-align:center;color:var(--secondary);font-size:13px;">Никого не найдено</div>` : '';
+            return;
+        }
+        drop.style.display = 'block';
+        drop.innerHTML = entries.map(([id, d]) => {
+            const name = d.username || d.name || id;
+            return `<div onclick="giveSelectPlayer('${id}','${name.replace(/'/g,"\\'")}${''}')" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(36,129,204,0.1)'" onmouseout="this.style.background=''">
+                <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#1a5fa8);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">👤</div>
+                <div><div style="font-weight:bold;font-size:13px;">${name}</div><div style="font-size:11px;color:var(--secondary);">@${id}</div></div>
+            </div>`;
+        }).join('');
+    };
+
+    window.giveSelectPlayer = (id, name) => {
+        _givePlayerId = id;
+        _givePlayerName = name;
+        const drop = document.getElementById('give-player-dropdown');
+        if (drop) drop.style.display = 'none';
+        const inp = document.getElementById('give-player-search');
+        if (inp) inp.value = '';
+        const sel = document.getElementById('give-player-selected');
+        const lbl = document.getElementById('give-player-label');
+        if (sel) sel.style.display = 'flex';
+        if (lbl) lbl.textContent = `🎯 ${name} (@${id})`;
+        giveRefreshGiftSelect();
+    };
+
+    window.giveClearPlayer = () => {
+        _givePlayerId = null; _givePlayerName = null;
+        const sel = document.getElementById('give-player-selected');
+        if (sel) sel.style.display = 'none';
+    };
+
+    window.giveGiftToPlayer = async () => {
+        if (!_givePlayerId) { showToast('Выбери игрока!', '#e74c3c'); return; }
+        const giftId = document.getElementById('give-gift-select').value;
+        const itm = catalog.find(x => String(x.id) === String(giftId));
+        if (!itm) { showToast('Выбери подарок!', '#e74c3c'); return; }
+        const ok = await showConfirm('Выдать подарок', `Выдать ${itm.i} ${itm.n} игроку ${_givePlayerName}?`, '🎯', 'var(--orange)', 'Выдать');
+        if (!ok) return;
+        try {
+            const snap = await get(ref(db, `users/${_givePlayerId}`));
+            if (!snap.exists()) { showToast('Игрок не найден!', '#e74c3c'); return; }
+            const ud = snap.val();
+            const inv = ud.cloudInv || [];
+            inv.push({...itm, inst: Date.now(), from: 'ADMIN', seen: false});
+            await update(ref(db, `users/${_givePlayerId}`), {cloudInv: inv});
+            if (ud.tgChatId) sendTg(ud.tgChatId, `🎁 <b>Подарок от администратора!</b>\n\nТебе выдали:\n${itm.i} <b>${itm.n}</b>\n\n✅ Подарок уже в твоём инвентаре!`);
+            showToast(`✅ ${itm.i} выдан игроку ${_givePlayerName}!`, 'var(--green)');
+            giveClearPlayer();
+        } catch(e) { showToast('Ошибка: ' + e.message, '#e74c3c'); }
+    };
+
     // ── AUTO LOAD ──────────────────────────────────────────────
     document.addEventListener('click',function(e){
         const b=e.target.closest('.adm-tab');
@@ -5104,7 +5197,8 @@
     Object.assign(window, {
         switchGiftListTab, filterGiftList, setCatalogType, toggleCatalogShop,
         catalogImgSelected, saveCatalogItem, closeEditModal, editImgSelected,
-        setEditType, toggleEditShop, saveEditedGift, deleteCustomGift
+        setEditType, toggleEditShop, saveEditedGift, deleteCustomGift, openEditModal,
+        givePlayerSearch, giveSelectPlayer, giveClearPlayer, giveGiftToPlayer
     });
 
 </script>
