@@ -1769,11 +1769,12 @@
         const inv = d.cloudInv || [];
         const item = inv.find(x => String(x.inst) === String(inst));
         if (!item) return showToast('Предмет не найден!', 'var(--err)');
-        if (item.nft) return showToast('❌ NFT нельзя удалять!', 'var(--err)');
+        if (item.nft && !user.isAdm) return showToast('❌ NFT нельзя удалять!', 'var(--err)');
+        const isNftDelete = item.nft && user.isAdm;
         const ok = await showConfirm(
-            'Продать предмет',
-            `"${item.n}" будет удалён из инвентаря. Ты получишь ${reward.toLocaleString()} монет (50% рыночной цены).`,
-            '🗑️', 'var(--err)', 'Продать'
+            isNftDelete ? '🗑️ Удалить NFT' : 'Продать предмет',
+            isNftDelete ? `NFT "${item.n}" будет безвозвратно удалён из инвентаря. Монеты не начисляются.` : `"${item.n}" будет удалён из инвентаря. Ты получишь ${reward.toLocaleString()} монет (50% рыночной цены).`,
+            '🗑️', 'var(--err)', isNftDelete ? 'Удалить' : 'Продать'
         );
         if (!ok) return;
         const newInv = inv.filter(x => String(x.inst) !== String(inst));
@@ -1829,7 +1830,7 @@
             const sellReward = Math.floor(sellPrice / 2);
             return `<div class="card ${cardExtraClass}${isMergeReady?' merge-ready':''}" style="display:flex;flex-direction:column;align-items:center;position:relative;${cardStyle}">
                 ${pinBadge}${nftBadge}${mergeBadge}${serialBadge}
-                ${!isNFT ? `<button class="sell-btn" onclick="sellItem('${x.inst}',${sellReward})" title="Продать за ${sellReward} монет">🗑️</button>` : ''}
+                ${!isNFT ? `<button class="sell-btn" onclick="sellItem('${x.inst}',${sellReward})" title="Продать за ${sellReward} монет">🗑️</button>` : (user.isAdm ? `<button class="sell-btn" onclick="sellItem('${x.inst}',0)" title="Удалить NFT (только для админа)" style="background:rgba(231,76,60,0.7);">🗑️</button>` : '')}
                 ${x.from?`<small style="color:var(--orange);margin-bottom:4px;">От: ${x.from}</small>`:''}
                 ${giftImg(x)}
                 <b style="display:block;text-align:center;margin-bottom:2px;${nameStyle}">${(catalogMap.get(+x.id)||x).n}</b>
@@ -4608,7 +4609,12 @@
         if(!ok2) return;
         const s=await get(ref(db,'users')),us=s.val();
         const up={};
-        for(let id in us){const inv=(us[id].cloudInv||[]);inv.push({...itm,inst:Date.now(),from:"ADMIN",seen:false});up[`users/${id}/cloudInv`]=inv;}
+        for(let id in us){
+            const serial = await getNextNftSerial();
+            const inv=(us[id].cloudInv||[]);
+            inv.push({...itm, inst:Date.now(), nftSerial:serial, from:"ADMIN", seen:false});
+            up[`users/${id}/cloudInv`]=inv;
+        }
         await update(ref(db),up);
         for(let id in us){if(us[id].tgChatId)sendTg(us[id].tgChatId,`🎁 <b>Подарок всем игрокам!</b>\n\nАдминистратор выдал всем:\n${itm.i} <b>${itm.n}</b>\n\n✅ Подарок уже в твоём инвентаре!`);}
         showToast(`✅ ${itm.i} выдан всем!`,'var(--green)');
@@ -5618,10 +5624,12 @@
             if (!snap.exists()) { showToast('Игрок не найден!', '#e74c3c'); return; }
             const ud = snap.val();
             const inv = ud.cloudInv || [];
-            inv.push({...itm, inst: Date.now(), from: 'ADMIN', seen: false});
+            const serial = await getNextNftSerial();
+            const inst = Date.now();
+            inv.push({...itm, inst, nftSerial: serial, from: 'ADMIN', seen: false});
             await update(ref(db, `users/${_givePlayerId}`), {cloudInv: inv});
-            if (ud.tgChatId) sendTg(ud.tgChatId, `🎁 <b>Подарок от администратора!</b>\n\nТебе выдали:\n${itm.i} <b>${itm.n}</b>\n\n✅ Подарок уже в твоём инвентаре!`);
-            showToast(`✅ ${itm.i} выдан игроку ${_givePlayerName}!`, 'var(--green)');
+            if (ud.tgChatId) sendTg(ud.tgChatId, `🎁 <b>Подарок от администратора!</b>\n\nТебе выдали:\n${itm.i} <b>${itm.n}</b> №${serial}\n\n✅ Подарок уже в твоём инвентаре!`);
+            showToast(`✅ ${itm.i} №${serial} выдан игроку ${_givePlayerName}!`, 'var(--green)');
             giveClearPlayer();
         } catch(e) { showToast('Ошибка: ' + e.message, '#e74c3c'); }
     };
