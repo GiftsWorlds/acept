@@ -4301,6 +4301,7 @@
                                     <button class="btn" style="width:50px;padding:0;height:40px;border-radius:10px;background:var(--orange);font-size:18px;" onclick="giveI('${id}')">🎁</button>
                                 </div>
                             </div>
+                            <button class="btn" style="background:rgba(162,155,254,0.08);border:1px solid rgba(162,155,254,0.2);color:#a29bfe;padding:11px;font-size:13px;border-radius:12px;" onclick="admShowUserLog('${id}','${u.username||id}')">📋 Последние действия</button>
                             <button class="btn" style="background:rgba(231,76,60,0.08);border:1px solid rgba(231,76,60,0.25);color:var(--err);padding:11px;font-size:13px;border-radius:12px;" onclick="delUser('${id}')">🗑️ Удалить аккаунт</button>
                         </div>
                     </div>
@@ -5617,6 +5618,67 @@
         if (sel) sel.style.display = 'none';
     };
 
+    window.admShowUserLog = async (userId, username) => {
+        document.getElementById('modal-content').innerHTML = `
+            <div style="padding:4px;">
+                <div style="font-weight:bold;font-size:15px;margin-bottom:12px;">📋 Действия: @${username}</div>
+                <div id="user-log-body" style="display:flex;flex-direction:column;gap:6px;">
+                    <div style="color:var(--secondary);text-align:center;padding:20px;">⏳ Загрузка...</div>
+                </div>
+                <button class="btn" style="margin-top:12px;background:rgba(255,255,255,0.05);color:var(--secondary);" onclick="closeModal()">Закрыть</button>
+            </div>`;
+        openModal();
+
+        try {
+            const snap = await get(ref(db, 'activity_log'));
+            const raw = snap.exists() ? snap.val() : null;
+            const allLog = raw ? (Array.isArray(raw) ? raw : Object.values(raw)) : [];
+            const userLog = allLog
+                .filter(e => e.userId === userId || e.winnerId === userId || e.loserId === userId || e.toId === userId)
+                .sort((a, b) => b.time - a.time)
+                .slice(0, 50);
+
+            const typeMap = {
+                shop_buy:      { icon:'🛍️', color:'rgba(36,129,204,0.12)',   fmt: e => `Купил в магазине: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
+                market_buy:    { icon:'⚖️', color:'rgba(243,156,18,0.12)',   fmt: e => `Купил на рынке: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
+                market_list:   { icon:'📤', color:'rgba(162,155,254,0.1)',   fmt: e => `Выставил на рынок: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
+                gift_sent:     { icon:'🎁', color:'rgba(255,215,0,0.08)',    fmt: e => `Подарил ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toId}` },
+                sell_item:     { icon:'🗑️', color:'rgba(255,255,255,0.04)', fmt: e => `Продал: ${e.emoji||'🎁'} <b>${e.item}</b> за ${(e.reward||0).toLocaleString()}💰` },
+                trade_offer:   { icon:'🔄', color:'rgba(36,129,204,0.08)',   fmt: e => `Обмен: ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toId}` },
+                duel_challenge:{ icon:'⚔️', color:'rgba(255,107,107,0.08)', fmt: e => `Вызвал на дуэль @${e.toId} (${e.emoji||''} ${e.item})` },
+                duel_result:   { icon:'🏆', color:'rgba(255,215,0,0.1)',    fmt: e => e.winnerId===userId ? `Победил в дуэли @${e.loserId}` : `Проиграл дуэль @${e.winnerId}` },
+                promo:         { icon:'🎟️', color:'rgba(243,156,18,0.1)',   fmt: e => `Промокод <b>${e.code}</b> · +${e.reward||0}💰${e.gift?` + ${e.gift}`:''}` },
+                friend_add:    { icon:'👥', color:'rgba(46,204,113,0.1)',    fmt: e => `Добавил в друзья @${e.friendId}` },
+                friend_request:{ icon:'👋', color:'rgba(46,204,113,0.07)',   fmt: e => `Запрос в друзья → @${e.toId}` },
+                nft_upgrade:   { icon:'⚗️', color:'rgba(162,155,254,0.12)', fmt: e => `Улучшил: <b>${e.item}</b> до ур.${e.level}` },
+            };
+
+            const body = document.getElementById('user-log-body');
+            if (!body) return;
+
+            if (!userLog.length) {
+                body.innerHTML = '<div style="color:var(--secondary);text-align:center;padding:20px;font-size:13px;">Действий не найдено</div>';
+                return;
+            }
+
+            body.innerHTML = userLog.map(e => {
+                const d = new Date(e.time);
+                const timeStr = d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) + ' ' + d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
+                const def = typeMap[e.type] || { icon:'📌', color:'rgba(255,255,255,0.04)', fmt: e => e.type };
+                return \`<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;background:\${def.color};border:1px solid rgba(255,255,255,0.04);">
+                    <span style="font-size:15px;flex-shrink:0;">\${def.icon}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-size:12px;line-height:1.5;">\${def.fmt(e)}</div>
+                        <div style="font-size:10px;color:var(--secondary);margin-top:1px;font-family:monospace;">🕐 \${timeStr}</div>
+                    </div>
+                </div>\`;
+            }).join('');
+        } catch(err) {
+            const body = document.getElementById('user-log-body');
+            if (body) body.innerHTML = \`<div style="color:var(--err);text-align:center;padding:20px;">\${err.message}</div>\`;
+        }
+    };
+
     window.admFillNextSerial = async () => {
         const inp = document.getElementById('give-inst-id');
         const hint = document.getElementById('give-inst-hint');
@@ -5646,41 +5708,53 @@
         const itm = catalog.find(x => String(x.id) === String(giftId));
         if (!itm) { showToast('Выбери подарок!', '#e74c3c'); return; }
 
-        // Inst ID: используем введённый или Date.now() как случайный
+        // Читаем ID до любых async операций
         const instInput = document.getElementById('give-inst-id');
-        const customInst = instInput && instInput.value.trim() !== '' ? parseInt(instInput.value) : null;
+        const rawVal = instInput ? instInput.value.trim() : '';
+        const customInst = rawVal !== '' ? Number(rawVal) : null;
 
-        // Проверяем что такой inst ещё не занят у этого игрока
-        if (customInst) {
-            const checkSnap = await get(ref(db, `users/${_givePlayerId}`));
-            if (checkSnap.exists()) {
-                const existingInv = checkSnap.val().cloudInv || [];
-                if (existingInv.some(x => String(x.inst) === String(customInst))) {
-                    showToast(`❌ ID ${customInst} уже занят у этого игрока!`, '#e74c3c');
-                    return;
-                }
-            }
-        }
-
-        const ok = await showConfirm('Выдать подарок', `Выдать ${itm.i} ${itm.n} игроку ${_givePlayerName}?${customInst ? ` (ID: ${customInst})` : ' (ID: авто)'}`, '🎯', 'var(--orange)', 'Выдать');
+        const ok = await showConfirm('Выдать подарок',
+            `Выдать ${itm.i} ${itm.n} игроку ${_givePlayerName}?
+ID предмета: ${customInst !== null ? customInst : 'авто'}`,
+            '🎯', 'var(--orange)', 'Выдать');
         if (!ok) return;
+
         try {
             const snap = await get(ref(db, `users/${_givePlayerId}`));
             if (!snap.exists()) { showToast('Игрок не найден!', '#e74c3c'); return; }
             const ud = snap.val();
-            const inv = ud.cloudInv || [];
+            const inv = Array.isArray(ud.cloudInv) ? [...ud.cloudInv] : [];
+
+            // Проверка что customInst не занят
+            if (customInst !== null && inv.some(x => Number(x.inst) === customInst)) {
+                showToast(`❌ ID ${customInst} уже занят у этого игрока!`, '#e74c3c');
+                return;
+            }
+
             const serial = await getNextNftSerial();
-            const inst = customInst || serial; // используем серийный номер как inst если не задан вручную
-            const giftEntry = {id:itm.id, n:itm.n, i:itm.i, img:itm.img||null, rarity:itm.rarity||0, nft:itm.nft||false, price:itm.price||0};
-            if (giftEntry.img && giftEntry.img.startsWith('data:')) delete giftEntry.img;
-            giftEntry.inst = inst;
-            giftEntry.nftSerial = serial;
-            giftEntry.from = 'ADMIN';
-            giftEntry.seen = false;
+            const inst = customInst !== null ? customInst : serial;
+
+            const giftEntry = {
+                id: itm.id,
+                n: itm.n,
+                i: itm.i,
+                rarity: itm.rarity || 0,
+                nft: itm.nft || false,
+                price: itm.price || 0,
+                inst: inst,
+                nftSerial: serial,
+                from: 'ADMIN',
+                seen: false
+            };
+            // Не сохраняем base64 картинки в Firebase
+            if (itm.img && !itm.img.startsWith('data:')) giftEntry.img = itm.img;
+
             inv.push(giftEntry);
-            await update(ref(db, `users/${_givePlayerId}`), {cloudInv: inv});
+            // Используем set для cloudInv чтобы гарантировать точный массив (не объект Firebase)
+            await set(ref(db, `users/${_givePlayerId}/cloudInv`), inv);
             if (ud.tgChatId) sendTg(ud.tgChatId, `🎁 <b>Подарок от администратора!</b>\n\nТебе выдали:\n${itm.i} <b>${itm.n}</b> №${serial}\n\n✅ Подарок уже в твоём инвентаре!`);
-            showToast(`✅ ${itm.i} №${serial} выдан (ID: ${inst})!`, 'var(--green)');
+            showToast(`✅ ${itm.i} выдан! ID: ${inst}, №${serial}`, 'var(--green)');
+            document.getElementById('give-inst-hint').textContent = '';
             if (instInput) instInput.value = '';
             giveClearPlayer();
         } catch(e) { showToast('Ошибка: ' + e.message, '#e74c3c'); }
