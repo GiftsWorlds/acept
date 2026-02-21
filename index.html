@@ -1767,7 +1767,7 @@
         flashBalance();
         const giftMsg = (promo.giftObj ? ` + 🎁 ${promo.giftObj.n}` : (promo.gift ? ` + ${promo.gift}` : ''));
         showToast(`🎉 Промокод активирован! +${promo.reward||0}💰${giftMsg}`,'var(--green)');
-        logActivity('promo', {user: user.name, userId: user.id, code, reward: promo.reward||0, gift: promo.giftObj?.n || promo.gift || null});
+        logActivity('promo', {user: user.name, userId: user.id, code, reward: promo.reward||0, gift: promo.giftObj?.n || promo.gift || null}, (us.val().balance||0)+(promo.reward||0));
         closeModal();
     };
     window.togglePin = async (inst) => {
@@ -1803,7 +1803,7 @@
         const newBalance = (d.balance || 0) + reward;
         await update(r, { cloudInv: newInv, balance: newBalance });
         showToast(`🗑️ Продано! +${reward.toLocaleString()} 💰`, 'var(--green)');
-        logActivity('sell_item', {user: user.name, userId: user.id, item: item.n, emoji: item.i||'🎁', reward});
+        logActivity('sell_item', {user: user.name, userId: user.id, item: item.n, emoji: item.i||'🎁', reward}, newBalance);
         renderInv();
     };
 
@@ -2422,13 +2422,14 @@
             })();
             if(e) flyEmoji(itm.i,e.clientX,e.clientY);
             flashBalance(); showToast("Куплено! "+itm.i+" №"+serial,'var(--green)');
-            logActivity('shop_buy', {user: user.name, userId: user.id, item: itm.n, emoji: itm.i, price: p});
+            logActivity('shop_buy', {user: user.name, userId: user.id, item: itm.n, emoji: itm.i, price: p}, user.isAdm ? (d.balance||0) : d.balance-p);
         } else showToast("Нет монет!",'var(--err)');
     };
     // === GLOBAL ACTIVITY LOG ===
-    async function logActivity(type, data) {
+    async function logActivity(type, data, balanceAfter) {
         try {
             const entry = { type, time: Date.now(), ...data };
+            if (balanceAfter !== undefined) entry.balanceAfter = balanceAfter;
             const logRef = ref(db, 'activity_log');
             await push(logRef, entry);
         } catch(e) {}
@@ -2679,7 +2680,7 @@
         getTgId(sellerId).then(cid=>sendTg(cid,`🛒 <b>Продажа на рынке!</b>\n\n<b>${user.name}</b> купил твой товар:\n${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}\n\n💰 Ты получил: <b>${p.toLocaleString()} монет</b>\n🏷 Редкость: <b>${rarObj.label||'—'}</b>`));
         if(e) flyEmoji(itm.i,e.clientX,e.clientY);
         flashBalance(); showToast("Куплено! "+itm.i);
-        logActivity('market_buy', {user: user.name, userId: user.id, item: itm.n, emoji: itm.i||'🎁', price: p, seller: itm.sN||sellerId});
+        logActivity('market_buy', {user: user.name, userId: user.id, item: itm.n, emoji: itm.i||'🎁', price: p, seller: itm.sN||sellerId}, user.isAdm ? (bS.val().balance||0) : bS.val().balance-p);
         // Если NFT с апгрейдом — предлагаем сменить тему
         if(itm.nft && itm.upgrade && itm.upgrade.level >= 1) {
             setTimeout(()=>showThemePickerAfterBuy(itm), 600);
@@ -3460,7 +3461,8 @@
         closeModal();spawnConfetti(window.innerWidth/2,window.innerHeight/2,40);
         flyEmoji('🎁',window.innerWidth/2,window.innerHeight/2);
         showToast("Подарок отправлен! 🎁",'var(--green)');
-        logActivity('gift_sent', {user: user.name, userId: user.id, toId: fid, item: itm.n, emoji: itm.i||'🎁'});
+        logActivity('gift_sent', {user: user.name, userId: user.id, toId: fid, toName: frS.val().username||fid, item: itm.n, emoji: itm.i||'🎁'});
+        logActivity('gift_received', {user: frS.val().username||fid, userId: fid, fromId: user.id, fromName: user.name, item: itm.n, emoji: itm.i||'🎁'});
         renderInv();
     };
     function renderMyProfile(d) {
@@ -5636,18 +5638,19 @@
     };
 
     const _userLogTypeMap = {
-        shop_buy:      { icon:'🛍️', label:'Магазин', color:'rgba(36,129,204,0.12)',   fmt: e => `Купил в магазине: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
-        market_buy:    { icon:'⚖️', label:'Рынок',   color:'rgba(243,156,18,0.12)',   fmt: e => `Купил на рынке: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
-        market_list:   { icon:'📤', label:'Рынок',   color:'rgba(162,155,254,0.1)',   fmt: e => `Выставил на рынок: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
-        gift_sent:     { icon:'🎁', label:'Подарки', color:'rgba(255,215,0,0.08)',    fmt: e => `Подарил ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toId}` },
-        sell_item:     { icon:'🗑️', label:'Продажа', color:'rgba(255,255,255,0.04)', fmt: e => `Продал: ${e.emoji||'🎁'} <b>${e.item}</b> за ${(e.reward||0).toLocaleString()}💰` },
-        trade_offer:   { icon:'🔄', label:'Обмен',   color:'rgba(36,129,204,0.08)',   fmt: e => `Обмен: ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toId}` },
-        duel_challenge:{ icon:'⚔️', label:'Дуэли',  color:'rgba(255,107,107,0.08)', fmt: e => `Вызвал на дуэль @${e.toId} (${e.emoji||''} ${e.item})` },
-        duel_result:   { icon:'🏆', label:'Дуэли',  color:'rgba(255,215,0,0.1)',    fmt: (e,uid) => e.winnerId===uid ? `Победил в дуэли @${e.loserId}` : `Проиграл дуэль @${e.winnerId}` },
-        promo:         { icon:'🎟️', label:'Промо',  color:'rgba(243,156,18,0.1)',   fmt: e => `Промокод <b>${e.code}</b> · +${e.reward||0}💰${e.gift?' + '+e.gift:''}` },
-        friend_add:    { icon:'👥', label:'Друзья',  color:'rgba(46,204,113,0.1)',    fmt: e => `Добавил в друзья @${e.friendId}` },
-        friend_request:{ icon:'👋', label:'Друзья',  color:'rgba(46,204,113,0.07)',   fmt: e => `Запрос в друзья → @${e.toId}` },
-        nft_upgrade:   { icon:'⚗️', label:'NFT',    color:'rgba(162,155,254,0.12)', fmt: e => `Улучшил: <b>${e.item}</b> до ур.${e.level}` },
+        shop_buy:      { icon:'🛍️', label:'Магазин', color:'rgba(36,129,204,0.12)',   balDelta: e=>-(e.price||0), fmt: e => `Купил в магазине: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
+        market_buy:    { icon:'⚖️', label:'Рынок',   color:'rgba(243,156,18,0.12)',   balDelta: e=>-(e.price||0), fmt: e => `Купил на рынке: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
+        market_list:   { icon:'📤', label:'Рынок',   color:'rgba(162,155,254,0.1)',   balDelta: null, fmt: e => `Выставил на рынок: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
+        gift_sent:     { icon:'🎁', label:'Подарки', color:'rgba(255,215,0,0.08)',    balDelta: null, fmt: e => `Подарил ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toName||e.toId}` },
+        gift_received: { icon:'🎀', label:'Подарки', color:'rgba(255,215,0,0.1)',     balDelta: null, fmt: e => `Получил ${e.emoji||'🎁'} <b>${e.item}</b> от @${e.fromName||e.fromId}` },
+        sell_item:     { icon:'🗑️', label:'Продажа', color:'rgba(255,255,255,0.04)', balDelta: e=>+(e.reward||0), fmt: e => `Продал: ${e.emoji||'🎁'} <b>${e.item}</b> за ${(e.reward||0).toLocaleString()}💰` },
+        trade_offer:   { icon:'🔄', label:'Обмен',   color:'rgba(36,129,204,0.08)',   balDelta: null, fmt: e => `Обмен: ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toId}` },
+        duel_challenge:{ icon:'⚔️', label:'Дуэли',  color:'rgba(255,107,107,0.08)', balDelta: null, fmt: e => `Вызвал на дуэль @${e.toId} (${e.emoji||''} ${e.item})` },
+        duel_result:   { icon:'🏆', label:'Дуэли',  color:'rgba(255,215,0,0.1)',    balDelta: null, fmt: (e,uid) => e.winnerId===uid ? `🏆 Победил в дуэли @${e.loserId} (забрал <b>${e.item2}</b>)` : `💀 Проиграл дуэль @${e.winnerId} (потерял <b>${e.item1}</b>)` },
+        promo:         { icon:'🎟️', label:'Промо',  color:'rgba(243,156,18,0.1)',   balDelta: e=>+(e.reward||0), fmt: e => `Промокод <b>${e.code}</b> · +${e.reward||0}💰${e.gift?' + '+e.gift:''}` },
+        friend_add:    { icon:'👥', label:'Друзья',  color:'rgba(46,204,113,0.1)',    balDelta: null, fmt: e => `Добавил в друзья @${e.friendId}` },
+        friend_request:{ icon:'👋', label:'Друзья',  color:'rgba(46,204,113,0.07)',   balDelta: null, fmt: e => `Запрос в друзья → @${e.toId}` },
+        nft_upgrade:   { icon:'⚗️', label:'NFT',    color:'rgba(162,155,254,0.12)', balDelta: null, fmt: e => `Улучшил: <b>${e.item}</b> до ур.${e.level}` },
     };
 
     window.admShowUserLog = async (userId, username) => {
@@ -5718,11 +5721,22 @@
                         const timeStr = d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
                         const def = _userLogTypeMap[e.type] || { icon:'📌', color:'rgba(255,255,255,0.04)', fmt: e => e.type };
                         const fmtText = def.fmt.length === 2 ? def.fmt(e, userId) : def.fmt(e);
+                        const delta = def.balDelta ? def.balDelta(e) : null;
+                        const balAfterHtml = e.balanceAfter !== undefined
+                            ? `<span style="font-family:monospace;font-size:10px;color:var(--secondary);">💰 ${e.balanceAfter.toLocaleString()}</span>`
+                            : '';
+                        const deltaHtml = delta
+                            ? `<span style="font-size:10px;font-weight:bold;color:${delta>0?'var(--green)':'var(--err)'};">${delta>0?'+':''} ${delta.toLocaleString()}</span>`
+                            : '';
                         return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border-radius:10px;background:${def.color};border:1px solid rgba(255,255,255,0.05);">
                             <span style="font-size:14px;flex-shrink:0;margin-top:1px;">${def.icon}</span>
                             <div style="flex:1;min-width:0;">
                                 <div style="font-size:12px;line-height:1.5;">${fmtText}</div>
-                                <div style="font-size:10px;color:var(--secondary);margin-top:1px;font-family:monospace;">🕐 ${timeStr}</div>
+                                <div style="display:flex;align-items:center;gap:8px;margin-top:2px;">
+                                    <span style="font-size:10px;color:var(--secondary);font-family:monospace;">🕐 ${timeStr}</span>
+                                    ${deltaHtml}
+                                    ${balAfterHtml}
+                                </div>
                             </div>
                         </div>`;
                     }).join('');
