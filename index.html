@@ -5635,11 +5635,28 @@
         if (sel) sel.style.display = 'none';
     };
 
+    const _userLogTypeMap = {
+        shop_buy:      { icon:'🛍️', label:'Магазин', color:'rgba(36,129,204,0.12)',   fmt: e => `Купил в магазине: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
+        market_buy:    { icon:'⚖️', label:'Рынок',   color:'rgba(243,156,18,0.12)',   fmt: e => `Купил на рынке: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
+        market_list:   { icon:'📤', label:'Рынок',   color:'rgba(162,155,254,0.1)',   fmt: e => `Выставил на рынок: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
+        gift_sent:     { icon:'🎁', label:'Подарки', color:'rgba(255,215,0,0.08)',    fmt: e => `Подарил ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toId}` },
+        sell_item:     { icon:'🗑️', label:'Продажа', color:'rgba(255,255,255,0.04)', fmt: e => `Продал: ${e.emoji||'🎁'} <b>${e.item}</b> за ${(e.reward||0).toLocaleString()}💰` },
+        trade_offer:   { icon:'🔄', label:'Обмен',   color:'rgba(36,129,204,0.08)',   fmt: e => `Обмен: ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toId}` },
+        duel_challenge:{ icon:'⚔️', label:'Дуэли',  color:'rgba(255,107,107,0.08)', fmt: e => `Вызвал на дуэль @${e.toId} (${e.emoji||''} ${e.item})` },
+        duel_result:   { icon:'🏆', label:'Дуэли',  color:'rgba(255,215,0,0.1)',    fmt: (e,uid) => e.winnerId===uid ? `Победил в дуэли @${e.loserId}` : `Проиграл дуэль @${e.winnerId}` },
+        promo:         { icon:'🎟️', label:'Промо',  color:'rgba(243,156,18,0.1)',   fmt: e => `Промокод <b>${e.code}</b> · +${e.reward||0}💰${e.gift?' + '+e.gift:''}` },
+        friend_add:    { icon:'👥', label:'Друзья',  color:'rgba(46,204,113,0.1)',    fmt: e => `Добавил в друзья @${e.friendId}` },
+        friend_request:{ icon:'👋', label:'Друзья',  color:'rgba(46,204,113,0.07)',   fmt: e => `Запрос в друзья → @${e.toId}` },
+        nft_upgrade:   { icon:'⚗️', label:'NFT',    color:'rgba(162,155,254,0.12)', fmt: e => `Улучшил: <b>${e.item}</b> до ур.${e.level}` },
+    };
+
     window.admShowUserLog = async (userId, username) => {
         document.getElementById('modal-content').innerHTML = `
             <div style="padding:4px;">
-                <div style="font-weight:bold;font-size:15px;margin-bottom:12px;">📋 Действия: @${username}</div>
-                <div id="user-log-body" style="display:flex;flex-direction:column;gap:6px;">
+                <div style="font-weight:bold;font-size:15px;margin-bottom:6px;">📋 Действия: @${username}</div>
+                <div id="user-log-filter" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;"></div>
+                <div id="user-log-stats" style="font-size:11px;color:var(--secondary);margin-bottom:8px;"></div>
+                <div id="user-log-body" style="display:flex;flex-direction:column;gap:4px;max-height:60vh;overflow-y:auto;">
                     <div style="color:var(--secondary);text-align:center;padding:20px;">⏳ Загрузка...</div>
                 </div>
                 <button class="btn" style="margin-top:12px;background:rgba(255,255,255,0.05);color:var(--secondary);" onclick="closeModal()">Закрыть</button>
@@ -5652,25 +5669,11 @@
             const allLog = raw ? (Array.isArray(raw) ? raw : Object.values(raw)) : [];
             const userLog = allLog
                 .filter(e => e.userId === userId || e.winnerId === userId || e.loserId === userId || e.toId === userId)
-                .sort((a, b) => b.time - a.time)
-                .slice(0, 50);
-
-            const typeMap = {
-                shop_buy:      { icon:'🛍️', color:'rgba(36,129,204,0.12)',   fmt: e => `Купил в магазине: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
-                market_buy:    { icon:'⚖️', color:'rgba(243,156,18,0.12)',   fmt: e => `Купил на рынке: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
-                market_list:   { icon:'📤', color:'rgba(162,155,254,0.1)',   fmt: e => `Выставил на рынок: ${e.emoji||''} <b>${e.item}</b> за ${(e.price||0).toLocaleString()}💰` },
-                gift_sent:     { icon:'🎁', color:'rgba(255,215,0,0.08)',    fmt: e => `Подарил ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toId}` },
-                sell_item:     { icon:'🗑️', color:'rgba(255,255,255,0.04)', fmt: e => `Продал: ${e.emoji||'🎁'} <b>${e.item}</b> за ${(e.reward||0).toLocaleString()}💰` },
-                trade_offer:   { icon:'🔄', color:'rgba(36,129,204,0.08)',   fmt: e => `Обмен: ${e.emoji||'🎁'} <b>${e.item}</b> → @${e.toId}` },
-                duel_challenge:{ icon:'⚔️', color:'rgba(255,107,107,0.08)', fmt: e => `Вызвал на дуэль @${e.toId} (${e.emoji||''} ${e.item})` },
-                duel_result:   { icon:'🏆', color:'rgba(255,215,0,0.1)',    fmt: e => e.winnerId===userId ? `Победил в дуэли @${e.loserId}` : `Проиграл дуэль @${e.winnerId}` },
-                promo:         { icon:'🎟️', color:'rgba(243,156,18,0.1)',   fmt: e => `Промокод <b>${e.code}</b> · +${e.reward||0}💰${e.gift?` + ${e.gift}`:''}` },
-                friend_add:    { icon:'👥', color:'rgba(46,204,113,0.1)',    fmt: e => `Добавил в друзья @${e.friendId}` },
-                friend_request:{ icon:'👋', color:'rgba(46,204,113,0.07)',   fmt: e => `Запрос в друзья → @${e.toId}` },
-                nft_upgrade:   { icon:'⚗️', color:'rgba(162,155,254,0.12)', fmt: e => `Улучшил: <b>${e.item}</b> до ур.${e.level}` },
-            };
+                .sort((a, b) => b.time - a.time);
 
             const body = document.getElementById('user-log-body');
+            const filterEl = document.getElementById('user-log-filter');
+            const statsEl = document.getElementById('user-log-stats');
             if (!body) return;
 
             if (!userLog.length) {
@@ -5678,18 +5681,81 @@
                 return;
             }
 
-            body.innerHTML = userLog.map(e => {
-                const d = new Date(e.time);
-                const timeStr = d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) + ' ' + d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
-                const def = typeMap[e.type] || { icon:'📌', color:'rgba(255,255,255,0.04)', fmt: e => e.type };
-                return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;background:${def.color};border:1px solid rgba(255,255,255,0.04);">
-                    <span style="font-size:15px;flex-shrink:0;">${def.icon}</span>
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-size:12px;line-height:1.5;">${def.fmt(e)}</div>
-                        <div style="font-size:10px;color:var(--secondary);margin-top:1px;font-family:monospace;">🕐 ${timeStr}</div>
-                    </div>
-                </div>`;
-            }).join('');
+            // Collect unique categories
+            const categories = ['Все'];
+            userLog.forEach(e => {
+                const def = _userLogTypeMap[e.type];
+                if (def && !categories.includes(def.label)) categories.push(def.label);
+            });
+
+            let activeFilter = 'Все';
+
+            const renderLog = () => {
+                const filtered = activeFilter === 'Все' ? userLog : userLog.filter(e => {
+                    const def = _userLogTypeMap[e.type];
+                    return def && def.label === activeFilter;
+                });
+
+                statsEl.textContent = `Всего: ${userLog.length} · Показано: ${filtered.length}`;
+
+                if (!filtered.length) {
+                    body.innerHTML = '<div style="color:var(--secondary);text-align:center;padding:20px;font-size:13px;">Нет действий этого типа</div>';
+                    return;
+                }
+
+                // Group by date
+                const groups = {};
+                filtered.forEach(e => {
+                    const d = new Date(e.time);
+                    const dateKey = d.toLocaleDateString('ru-RU', {day:'2-digit', month:'long', year:'numeric'});
+                    if (!groups[dateKey]) groups[dateKey] = [];
+                    groups[dateKey].push(e);
+                });
+
+                body.innerHTML = Object.entries(groups).map(([date, events]) => {
+                    const rows = events.map(e => {
+                        const d = new Date(e.time);
+                        const timeStr = d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'});
+                        const def = _userLogTypeMap[e.type] || { icon:'📌', color:'rgba(255,255,255,0.04)', fmt: e => e.type };
+                        const fmtText = def.fmt.length === 2 ? def.fmt(e, userId) : def.fmt(e);
+                        return `<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border-radius:10px;background:${def.color};border:1px solid rgba(255,255,255,0.05);">
+                            <span style="font-size:14px;flex-shrink:0;margin-top:1px;">${def.icon}</span>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:12px;line-height:1.5;">${fmtText}</div>
+                                <div style="font-size:10px;color:var(--secondary);margin-top:1px;font-family:monospace;">🕐 ${timeStr}</div>
+                            </div>
+                        </div>`;
+                    }).join('');
+                    const cnt = events.length;
+                    const word = cnt===1?'событие':cnt<5?'события':'событий';
+                    return `<div style="margin-bottom:8px;">
+                        <div style="font-size:11px;font-weight:bold;color:var(--accent);letter-spacing:0.4px;padding:5px 4px 4px;border-bottom:1px solid rgba(36,129,204,0.2);margin-bottom:5px;">📅 ${date} · ${cnt} ${word}</div>
+                        <div style="display:flex;flex-direction:column;gap:4px;">${rows}</div>
+                    </div>`;
+                }).join('');
+            };
+
+            // Render filter buttons
+            filterEl.innerHTML = categories.map(cat => `
+                <button onclick="window._setUserLogFilter('${cat}')" id="ulf-${cat.replace(/ /g,'_')}"
+                    style="padding:4px 10px;border-radius:20px;border:1px solid ${cat==='Все'?'var(--accent)':'rgba(255,255,255,0.12)'};
+                    background:${cat==='Все'?'rgba(36,129,204,0.2)':'rgba(255,255,255,0.04)'};
+                    color:${cat==='Все'?'white':'var(--secondary)'};font-size:11px;font-weight:bold;cursor:pointer;white-space:nowrap;">${cat}</button>`
+            ).join('');
+
+            window._setUserLogFilter = (cat) => {
+                activeFilter = cat;
+                filterEl.querySelectorAll('button').forEach(b => {
+                    const isActive = b.id === 'ulf-' + cat.replace(/ /g,'_');
+                    b.style.background = isActive ? 'rgba(36,129,204,0.2)' : 'rgba(255,255,255,0.04)';
+                    b.style.borderColor = isActive ? 'var(--accent)' : 'rgba(255,255,255,0.12)';
+                    b.style.color = isActive ? 'white' : 'var(--secondary)';
+                });
+                renderLog();
+            };
+
+            renderLog();
+
         } catch(err) {
             const body = document.getElementById('user-log-body');
             if (body) body.innerHTML = `<div style="color:var(--err);text-align:center;padding:20px;">${err.message}</div>`;
