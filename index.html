@@ -1640,41 +1640,25 @@
             const u=document.getElementById('l-user').value.trim().toLowerCase();
             const p=document.getElementById('l-pass').value.trim();
             const errEl=document.getElementById('l-err');
-            const btn=document.querySelector('#form-login .btn');
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
-            try {
-                if(btn){ btn.disabled=true; btn.innerText='Загрузка...'; }
-                const s=await get(ref(db,'users/'+u));
-                if(s.exists()&&s.val().password==p){ loginOk(s.val().username,u); }
-                else { errEl.innerText='❌ Неверный логин или пароль'; document.getElementById('l-pass').value=''; }
-            } catch(e) {
-                errEl.innerText='❌ Ошибка подключения: ' + (e.message||e.code||'попробуй позже');
-            } finally {
-                if(btn){ btn.disabled=false; btn.innerText='Войти →'; }
-            }
+            const s=await get(ref(db,'users/'+u));
+            if(s.exists()&&s.val().password==p){ loginOk(s.val().username,u); }
+            else { errEl.innerText='❌ Неверный логин или пароль'; document.getElementById('l-pass').value=''; }
         } else {
             const u=document.getElementById('r-user').value.trim().toLowerCase();
             const p=document.getElementById('r-pass').value.trim();
             const errEl=document.getElementById('r-err');
-            const btn=document.querySelector('#form-reg .btn');
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
             if(u.length<3){ errEl.innerText='❌ Логин минимум 3 символа'; return; }
             if(p.length<4){ errEl.innerText='❌ Пароль минимум 4 символа'; return; }
-            try {
-                if(btn){ btn.disabled=true; btn.innerText='Загрузка...'; }
-                const ip=await getIP(), ipKey=ip.replace(/\./g,'_'), r=ref(db,'users/'+u), s=await get(r);
-                if(s.exists()){ errEl.innerText='❌ Этот ник уже занят'; return; }
-                const ipsS=await get(ref(db,'ips/'+ipKey));
-                if(ipsS.exists()&&Object.keys(ipsS.val()).length>=3){ errEl.innerText='❌ С этого IP уже 3 аккаунта'; return; }
-                await set(r,{username:u,password:p,balance:1000,cloudInv:[],pinnedInsts:[],pic:"",bio:"",ip});
-                await update(ref(db,`ips/${ipKey}`),{[u]:true});
-                spawnConfetti(window.innerWidth/2, window.innerHeight/2, 30);
-                loginOk(u,u);
-            } catch(e) {
-                errEl.innerText='❌ Ошибка подключения: ' + (e.message||e.code||'попробуй позже');
-            } finally {
-                if(btn){ btn.disabled=false; btn.innerText='Зарегистрироваться →'; }
-            }
+            const ip=await getIP(), ipKey=ip.replace(/\./g,'_'), r=ref(db,'users/'+u), s=await get(r);
+            if(s.exists()){ errEl.innerText='❌ Этот ник уже занят'; return; }
+            const ipsS=await get(ref(db,'ips/'+ipKey));
+            if(ipsS.exists()&&Object.keys(ipsS.val()).length>=3){ errEl.innerText='❌ С этого IP уже 3 аккаунта'; return; }
+            await set(r,{username:u,password:p,balance:1000,cloudInv:[],pinnedInsts:[],pic:"",bio:"",ip});
+            await update(ref(db,`ips/${ipKey}`),{[u]:true});
+            spawnConfetti(window.innerWidth/2, window.innerHeight/2, 30);
+            loginOk(u,u);
         }
     };
 
@@ -5788,7 +5772,7 @@ ID предмета: ${customInst !== null ? customInst : 'авто'}`,
         switchGiftListTab, filterGiftList, setCatalogType, toggleCatalogShop,
         catalogImgSelected, saveCatalogItem, closeEditModal, editImgSelected,
         setEditType, toggleEditShop, saveEditedGift, deleteCustomGift, openEditModal,
-        givePlayerSearch, giveSelectPlayer, giveClearPlayer, giveGiftToPlayer,
+        
         catalogUpdateCanvas, catalogRemoveBg, catalogResetImg,
         editUpdateCanvas, editRemoveBg, editResetImg
     });
