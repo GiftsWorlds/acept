@@ -1394,9 +1394,9 @@
     }
 
     async function getIP() { try { const r = await fetch('https://api.ipify.org?format=json'); return (await r.json()).ip; } catch(e) { return "1.1.1.1"; } }
-    const BASE_PRICE = 1500;
+    const BASE_PRICE = 500;
     const PRICE_MIN = 57;
-    const PRICE_MAX = 2100;
+    const PRICE_MAX = 2057;
     let _shopPriceCache = {}; // { [id]: { price, buyCount } }
     let _dailyPrices = {};    // снимок цен начала дня из Firebase — одинаковый для всех
     let _pricesLoaded = false;
@@ -1421,7 +1421,7 @@
                 const id = key.replace('i_', '');
                 const val = raw[key];
                 if (typeof val === 'number') {
-                    const p = Math.max(BASE_PRICE, BASE_PRICE + Math.min(val * 15, 800));
+                    const p = Math.max(PRICE_MIN, Math.min(PRICE_MAX, BASE_PRICE + Math.min(val * 10, PRICE_MAX - BASE_PRICE)));
                     _shopPriceCache[id] = { price: p, buyCount: val };
                 } else if (val && typeof val === 'object') {
                     const p = Math.max(PRICE_MIN, val.price || BASE_PRICE);
@@ -2563,11 +2563,43 @@
             <div style="text-align:center;padding:5px;">
                 ${img?`<img src="${img}" style="width:72px;height:72px;object-fit:contain;margin:0 auto 10px;display:block;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.5));">`:`<span style="font-size:54px;display:block;margin-bottom:8px;">${emo}</span>`}
                 <h3 style="margin:0 0 4px;">${itm.n}</h3>
-                <p style="color:var(--secondary);font-size:13px;margin:0 0 14px;">Укажи цену продажи</p>
-                <input type="number" id="mkt-price" placeholder="Цена в монетах" style="font-size:17px;text-align:center;letter-spacing:1px;">
-                <button class="btn" style="margin-top:8px;background:var(--accent);" onclick="confirmMarket('${inst}')">⚖️ Выставить на рынок</button>
+                <p style="color:var(--secondary);font-size:13px;margin:0 4px 4px;">Укажи цену продажи</p>
+                <div id="mkt-price-hint" style="font-size:11px;color:var(--secondary);margin:0 0 10px;"></div>
+                <input type="number" id="mkt-price" value="500" min="500" style="font-size:17px;text-align:center;letter-spacing:1px;">
+                <div style="display:flex;gap:6px;margin-top:8px;justify-content:center;">
+                    <button class="btn" id="mkt-btn-low" style="flex:1;padding:8px 4px;background:rgba(255,255,255,0.07);color:var(--secondary);font-size:12px;">-20%</button>
+                    <button class="btn" id="mkt-btn-auto" style="flex:1;padding:8px 4px;background:rgba(255,255,255,0.07);color:var(--accent);font-size:12px;">Авто</button>
+                    <button class="btn" id="mkt-btn-high" style="flex:1;padding:8px 4px;background:rgba(255,255,255,0.07);color:var(--secondary);font-size:12px;">+20%</button>
+                </div>
+                <button class="btn" style="margin-top:10px;background:var(--accent);" onclick="confirmMarket('${inst}')">⚖️ Выставить на рынок</button>
                 <button class="btn" style="background:none;margin-top:6px;color:var(--secondary);" onclick="closeModal()">Отмена</button>
             </div>`;
+        // ── Compute suggested price dynamically ──────────────────────────────
+        (()=>{
+            const MIN_PRICE = 500;
+            const mktData = marketData || {};
+            const similar = Object.values(mktData).filter(x => String(x.id) == String(itm.id) && x.sI !== user.id);
+            let sp = MIN_PRICE;
+            const hint = document.getElementById('mkt-price-hint');
+            if (similar.length > 0) {
+                const prices = similar.map(x => x.mP).filter(p => p > 0).sort((a,b)=>a-b);
+                const median = prices[Math.floor(prices.length / 2)];
+                sp = Math.max(MIN_PRICE, Math.round(median * 0.95));
+                if (hint) hint.innerHTML = `&#128202; От <b>${prices[0].toLocaleString()}</b> до <b>${prices[prices.length-1].toLocaleString()}</b> &middot; <span style="color:var(--accent)">рек. ${sp.toLocaleString()}</span>`;
+            } else {
+                const baseP = (typeof getPrice === 'function' ? getPrice(itm.id||0) : 0) || MIN_PRICE;
+                sp = Math.max(MIN_PRICE, baseP);
+                if (hint) hint.innerHTML = `&#128195; Таких товаров на рынке ещё нет`;
+            }
+            const inp = document.getElementById('mkt-price');
+            if (inp) inp.value = sp;
+            const btnLow  = document.getElementById('mkt-btn-low');
+            const btnAuto = document.getElementById('mkt-btn-auto');
+            const btnHigh = document.getElementById('mkt-btn-high');
+            if (btnLow)  btnLow.onclick  = ()=>{ inp.value = Math.max(MIN_PRICE, Math.round(sp*0.8)); };
+            if (btnAuto) btnAuto.onclick = ()=>{ inp.value = sp; };
+            if (btnHigh) btnHigh.onclick = ()=>{ inp.value = Math.round(sp*1.2); };
+        })();
         openModal();
     };
     window.confirmMarket = async (inst) => {
@@ -4827,21 +4859,110 @@
         const w = canvas.width, h = canvas.height;
         const data = ctx.getImageData(0, 0, w, h);
         const d = data.data;
-        // Sample corners to determine background color (avg of 4 corners)
-        const corners = [
-            [d[0], d[1], d[2]],
-            [d[(w-1)*4], d[(w-1)*4+1], d[(w-1)*4+2]],
-            [d[(h-1)*w*4], d[(h-1)*w*4+1], d[(h-1)*w*4+2]],
-            [d[((h-1)*w+(w-1))*4], d[((h-1)*w+(w-1))*4+1], d[((h-1)*w+(w-1))*4+2]]
-        ];
-        const bgR = Math.round(corners.reduce((s,c)=>s+c[0],0)/4);
-        const bgG = Math.round(corners.reduce((s,c)=>s+c[1],0)/4);
-        const bgB = Math.round(corners.reduce((s,c)=>s+c[2],0)/4);
-        const tol = 40;
-        for (let i = 0; i < d.length; i += 4) {
-            const dr = Math.abs(d[i]-bgR), dg = Math.abs(d[i+1]-bgG), db = Math.abs(d[i+2]-bgB);
-            if (dr < tol && dg < tol && db < tol) d[i+3] = 0;
+
+        // ── 1. Sample background color from border pixels (top, bottom, left, right edges)
+        const bgSamples = [];
+        const step = 4;
+        for (let x = 0; x < w; x += step) {
+            bgSamples.push([d[(0*w+x)*4], d[(0*w+x)*4+1], d[(0*w+x)*4+2]]);
+            bgSamples.push([d[((h-1)*w+x)*4], d[((h-1)*w+x)*4+1], d[((h-1)*w+x)*4+2]]);
         }
+        for (let y = 0; y < h; y += step) {
+            bgSamples.push([d[(y*w+0)*4], d[(y*w+0)*4+1], d[(y*w+0)*4+2]]);
+            bgSamples.push([d[(y*w+(w-1))*4], d[(y*w+(w-1))*4+1], d[(y*w+(w-1))*4+2]]);
+        }
+        const bgR = Math.round(bgSamples.reduce((s,c)=>s+c[0],0)/bgSamples.length);
+        const bgG = Math.round(bgSamples.reduce((s,c)=>s+c[1],0)/bgSamples.length);
+        const bgB = Math.round(bgSamples.reduce((s,c)=>s+c[2],0)/bgSamples.length);
+
+        // Compute variance to set adaptive tolerance
+        const variance = bgSamples.reduce((s,c)=>{
+            return s + Math.abs(c[0]-bgR) + Math.abs(c[1]-bgG) + Math.abs(c[2]-bgB);
+        }, 0) / bgSamples.length;
+        const tol = Math.max(30, Math.min(70, 30 + variance * 1.5));
+
+        function colorDist(i) {
+            const dr = d[i]-bgR, dg = d[i+1]-bgG, db = d[i+2]-bgB;
+            return Math.sqrt(dr*dr + dg*dg + db*db);
+        }
+
+        // ── 2. Flood-fill from all border pixels to find connected background region
+        const visited = new Uint8Array(w * h);
+        const queue = [];
+
+        function enqueue(x, y) {
+            const idx = y * w + x;
+            if (visited[idx]) return;
+            visited[idx] = 1;
+            if (colorDist(idx * 4) < tol * 1.414) queue.push(idx);
+        }
+
+        // Seed from all 4 edges
+        for (let x = 0; x < w; x++) { enqueue(x, 0); enqueue(x, h-1); }
+        for (let y = 0; y < h; y++) { enqueue(0, y); enqueue(w-1, y); }
+
+        // BFS flood fill
+        let qi = 0;
+        while (qi < queue.length) {
+            const idx = queue[qi++];
+            const x = idx % w, y = Math.floor(idx / w);
+            const neighbors = [
+                [x-1,y],[x+1,y],[x,y-1],[x,y+1],
+                [x-1,y-1],[x+1,y-1],[x-1,y+1],[x+1,y+1]
+            ];
+            for (const [nx, ny] of neighbors) {
+                if (nx < 0 || nx >= w || ny < 0 || ny >= h) continue;
+                const nidx = ny * w + nx;
+                if (visited[nidx]) continue;
+                visited[nidx] = 1;
+                if (colorDist(nidx * 4) < tol * 1.414) queue.push(nidx);
+            }
+        }
+
+        // ── 3. Mark flood-filled region as transparent
+        const isBg = new Uint8Array(w * h);
+        for (const idx of queue) isBg[idx] = 1;
+        // Also mark visited non-queued border pixels that match bg
+        for (let i = 0; i < w*h; i++) {
+            if (visited[i] && colorDist(i*4) < tol) isBg[i] = 1;
+        }
+
+        // ── 4. Apply transparency with edge feathering (softness at borders)
+        const feather = 2; // pixels of soft edge
+        for (let y = 0; y < h; y++) {
+            for (let x = 0; x < w; x++) {
+                const idx = y * w + x;
+                if (!isBg[idx]) continue;
+
+                // Check if any neighbor is NOT background (= edge pixel)
+                let onEdge = false;
+                for (let dy = -feather; dy <= feather && !onEdge; dy++) {
+                    for (let dx = -feather; dx <= feather && !onEdge; dx++) {
+                        const nx = x+dx, ny = y+dy;
+                        if (nx<0||nx>=w||ny<0||ny>=h) continue;
+                        if (!isBg[ny*w+nx]) onEdge = true;
+                    }
+                }
+
+                if (onEdge) {
+                    // Count how many surrounding pixels are foreground for soft alpha
+                    let fgCount = 0, total = 0;
+                    for (let dy = -feather; dy <= feather; dy++) {
+                        for (let dx = -feather; dx <= feather; dx++) {
+                            const nx = x+dx, ny = y+dy;
+                            if (nx<0||nx>=w||ny<0||ny>=h) continue;
+                            total++;
+                            if (!isBg[ny*w+nx]) fgCount++;
+                        }
+                    }
+                    // Partial transparency at edges
+                    d[idx*4+3] = Math.round((fgCount / total) * d[idx*4+3] * 0.6);
+                } else {
+                    d[idx*4+3] = 0;
+                }
+            }
+        }
+
         ctx.putImageData(data, 0, 0);
         return canvas.toDataURL('image/png');
     }
