@@ -399,7 +399,6 @@
         .tg-gifts-grid {
             display:grid; grid-template-columns:repeat(3,1fr); gap:5px;
             padding:0 6px 6px;
-            grid-auto-rows: calc((100vw - 52px) / 3);
         }
         /* NFT animations */
         @keyframes nftGoldPulse{0%,100%{box-shadow:0 0 0 1.5px rgba(255,215,0,0.55),0 4px 20px rgba(255,215,0,0.25)}50%{box-shadow:0 0 0 2.5px rgba(255,215,0,0.9),0 6px 30px rgba(255,215,0,0.5)}}
@@ -409,22 +408,21 @@
         @keyframes nftStars{0%{opacity:0;transform:scale(0) rotate(0deg)}50%{opacity:1}100%{opacity:0;transform:scale(1.5) rotate(180deg)}}
 
         .tg-gift-cell {
-            background:var(--card); cursor:pointer;
-            display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
-            gap:0; transition:0.22s cubic-bezier(0.34,1.56,0.64,1);
+            background:var(--card); cursor:pointer; aspect-ratio:1/1;
+            display:block;
+            transition:0.22s cubic-bezier(0.34,1.56,0.64,1);
             border-radius:18px; overflow:hidden; position:relative;
             border:1.5px solid rgba(255,255,255,0.07);
             box-shadow:0 2px 10px rgba(0,0,0,0.3);
-            min-height:0; height:100%;
         }
         .tg-gift-cell:hover { border-color:rgba(255,255,255,0.22); box-shadow:0 8px 24px rgba(0,0,0,0.55); transform:scale(1.05) translateY(-3px); }
         .tg-gift-cell:active { transform:scale(0.91); }
         .tg-gift-inner {
-            position:absolute; top:0; left:0; right:0; bottom:18px;
+            position:absolute; top:0; left:0; right:0; bottom:16px;
             display:flex; flex-direction:column; align-items:center; justify-content:center;
             padding:4px; z-index:1;
         }
-        .tg-gift-inner img { width:52px; height:52px; object-fit:contain; filter:drop-shadow(0 3px 12px rgba(0,0,0,0.45)); transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+        .tg-gift-inner img { width:60%; height:60%; max-width:60px; max-height:60px; object-fit:contain; filter:drop-shadow(0 3px 12px rgba(0,0,0,0.45)); transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); }
         .tg-gift-cell:hover .tg-gift-inner img { transform:scale(1.15) translateY(-3px); }
         .tg-gift-name { position:absolute; bottom:3px; left:0; right:0; font-size:10px; color:var(--secondary); text-align:center; padding:0 4px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; width:100%; z-index:2; }
 
@@ -441,8 +439,8 @@
             background-size:200% 100%; animation:nftGoldShimmer 2.5s linear infinite;
             will-change:background-position;
         }
-        .tg-gift-nft .tg-gift-inner { z-index:1; bottom:30px; }
-        .tg-gift-nft .tg-gift-name { bottom:18px; }
+        .tg-gift-nft .tg-gift-inner { z-index:1; bottom:28px; }
+        .tg-gift-nft .tg-gift-name { bottom:16px; }
         .tg-gift-nft .tg-gift-inner img { animation:nftImgFloat 3s ease-in-out infinite; filter:drop-shadow(0 4px 16px rgba(255,215,0,0.55)); will-change:transform; }
         .tg-gift-nft .tg-gift-name {
             background:linear-gradient(90deg,#ffd700,#ffb347,#ffd700);
@@ -538,7 +536,7 @@
             }
             #profile.active { padding-bottom: 140px; }
 
-            .tg-gifts-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; grid-auto-rows: calc((100vw - 60px) / 4); }
+            .tg-gifts-grid { grid-template-columns: repeat(4, 1fr); gap: 8px; }
 
             .adm-stat-grid { grid-template-columns: repeat(4, 1fr); }
             .adm-stat .val { font-size: 30px; }
@@ -564,7 +562,7 @@
 
         @media (min-width: 1100px) {
             .page { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
-            .tg-gifts-grid { grid-template-columns: repeat(5, 1fr); grid-auto-rows: calc((100vw - 70px) / 5); }
+            .tg-gifts-grid { grid-template-columns: repeat(5, 1fr); }
         }
     </style>
 </head>
