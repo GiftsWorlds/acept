@@ -1108,6 +1108,9 @@
                         <div style="color:var(--secondary);text-align:center;padding:20px;font-size:13px;">Загрузка...</div>
                     </div>
                     <div id="builtin-catalog-list" style="display:none;flex-direction:column;gap:8px;"></div>
+                    <div id="deleted-builtins-section" style="display:none;margin-top:12px;">
+                        <button class="btn" style="background:rgba(39,174,96,0.15);border:1px solid rgba(39,174,96,0.3);color:#27ae60;font-size:12px;width:100%;" onclick="showRestoreBuiltins()">♻️ Восстановить удалённые встроенные</button>
+                    </div>
                 </div>
 
                 <!-- Edit modal -->
@@ -5178,6 +5181,8 @@
         _currentGiftListTab = tab;
         const cList = document.getElementById('custom-catalog-list');
         const bList = document.getElementById('builtin-catalog-list');
+        const restoreSection = document.getElementById('deleted-builtins-section');
+        if (restoreSection) restoreSection.style.display = tab === 'builtin' ? 'block' : 'none';
         const gC = document.getElementById('gtab-custom');
         const gB = document.getElementById('gtab-builtin');
         if (tab === 'custom') {
@@ -5206,7 +5211,9 @@
         const releaseStr = item.releaseAt ? `<div style="font-size:10px;color:#ffd700;margin-top:1px;">\uD83D\uDCC5 Выход: ${new Date(item.releaseAt).toLocaleString('ru')}</div>` : '';
         const shopBadge = item.inShop!==false ? `<span style="font-size:10px;color:var(--green);">\uD83D\uDED2 Магазин</span>` : `<span style="font-size:10px;color:var(--secondary);">\uD83D\uDEAB Скрыт</span>`;
         const onEdit = isBuiltin ? `openEditModal(${item.id},'')` : `openEditModal(0,'${item.fbId}')`;
-        const delBtn = isBuiltin ? '' : `<button onclick="deleteCustomGift('${item.fbId}')" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:#ff6b6b;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;">\uD83D\uDDD1</button>`;
+        const delBtn = isBuiltin
+            ? `<button onclick="deleteBuiltinGift(${item.id})" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:#ff6b6b;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;">\uD83D\uDDD1</button>`
+            : `<button onclick="deleteCustomGift('${item.fbId}')" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:#ff6b6b;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;">\uD83D\uDDD1</button>`;
         return `<div style="display:flex;align-items:center;gap:10px;background:#0a1520;border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,0.05);">
             <img src="${item.img||''}" style="width:46px;height:46px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.04);flex-shrink:0;" onerror="this.style.display='none'">
             <div style="flex:1;min-width:0;">
@@ -5237,7 +5244,8 @@
             setTimeout(() => renderBuiltinList(q), 800);
             return;
         }
-        const filtered = q ? catalog.filter(c=>(c.n||'').toLowerCase().includes(q)) : catalog;
+        const builtins = catalog.filter(c => !c.fbId);
+        const filtered = q ? builtins.filter(c=>(c.n||'').toLowerCase().includes(q)) : builtins;
         if (!filtered.length) { list.innerHTML = '<div style="color:var(--secondary);text-align:center;padding:20px;font-size:13px;">Не найдено</div>'; return; }
         list.innerHTML = filtered.map(c => giftCardHTML({
             id:c.id, name:c.n, emoji:c.i, img:c.img, rarity:c.rarity||0,
@@ -5274,19 +5282,96 @@
                     if(c) Object.assign(c,{n:d.name||c.n,i:d.emoji||c.i,img:d.img||c.img,rarity:d.rarity!==undefined?d.rarity:c.rarity,nft:d.nft||false,price:d.price||0,inShop:'inShop' in d ? !!d.inShop : c.inShop!==false,releaseAt:d.releaseAt||null});
                 });
             } catch(e){}
+            // Remove deleted built-in gifts
+            try {
+                const delSnap = await get(ref(db,'deletedBuiltins'));
+                const deleted = delSnap.val()||{};
+                Object.keys(deleted).forEach(id => {
+                    let idx;
+                    while ((idx = catalog.findIndex(c => String(c.id) === String(id) && !c.fbId)) !== -1) catalog.splice(idx, 1);
+                });
+            } catch(e){}
             refreshBcastGiftSelect();
         } catch(e) {
             if(list) list.innerHTML='<div style="color:var(--err);text-align:center;padding:20px;font-size:13px;">Ошибка загрузки</div>';
         }
     }
 
+    async function showRestoreBuiltins() {
+        try {
+            const snap = await get(ref(db, 'deletedBuiltins'));
+            const deleted = snap.val() || {};
+            const ids = Object.keys(deleted);
+            if (!ids.length) { showToast('Нет удалённых встроенных подарков', '#27ae60'); return; }
+            // Find original items from the hardcoded catalog (before any deletions)
+            const originalCatalog = [
+                {id:1,n:"Печенька",i:"🍪"},{id:2,n:"Кофе",i:"☕"},{id:3,n:"Пицца",i:"🍕"},
+                {id:4,n:"Бургер",i:"🍔"},{id:5,n:"Торт",i:"🎂"},{id:6,n:"Арбуз",i:"🍉"},
+                {id:7,n:"Мишка",i:"🧸"},{id:8,n:"Роза",i:"🌹"},{id:9,n:"Букет",i:"💐"},
+                {id:10,n:"Тюльпан",i:"🌷"},{id:11,n:"Сердце",i:"❤️"},{id:12,n:"Звезда",i:"⭐"},
+                {id:13,n:"Радуга",i:"🌈"},{id:14,n:"Единорог",i:"🦄"},{id:15,n:"Корона",i:"👑"},
+                {id:16,n:"Бриллиант",i:"💎"},{id:17,n:"Ракета",i:"🚀"},{id:18,n:"Дельфин",i:"🐬"},
+                {id:19,n:"Лиса",i:"🦊"},{id:20,n:"Котик",i:"🐱"},{id:21,n:"Собака",i:"🐶"},
+                {id:22,n:"Панда",i:"🐼"},{id:23,n:"Лев",i:"🦁"},{id:24,n:"Дракон",i:"🐉"},
+                {id:25,n:"Жемчуг",i:"🪬"},{id:26,n:"Кости",i:"🎲"},{id:27,n:"Фишки",i:"🪙"},
+                {id:28,n:"Гриб",i:"🍄"},{id:29,n:"Планета",i:"🪐"},{id:30,n:"Галактика",i:"🌌"}
+            ];
+            const items = ids.map(id => originalCatalog.find(c => String(c.id) === String(id))).filter(Boolean);
+            if (!items.length) { showToast('Нет удалённых встроенных подарков', '#27ae60'); return; }
+            document.getElementById('modal-content').innerHTML = `
+                <div style="padding:5px;">
+                    <h3 style="margin:0 0 12px;">♻️ Восстановить подарки</h3>
+                    <div style="display:flex;flex-direction:column;gap:8px;">
+                        ${items.map(c=>`
+                            <div style="display:flex;align-items:center;justify-content:space-between;background:#0a1520;border-radius:12px;padding:10px 12px;">
+                                <span style="font-size:15px;">${c.i} ${c.n}</span>
+                                <button class="btn" style="width:auto;padding:6px 14px;font-size:12px;background:rgba(39,174,96,0.2);color:#27ae60;border:1px solid rgba(39,174,96,0.3);" onclick="restoreBuiltinGift(${c.id})">Восстановить</button>
+                            </div>`).join('')}
+                    </div>
+                    <button class="btn" style="margin-top:12px;background:none;color:var(--secondary);" onclick="closeModal()">Закрыть</button>
+                </div>`;
+            openModal();
+        } catch(e) { showToast('Ошибка: ' + e.message, 'var(--err)'); }
+    }
+
+    window.restoreBuiltinGift = async (id) => {
+        try {
+            await remove(ref(db, 'deletedBuiltins/' + String(id)));
+            // Re-add to local catalog if missing
+            const exists = catalog.find(c => String(c.id) === String(id) && !c.fbId);
+            if (!exists) {
+                await loadCustomCatalog(); // reload fully to restore item with overrides
+            }
+            showToast('Подарок восстановлен! ✅', '#27ae60');
+            closeModal();
+            renderBuiltinList();
+        } catch(e) { showToast('Ошибка: ' + e.message, 'var(--err)'); }
+    };
+
+    async function deleteBuiltinGift(id) {
+        if (!confirm('Удалить встроенный подарок? Он исчезнет из каталога и магазина для всех.')) return;
+        try {
+            await update(ref(db, 'deletedBuiltins'), { [String(id)]: true });
+            // Remove from local catalog
+            let idx;
+            while ((idx = catalog.findIndex(c => String(c.id) === String(id) && !c.fbId)) !== -1) catalog.splice(idx, 1);
+            refreshBcastGiftSelect();
+            renderBuiltinList();
+            showToast('Встроенный подарок удалён', '#e74c3c');
+        } catch(e) { showToast('Ошибка: ' + e.message, '#e74c3c'); }
+    }
+
     async function deleteCustomGift(fbId) {
         if (!confirm('Удалить подарок из каталога?')) return;
         try {
             await remove(ref(db,'customCatalog/'+fbId));
-            const idx=catalog.findIndex(c=>c.fbId===fbId); if(idx!==-1) catalog.splice(idx,1);
-            _allCustomItems=_allCustomItems.filter(i=>i.fbId!==fbId);
-            refreshBcastGiftSelect(); renderCustomList();
+            // Удаляем из локального каталога (все вхождения с этим fbId)
+            let idx;
+            while ((idx = catalog.findIndex(c=>c.fbId===fbId)) !== -1) catalog.splice(idx, 1);
+            _allCustomItems = _allCustomItems.filter(i=>i.fbId!==fbId);
+            refreshBcastGiftSelect();
+            renderCustomList();
+            renderBuiltinList(); // обновить встроенные чтобы кастомный не появился там
             const ce=document.getElementById('custom-catalog-count'); if(ce) ce.textContent=_allCustomItems.length?`(${_allCustomItems.length})`:'';
             showToast('Подарок удалён','#e74c3c');
         } catch(e){showToast('Ошибка удаления','#e74c3c');}
