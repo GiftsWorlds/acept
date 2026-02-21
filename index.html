@@ -995,8 +995,8 @@
                             <div style="font-size:12px;color:var(--secondary);">Нажми чтобы загрузить фото</div>
                             <div style="font-size:10px;color:rgba(127,145,164,0.6);margin-top:2px;">PNG, JPG до 2MB</div>
                         </div>
+                        <input type="file" id="catalog-img-input" accept="image/*" style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;" onchange="catalogImgSelected(this)">
                     </label>
-                    <input type="file" id="catalog-img-input" accept="image/*" style="position:absolute;width:1px;height:1px;opacity:0;" onchange="catalogImgSelected(this)">
 
                     <!-- Name + Emoji -->
                     <div style="display:flex;gap:8px;margin-bottom:10px;">
@@ -5099,6 +5099,13 @@
         if(b&&b.textContent.includes('\u041a\u0430\u0442\u0430\u043b\u043e\u0433')) setTimeout(loadCustomCatalog,100);
     });
     setTimeout(loadCustomCatalog, 3000);
+
+    // ── EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE (required for type="module") ──
+    Object.assign(window, {
+        switchGiftListTab, filterGiftList, setCatalogType, toggleCatalogShop,
+        catalogImgSelected, saveCatalogItem, closeEditModal, editImgSelected,
+        setEditType, toggleEditShop, saveEditedGift, deleteCustomGift
+    });
 
 </script>
 </body>
