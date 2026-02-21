@@ -978,6 +978,11 @@
                         <button onclick="giveClearPlayer()" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:16px;">✕</button>
                     </div>
                     <select id="give-gift-select" style="margin:0 0 8px;height:42px;border-radius:12px;width:100%;box-sizing:border-box;"></select>
+                    <div style="position:relative;margin:0 0 8px;">
+                        <input type="number" id="give-inst-id" placeholder="🔢 ID (пусто = следующий авто)" style="height:42px;border-radius:12px;width:100%;box-sizing:border-box;font-size:13px;padding-right:90px;" min="1">
+                        <button onclick="admFillNextSerial()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(36,129,204,0.25);border:1px solid rgba(36,129,204,0.4);color:var(--accent);border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">Авто №</button>
+                    </div>
+                    <div id="give-inst-hint" style="font-size:11px;color:var(--secondary);margin:-4px 0 8px;text-align:right;"></div>
                     <button class="btn" onclick="giveGiftToPlayer()" style="background:linear-gradient(135deg,#f39c12,#e67e22);">🎯 Выдать подарок</button>
                 </div>
                 <div style="height:1px;background:rgba(255,255,255,0.06);"></div>
@@ -5612,12 +5617,52 @@
         if (sel) sel.style.display = 'none';
     };
 
+    window.admFillNextSerial = async () => {
+        const inp = document.getElementById('give-inst-id');
+        const hint = document.getElementById('give-inst-hint');
+        if (hint) hint.textContent = '⏳ Загрузка...';
+        try {
+            const snap = await get(ref(db, 'nft_counter'));
+            const next = (snap.val() || 1000) + 1;
+            if (inp) inp.value = next;
+            if (hint) hint.textContent = `Следующий свободный: №${next}`;
+        } catch(e) {
+            if (hint) hint.textContent = 'Ошибка получения номера';
+        }
+    };
+
+    // Показывать подсказку при вводе вручную
+    document.addEventListener('input', async (e) => {
+        if (e.target.id !== 'give-inst-id') return;
+        const hint = document.getElementById('give-inst-hint');
+        const val = e.target.value.trim();
+        if (!val) { if (hint) hint.textContent = ''; return; }
+        if (hint) hint.textContent = `ID: ${val}`;
+    });
+
     window.giveGiftToPlayer = async () => {
         if (!_givePlayerId) { showToast('Выбери игрока!', '#e74c3c'); return; }
         const giftId = document.getElementById('give-gift-select').value;
         const itm = catalog.find(x => String(x.id) === String(giftId));
         if (!itm) { showToast('Выбери подарок!', '#e74c3c'); return; }
-        const ok = await showConfirm('Выдать подарок', `Выдать ${itm.i} ${itm.n} игроку ${_givePlayerName}?`, '🎯', 'var(--orange)', 'Выдать');
+
+        // Inst ID: используем введённый или Date.now() как случайный
+        const instInput = document.getElementById('give-inst-id');
+        const customInst = instInput && instInput.value.trim() !== '' ? parseInt(instInput.value) : null;
+
+        // Проверяем что такой inst ещё не занят у этого игрока
+        if (customInst) {
+            const checkSnap = await get(ref(db, `users/${_givePlayerId}`));
+            if (checkSnap.exists()) {
+                const existingInv = checkSnap.val().cloudInv || [];
+                if (existingInv.some(x => String(x.inst) === String(customInst))) {
+                    showToast(`❌ ID ${customInst} уже занят у этого игрока!`, '#e74c3c');
+                    return;
+                }
+            }
+        }
+
+        const ok = await showConfirm('Выдать подарок', `Выдать ${itm.i} ${itm.n} игроку ${_givePlayerName}?${customInst ? ` (ID: ${customInst})` : ' (ID: авто)'}`, '🎯', 'var(--orange)', 'Выдать');
         if (!ok) return;
         try {
             const snap = await get(ref(db, `users/${_givePlayerId}`));
@@ -5625,11 +5670,12 @@
             const ud = snap.val();
             const inv = ud.cloudInv || [];
             const serial = await getNextNftSerial();
-            const inst = Date.now();
+            const inst = customInst || serial; // используем серийный номер как inst если не задан вручную
             inv.push({...itm, inst, nftSerial: serial, from: 'ADMIN', seen: false});
             await update(ref(db, `users/${_givePlayerId}`), {cloudInv: inv});
             if (ud.tgChatId) sendTg(ud.tgChatId, `🎁 <b>Подарок от администратора!</b>\n\nТебе выдали:\n${itm.i} <b>${itm.n}</b> №${serial}\n\n✅ Подарок уже в твоём инвентаре!`);
-            showToast(`✅ ${itm.i} №${serial} выдан игроку ${_givePlayerName}!`, 'var(--green)');
+            showToast(`✅ ${itm.i} №${serial} выдан (ID: ${inst})!`, 'var(--green)');
+            if (instInput) instInput.value = '';
             giveClearPlayer();
         } catch(e) { showToast('Ошибка: ' + e.message, '#e74c3c'); }
     };
