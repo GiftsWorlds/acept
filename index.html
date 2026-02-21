@@ -5682,17 +5682,17 @@
                 const d = new Date(e.time);
                 const timeStr = d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'}) + ' ' + d.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
                 const def = typeMap[e.type] || { icon:'📌', color:'rgba(255,255,255,0.04)', fmt: e => e.type };
-                return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;background:\${def.color};border:1px solid rgba(255,255,255,0.04);">
-                    <span style="font-size:15px;flex-shrink:0;">\${def.icon}</span>
+                return `<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:10px;background:${def.color};border:1px solid rgba(255,255,255,0.04);">
+                    <span style="font-size:15px;flex-shrink:0;">${def.icon}</span>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-size:12px;line-height:1.5;">\${def.fmt(e)}</div>
-                        <div style="font-size:10px;color:var(--secondary);margin-top:1px;font-family:monospace;">🕐 \${timeStr}</div>
+                        <div style="font-size:12px;line-height:1.5;">${def.fmt(e)}</div>
+                        <div style="font-size:10px;color:var(--secondary);margin-top:1px;font-family:monospace;">🕐 ${timeStr}</div>
                     </div>
                 </div>`;
             }).join('');
         } catch(err) {
             const body = document.getElementById('user-log-body');
-            if (body) body.innerHTML = `<div style="color:var(--err);text-align:center;padding:20px;">\${err.message}</div>`;
+            if (body) body.innerHTML = `<div style="color:var(--err);text-align:center;padding:20px;">${err.message}</div>`;
         }
     };
 
