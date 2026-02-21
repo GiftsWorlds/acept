@@ -1424,7 +1424,7 @@
                     const p = Math.max(PRICE_MIN, Math.min(PRICE_MAX, BASE_PRICE + Math.min(val * 10, PRICE_MAX - BASE_PRICE)));
                     _shopPriceCache[id] = { price: p, buyCount: val };
                 } else if (val && typeof val === 'object') {
-                    const p = Math.max(PRICE_MIN, val.price || BASE_PRICE);
+                    const p = Math.max(PRICE_MIN, Math.min(PRICE_MAX, val.price || BASE_PRICE));
                     _shopPriceCache[id] = { price: p, buyCount: val.buyCount || 0 };
                 }
             }
@@ -1437,6 +1437,26 @@
                 }
                 _dailyPrices = newDailyPrices;
                 try { await update(ref(db, 'shopPrices'), { '_daily': { date: todayKey, prices: newDailyPrices } }); } catch(e) {}
+            }
+
+            // Сброс цен в Firebase если они выше нового PRICE_MAX (после смены констант)
+            const resetUpdates = {};
+            for (const key in raw) {
+                if (key === '_daily') continue;
+                const id = key.replace('i_', '');
+                const entry = _shopPriceCache[id];
+                if (entry && entry.price > PRICE_MAX) {
+                    const clamped = PRICE_MAX;
+                    _shopPriceCache[id] = { price: clamped, buyCount: entry.buyCount };
+                    resetUpdates['i_' + id] = { price: clamped, buyCount: entry.buyCount };
+                }
+                if (entry && entry.price < PRICE_MIN) {
+                    _shopPriceCache[id] = { price: PRICE_MIN, buyCount: entry.buyCount };
+                    resetUpdates['i_' + id] = { price: PRICE_MIN, buyCount: entry.buyCount };
+                }
+            }
+            if (Object.keys(resetUpdates).length > 0) {
+                try { await update(ref(db, 'shopPrices'), resetUpdates); } catch(e) {}
             }
 
             _pricesLoaded = true;
