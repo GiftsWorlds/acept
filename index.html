@@ -3166,7 +3166,7 @@
         const frS=await get(ref(db,'users/'+fid)),frInv=frS.val().cloudInv||[];
         frInv.push({...itm,from:user.name,seen:false,inst:Date.now()});
         await update(ref(db,'users/'+fid),{cloudInv:frInv,giftsReceived:(frS.val().giftsReceived||0)+1});
-        getTgId(fid).then(cid=>sendTg(cid,`🎁 <b>Новый подарок!</b>\n\n<b>${user.name}</b> подарил тебе:\n${itm.i||'🎁'} <b>${itm.n}</b>\n\n🏷 Редкость: <b>${RARITY_LEVELS[itm.r]&&RARITY_LEVELS[itm.r].label||'Обычный'}</b>\n\nОткрой приложение чтобы посмотреть!`));
+        getTgId(fid).then(cid=>sendTg(cid,`🎁 <b>Новый подарок!</b>\n\n<b>${user.name}</b> подарил тебе:\n${itm.i||'🎁'} <b>${itm.n}</b>\n\n🏷 Редкость: <b>${getRarityObj(itm).label||'Обычный'}</b>\n\nОткрой приложение чтобы посмотреть!`));
         closeModal();spawnConfetti(window.innerWidth/2,window.innerHeight/2,40);
         flyEmoji('🎁',window.innerWidth/2,window.innerHeight/2);
         showToast("Подарок отправлен! 🎁",'var(--green)');
