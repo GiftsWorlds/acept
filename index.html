@@ -1049,13 +1049,71 @@
                     <button class="btn" onclick="saveCatalogItem()" style="background:linear-gradient(135deg,var(--accent),#1a6aad);">✅ Добавить в каталог</button>
                 </div>
 
-                <!-- Existing custom gifts list -->
+                <!-- Gift list tabs -->
                 <div class="tool-card">
-                    <div class="tool-card-title">📦 Кастомные подарки <span id="custom-catalog-count" style="font-size:11px;color:var(--secondary);font-weight:normal;"></span></div>
+                    <div style="display:flex;gap:6px;margin-bottom:12px;">
+                        <button onclick="switchGiftListTab('custom')" id="gtab-custom" style="flex:1;padding:8px;border-radius:12px;border:2px solid var(--accent);background:rgba(36,129,204,0.15);color:white;cursor:pointer;font-size:12px;font-weight:bold;">📦 Кастомные <span id="custom-catalog-count"></span></button>
+                        <button onclick="switchGiftListTab('builtin')" id="gtab-builtin" style="flex:1;padding:8px;border-radius:12px;border:2px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.04);color:var(--secondary);cursor:pointer;font-size:12px;font-weight:bold;">🎁 Встроенные</button>
+                    </div>
+                    <div style="margin-bottom:10px;">
+                        <input type="text" id="catalog-search" placeholder="🔍 Поиск..." oninput="filterGiftList()" style="margin:0;">
+                    </div>
                     <div id="custom-catalog-list" style="display:flex;flex-direction:column;gap:8px;">
                         <div style="color:var(--secondary);text-align:center;padding:20px;font-size:13px;">Загрузка...</div>
                     </div>
+                    <div id="builtin-catalog-list" style="display:none;flex-direction:column;gap:8px;"></div>
                 </div>
+
+                <!-- Edit modal -->
+                <div id="catalog-edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;overflow-y:auto;padding:16px;">
+                    <div style="max-width:420px;margin:0 auto;background:#111b21;border-radius:24px;padding:20px;border:1px solid rgba(255,255,255,0.1);">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+                            <div style="font-size:17px;font-weight:bold;">✏️ Редактировать подарок</div>
+                            <button onclick="closeEditModal()" style="background:rgba(255,255,255,0.08);border:none;color:white;border-radius:10px;padding:6px 14px;cursor:pointer;font-size:16px;">✕</button>
+                        </div>
+                        <div onclick="document.getElementById('edit-img-input').click()" style="width:100%;height:100px;border:2px dashed rgba(36,129,204,0.4);border-radius:16px;display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:12px;background:rgba(36,129,204,0.05);overflow:hidden;position:relative;">
+                            <img id="edit-img-preview" src="" style="width:100%;height:100%;object-fit:contain;border-radius:14px;">
+                            <div style="position:absolute;bottom:6px;right:8px;font-size:10px;color:rgba(200,220,240,0.8);background:rgba(0,0,0,0.55);border-radius:6px;padding:2px 7px;">📷 Заменить</div>
+                        </div>
+                        <input type="file" id="edit-img-input" accept="image/*" style="display:none;" onchange="editImgSelected(this)">
+                        <input type="hidden" id="edit-fbid">
+                        <input type="hidden" id="edit-builtin-id">
+                        <div style="display:flex;gap:8px;margin-bottom:10px;">
+                            <input type="text" id="edit-name" placeholder="Название" style="margin:0;flex:1;">
+                            <input type="text" id="edit-emoji" placeholder="😀" maxlength="2" style="margin:0;width:60px;text-align:center;font-size:22px;">
+                        </div>
+                        <input type="number" id="edit-price" placeholder="💰 Цена (монеты)" style="margin:0 0 10px;">
+                        <div style="display:flex;gap:5px;margin-bottom:10px;">
+                            <button onclick="setEditType('common')" id="etype-common" style="flex:1;padding:8px;border-radius:10px;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:white;cursor:pointer;font-size:11px;font-weight:bold;">⚪ Обычный</button>
+                            <button onclick="setEditType('rare')" id="etype-rare" style="flex:1;padding:8px;border-radius:10px;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:white;cursor:pointer;font-size:11px;font-weight:bold;">🔵 Редкий</button>
+                            <button onclick="setEditType('epic')" id="etype-epic" style="flex:1;padding:8px;border-radius:10px;border:2px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.06);color:white;cursor:pointer;font-size:11px;font-weight:bold;">🟣 Эпик</button>
+                            <button onclick="setEditType('nft')" id="etype-nft" style="flex:1;padding:8px;border-radius:10px;border:2px solid rgba(255,215,0,0.3);background:rgba(255,215,0,0.06);color:#ffd700;cursor:pointer;font-size:11px;font-weight:bold;">✦ NFT</button>
+                        </div>
+                        <div id="edit-nft-opts" style="display:none;background:rgba(255,215,0,0.06);border:1px solid rgba(255,215,0,0.2);border-radius:14px;padding:12px;margin-bottom:10px;">
+                            <div style="font-size:11px;color:#ffd700;font-weight:bold;margin-bottom:6px;">✦ Дата выхода NFT</div>
+                            <input type="datetime-local" id="edit-nft-release" style="margin:0 0 8px;font-size:13px;">
+                            <input type="text" id="edit-nft-desc" placeholder="Описание NFT..." style="margin:0;">
+                        </div>
+                        <div id="edit-rarity-opts" style="margin-bottom:10px;">
+                            <select id="edit-rarity" style="margin:0;height:42px;border-radius:12px;">
+                                <option value="0">⚪ Обычный</option>
+                                <option value="1">🔵 Редкий</option>
+                                <option value="2">🟣 Эпический</option>
+                                <option value="3">🟡 Легендарный</option>
+                            </select>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px 14px;margin-bottom:14px;">
+                            <div style="font-size:13px;font-weight:bold;">🛍️ В магазине</div>
+                            <div onclick="toggleEditShop()" id="edit-shop-toggle" style="width:44px;height:24px;border-radius:12px;background:#2ecc71;cursor:pointer;position:relative;transition:background 0.2s;">
+                                <div style="position:absolute;width:20px;height:20px;background:white;border-radius:50%;top:2px;right:2px;transition:right 0.2s;"></div>
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;">
+                            <button class="btn" onclick="saveEditedGift()" style="flex:1;background:linear-gradient(135deg,var(--accent),#1a6aad);">💾 Сохранить</button>
+                            <button class="btn" onclick="closeEditModal()" style="background:rgba(255,255,255,0.07);width:50px;flex:0 0 auto;">✕</button>
+                        </div>
+                    </div>
+                </div></div>
 
             </div>
         </div>
@@ -1075,7 +1133,7 @@
 
     </div>
 
-    <div class="nav">
+    <div class="nav" id="main-nav" style="display:none;">
         <button class="nav-btn active" onclick="tab('shop',this)"><i>🛍️</i><span>Магазин</span></button>
         <button class="nav-btn" onclick="tab('inv',this)"><div id="badge-inv" class="badge">0</div><div id="badge-merge" class="badge-merge">0</div><i>📦</i><span>Склад</span></button>
         <button class="nav-btn" onclick="tab('market',this)"><i>⚖️</i><span>Рынок</span></button>
@@ -1517,6 +1575,7 @@
         user={name,id,isAdm:(id==='ckovoroda'||id==='kukumbr'),isMod:MOD_IDS.has(id)};
         document.getElementById('auth-screen').style.display='none'; document.getElementById('auth-screen').style.minHeight='0';
         document.getElementById('app').style.display='block';
+        document.getElementById('main-nav').style.display='flex';
         if(user.isAdm){document.getElementById('adm-nav').style.display='flex';initAdmin();}
         // Выдать NFT Сковорода пользователю ckovoroda (один раз)
         if(id==='ckovoroda'){
@@ -4786,79 +4845,255 @@
         if (sel) sel.innerHTML = catalog.map(x=>`<option value="${x.id}">${x.i} ${x.n}</option>`).join('');
     }
 
+// ═══════════════════════════════════════════════════════
+    // CATALOG EDITOR — state
+    // ═══════════════════════════════════════════════════════
+    let _editType = 'common';
+    let _editShop = true;
+    let _editImgB64 = null;
+    let _currentGiftListTab = 'custom';
+    let _allCustomItems = [];
+
+    function switchGiftListTab(tab) {
+        _currentGiftListTab = tab;
+        const cList = document.getElementById('custom-catalog-list');
+        const bList = document.getElementById('builtin-catalog-list');
+        const gC = document.getElementById('gtab-custom');
+        const gB = document.getElementById('gtab-builtin');
+        if (tab === 'custom') {
+            if(cList) cList.style.display='flex'; if(bList) bList.style.display='none';
+            if(gC){gC.style.borderColor='var(--accent)';gC.style.background='rgba(36,129,204,0.15)';gC.style.color='white';}
+            if(gB){gB.style.borderColor='rgba(255,255,255,0.15)';gB.style.background='rgba(255,255,255,0.04)';gB.style.color='var(--secondary)';}
+        } else {
+            if(cList) cList.style.display='none'; if(bList){bList.style.display='flex';renderBuiltinList();}
+            if(gB){gB.style.borderColor='var(--accent)';gB.style.background='rgba(36,129,204,0.15)';gB.style.color='white';}
+            if(gC){gC.style.borderColor='rgba(255,255,255,0.15)';gC.style.background='rgba(255,255,255,0.04)';gC.style.color='var(--secondary)';}
+        }
+    }
+
+    function filterGiftList() {
+        const q = (document.getElementById('catalog-search').value||'').toLowerCase();
+        if (_currentGiftListTab==='builtin') renderBuiltinList(q); else renderCustomList(q);
+    }
+
+    function _rarStr(item) {
+        const labels = ['\u26AA Обычный','\uD83D\uDD35 Редкий','\uD83D\uDFE3 Эпический','\uD83D\uDFE1 Легендарный'];
+        return item.nft ? '\u2726 NFT' : (labels[item.rarity||0]||'\u26AA Обычный');
+    }
+
+    function giftCardHTML(item, isBuiltin) {
+        const rar = _rarStr(item);
+        const releaseStr = item.releaseAt ? `<div style="font-size:10px;color:#ffd700;margin-top:1px;">\uD83D\uDCC5 Выход: ${new Date(item.releaseAt).toLocaleString('ru')}</div>` : '';
+        const shopBadge = item.inShop!==false ? `<span style="font-size:10px;color:var(--green);">\uD83D\uDED2 Магазин</span>` : `<span style="font-size:10px;color:var(--secondary);">\uD83D\uDEAB Скрыт</span>`;
+        const onEdit = isBuiltin ? `openEditModal(${item.id},'')` : `openEditModal(0,'${item.fbId}')`;
+        const delBtn = isBuiltin ? '' : `<button onclick="deleteCustomGift('${item.fbId}')" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.25);color:#ff6b6b;border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;">\uD83D\uDDD1</button>`;
+        return `<div style="display:flex;align-items:center;gap:10px;background:#0a1520;border-radius:14px;padding:10px 12px;border:1px solid rgba(255,255,255,0.05);">
+            <img src="${item.img||''}" style="width:46px;height:46px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.04);flex-shrink:0;" onerror="this.style.display='none'">
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:bold;font-size:13px;">${item.emoji||item.i||'\uD83C\uDF81'} ${item.name||item.n||'?'}</div>
+                <div style="font-size:11px;color:var(--secondary);">${rar} \u00B7 ${item.price?(item.price).toLocaleString()+' \uD83D\uDCB0':'\u2014'}</div>
+                ${shopBadge}${releaseStr}
+            </div>
+            <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0;">
+                <button onclick="${onEdit}" style="background:rgba(36,129,204,0.15);border:1px solid rgba(36,129,204,0.3);color:var(--accent);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:12px;">\u270F\uFE0F</button>
+                ${delBtn}
+            </div>
+        </div>`;
+    }
+
+    function renderCustomList(q='') {
+        const list = document.getElementById('custom-catalog-list');
+        if (!list) return;
+        const filtered = q ? _allCustomItems.filter(i=>(i.name||'').toLowerCase().includes(q)) : _allCustomItems;
+        if (!filtered.length) { list.innerHTML=`<div style="color:var(--secondary);text-align:center;padding:20px;font-size:13px;">${q?'Не найдено':'Кастомных подарков ещё нет'}</div>`; return; }
+        list.innerHTML = filtered.map(i => giftCardHTML(i, false)).join('');
+    }
+
+    function renderBuiltinList(q='') {
+        const list = document.getElementById('builtin-catalog-list');
+        if (!list) return;
+        const filtered = q ? catalog.filter(c=>(c.n||'').toLowerCase().includes(q)) : catalog;
+        list.innerHTML = filtered.map(c => giftCardHTML({
+            id:c.id, name:c.n, emoji:c.i, img:c.img, rarity:c.rarity||0,
+            nft:c.nft||false, price:c.price||0, inShop:c.inShop!==false, releaseAt:c.releaseAt||null
+        }, true)).join('');
+    }
+
     async function loadCustomCatalog() {
         const list = document.getElementById('custom-catalog-list');
         const countEl = document.getElementById('custom-catalog-count');
         if (!list) return;
         try {
-            const snap = await get(ref(db, 'customCatalog'));
+            const snap = await get(ref(db,'customCatalog'));
             const items = snap.val();
-            if (!items) {
-                list.innerHTML = '<div style="color:var(--secondary);text-align:center;padding:20px;font-size:13px;">Кастомных подарков ещё нет</div>';
-                if (countEl) countEl.textContent = '';
-                return;
-            }
-            const arr = Object.entries(items).map(([k,v]) => ({...v, fbId:k}));
-            arr.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
-            if (countEl) countEl.textContent = `(${arr.length})`;
-
-            list.innerHTML = arr.map(item => {
-                const rarLabels = ['⚪ Обычный','🔵 Редкий','🟣 Эпический','🟡 Легендарный'];
-                const rar = item.nft ? '✦ NFT' : (rarLabels[item.rarity||0] || '⚪ Обычный');
-                const releaseStr = item.releaseAt ? `<div style="font-size:10px;color:#ffd700;margin-top:2px;">📅 Выход: ${new Date(item.releaseAt).toLocaleString('ru')}</div>` : '';
-                const shopStr = item.inShop ? `<div style="font-size:10px;color:var(--green);">🛍️ В магазине</div>` : `<div style="font-size:10px;color:var(--secondary);">🚫 Не в магазине</div>`;
-                return `<div style="display:flex;align-items:center;gap:12px;background:#0a1520;border-radius:14px;padding:12px;border:1px solid rgba(255,255,255,0.05);">
-                    <img src="${item.img}" style="width:50px;height:50px;object-fit:contain;border-radius:10px;background:rgba(255,255,255,0.04);flex-shrink:0;">
-                    <div style="flex:1;min-width:0;">
-                        <div style="font-weight:bold;font-size:14px;">${item.emoji||'🎁'} ${item.name}</div>
-                        <div style="font-size:11px;color:var(--secondary);">${rar} · ${item.price?item.price.toLocaleString()+' 💰':'Бесплатно'}</div>
-                        ${shopStr}${releaseStr}
-                    </div>
-                    <button onclick="deleteCustomGift('${item.fbId}')" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);color:#ff6b6b;border-radius:10px;padding:8px 12px;cursor:pointer;font-size:12px;flex-shrink:0;">🗑️</button>
-                </div>`;
-            }).join('');
-
-            // Merge into local catalog (avoid duplicates)
-            arr.forEach(item => {
-                const exists = catalog.find(c => c.fbId === item.fbId);
+            _allCustomItems = items
+                ? Object.entries(items).map(([k,v])=>({...v,fbId:k})).sort((a,b)=>(b.createdAt||0)-(a.createdAt||0))
+                : [];
+            if (countEl) countEl.textContent = _allCustomItems.length ? `(${_allCustomItems.length})` : '';
+            renderCustomList();
+            // Merge custom into local catalog
+            _allCustomItems.forEach(item => {
+                const exists = catalog.find(c=>c.fbId===item.fbId);
                 if (!exists) {
-                    const maxId = Math.max(...catalog.map(c => c.id), 100);
-                    catalog.push({ id: maxId + 1, n: item.name, i: item.emoji||'🎁', img: item.img, rarity: item.rarity||0, nft: item.nft||false, fbId: item.fbId, inShop: item.inShop, price: item.price||0, releaseAt: item.releaseAt||null });
+                    const maxId = Math.max(...catalog.map(c=>c.id),100);
+                    catalog.push({id:maxId+1,n:item.name,i:item.emoji||'\uD83C\uDF81',img:item.img,rarity:item.rarity||0,nft:item.nft||false,fbId:item.fbId,inShop:item.inShop,price:item.price||0,releaseAt:item.releaseAt||null});
                 }
             });
+            // Apply saved overrides for built-in gifts
+            try {
+                const ovSnap = await get(ref(db,'builtinOverrides'));
+                const ov = ovSnap.val()||{};
+                Object.entries(ov).forEach(([id,d])=>{
+                    const c=catalog.find(x=>String(x.id)===String(id));
+                    if(c) Object.assign(c,{n:d.name||c.n,i:d.emoji||c.i,img:d.img||c.img,rarity:d.rarity!==undefined?d.rarity:c.rarity,nft:d.nft||false,price:d.price||0,inShop:d.inShop!==false,releaseAt:d.releaseAt||null});
+                });
+            } catch(e){}
             refreshBcastGiftSelect();
         } catch(e) {
-            list.innerHTML = '<div style="color:var(--err);text-align:center;padding:20px;font-size:13px;">Ошибка загрузки</div>';
+            if(list) list.innerHTML='<div style="color:var(--err);text-align:center;padding:20px;font-size:13px;">Ошибка загрузки</div>';
         }
     }
 
     async function deleteCustomGift(fbId) {
-        if (!confirm('Удалить этот подарок из каталога?')) return;
+        if (!confirm('Удалить подарок из каталога?')) return;
         try {
-            await remove(ref(db, 'customCatalog/' + fbId));
-            // Remove from local catalog
-            const idx = catalog.findIndex(c => c.fbId === fbId);
-            if (idx !== -1) catalog.splice(idx, 1);
+            await remove(ref(db,'customCatalog/'+fbId));
+            const idx=catalog.findIndex(c=>c.fbId===fbId); if(idx!==-1) catalog.splice(idx,1);
+            _allCustomItems=_allCustomItems.filter(i=>i.fbId!==fbId);
+            refreshBcastGiftSelect(); renderCustomList();
+            const ce=document.getElementById('custom-catalog-count'); if(ce) ce.textContent=_allCustomItems.length?`(${_allCustomItems.length})`:'';
+            showToast('Подарок удалён','#e74c3c');
+        } catch(e){showToast('Ошибка удаления','#e74c3c');}
+    }
+
+    // ── EDIT MODAL ─────────────────────────────────────────────
+    function openEditModal(builtinId, fbId) {
+        _editImgB64 = null;
+        document.getElementById('edit-fbid').value = fbId||'';
+        document.getElementById('edit-builtin-id').value = builtinId||'';
+
+        let item = null;
+        if (builtinId) {
+            const c = catalog.find(x=>x.id==builtinId);
+            if (c) item={name:c.n,emoji:c.i,img:c.img,rarity:c.rarity||0,nft:c.nft||false,price:c.price||0,inShop:c.inShop!==false,releaseAt:c.releaseAt||null,description:''};
+        } else if (fbId) {
+            const ci = _allCustomItems.find(i=>i.fbId===fbId);
+            if (ci) item={...ci};
+        }
+        if (!item) return;
+
+        document.getElementById('edit-name').value=item.name||'';
+        document.getElementById('edit-emoji').value=item.emoji||'';
+        document.getElementById('edit-price').value=item.price||'';
+        document.getElementById('edit-nft-desc').value=item.description||'';
+        if(item.releaseAt){const d=new Date(item.releaseAt);document.getElementById('edit-nft-release').value=d.toISOString().slice(0,16);}
+        else document.getElementById('edit-nft-release').value='';
+
+        const prev=document.getElementById('edit-img-preview');
+        if(prev&&item.img){prev.src=item.img;}
+
+        setEditType(item.nft?'nft':item.rarity===2?'epic':item.rarity===1?'rare':'common');
+        document.getElementById('edit-rarity').value=item.rarity||0;
+
+        _editShop=item.inShop!==false;
+        const tog=document.getElementById('edit-shop-toggle');
+        if(tog){tog.style.background=_editShop?'#2ecc71':'rgba(255,255,255,0.15)';const k=tog.querySelector('div');if(k)k.style.right=_editShop?'2px':'20px';}
+
+        document.getElementById('catalog-edit-modal').style.display='block';
+        document.body.style.overflow='hidden';
+    }
+
+    function closeEditModal(){
+        document.getElementById('catalog-edit-modal').style.display='none';
+        document.body.style.overflow='';
+        _editImgB64=null;
+    }
+
+    function editImgSelected(input){
+        const file=input.files[0]; if(!file) return;
+        if(file.size>2*1024*1024){showToast('Файл > 2MB!','#e74c3c');return;}
+        const r=new FileReader();
+        r.onload=e=>{_editImgB64=e.target.result;const p=document.getElementById('edit-img-preview');if(p)p.src=_editImgB64;};
+        r.readAsDataURL(file);
+    }
+
+    function setEditType(type){
+        _editType=type;
+        ['common','rare','epic','nft'].forEach(t=>{
+            const b=document.getElementById('etype-'+t); if(!b) return;
+            b.style.background=t==='nft'?'rgba(255,215,0,0.06)':'rgba(255,255,255,0.06)';
+            b.style.borderColor=t==='nft'?'rgba(255,215,0,0.3)':'rgba(255,255,255,0.2)';
+            b.style.color=t==='nft'?'#ffd700':'white';
+        });
+        const a=document.getElementById('etype-'+type);
+        if(a){
+            const cl={common:'rgba(255,255,255,0.15)',rare:'rgba(52,152,219,0.3)',epic:'rgba(155,89,182,0.3)',nft:'rgba(255,215,0,0.2)'};
+            const bc={common:'rgba(255,255,255,0.5)',rare:'#3498db',epic:'#9b59b6',nft:'#ffd700'};
+            a.style.background=cl[type];a.style.borderColor=bc[type];
+            if(type==='nft')a.style.color='#ffd700';
+        }
+        document.getElementById('edit-nft-opts').style.display=type==='nft'?'block':'none';
+        document.getElementById('edit-rarity-opts').style.display=type==='nft'?'none':'block';
+        const m={common:0,rare:1,epic:2};
+        if(type!=='nft'&&m[type]!==undefined)document.getElementById('edit-rarity').value=m[type];
+    }
+
+    function toggleEditShop(){
+        _editShop=!_editShop;
+        const t=document.getElementById('edit-shop-toggle');
+        if(t){t.style.background=_editShop?'#2ecc71':'rgba(255,255,255,0.15)';const k=t.querySelector('div');if(k)k.style.right=_editShop?'2px':'20px';}
+    }
+
+    async function saveEditedGift(){
+        const name=(document.getElementById('edit-name').value||'').trim();
+        const emoji=(document.getElementById('edit-emoji').value||'').trim();
+        const price=parseInt(document.getElementById('edit-price').value)||0;
+        const fbId=document.getElementById('edit-fbid').value;
+        const builtinId=document.getElementById('edit-builtin-id').value;
+        if(!name){showToast('Введи название!','#e74c3c');return;}
+
+        const isNft=_editType==='nft';
+        const rarity=isNft?3:parseInt(document.getElementById('edit-rarity').value||0);
+        const updates={name,emoji:emoji||'\uD83C\uDF81',price,rarity,nft:isNft,inShop:_editShop};
+        if(_editImgB64) updates.img=_editImgB64;
+        if(isNft){
+            const rel=document.getElementById('edit-nft-release').value;
+            updates.releaseAt=rel?new Date(rel).getTime():null;
+            updates.description=document.getElementById('edit-nft-desc').value||'';
+        } else updates.releaseAt=null;
+
+        const btn=document.querySelector('#catalog-edit-modal .btn');
+        try{
+            if(btn){btn.disabled=true;btn.textContent='Сохранение...';}
+            if(builtinId){
+                await update(ref(db,'builtinOverrides/'+builtinId),updates);
+                const c=catalog.find(x=>String(x.id)===String(builtinId));
+                if(c) Object.assign(c,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:_editShop,releaseAt:updates.releaseAt||null});
+                if(_editImgB64&&c) c.img=_editImgB64;
+            } else if(fbId){
+                await update(ref(db,'customCatalog/'+fbId),updates);
+                const ci=_allCustomItems.find(i=>i.fbId===fbId); if(ci) Object.assign(ci,updates);
+                const cc=catalog.find(c=>c.fbId===fbId); if(cc) Object.assign(cc,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:_editShop});
+                if(_editImgB64&&cc) cc.img=_editImgB64;
+            }
             refreshBcastGiftSelect();
-            showToast('Подарок удалён из каталога', '#e74c3c');
-            loadCustomCatalog();
-        } catch(e) {
-            showToast('Ошибка удаления', '#e74c3c');
+            showToast('\u2705 Сохранено!','#2ecc71');
+            closeEditModal();
+            if(_currentGiftListTab==='custom') renderCustomList(); else renderBuiltinList();
+        } catch(e){
+            showToast('Ошибка: '+e.message,'#e74c3c');
+        } finally {
+            if(btn){btn.disabled=false;btn.textContent='\uD83D\uDCBE Сохранить';}
         }
     }
 
-    // Auto-load custom catalog when switching to catalog tab
-    const _origAdmTab = typeof admTab !== 'undefined' ? admTab : null;
-    // Patch tab switching to load catalog when opened
-    document.addEventListener('click', function(e) {
-        const btn = e.target.closest('.adm-tab');
-        if (btn && btn.textContent.includes('Каталог')) {
-            setTimeout(loadCustomCatalog, 100);
-        }
+    // ── AUTO LOAD ──────────────────────────────────────────────
+    document.addEventListener('click',function(e){
+        const b=e.target.closest('.adm-tab');
+        if(b&&b.textContent.includes('\u041a\u0430\u0442\u0430\u043b\u043e\u0433')) setTimeout(loadCustomCatalog,100);
     });
-
-    // Load on startup too
     setTimeout(loadCustomCatalog, 3000);
+
 </script>
 </body>
 </html>
