@@ -5671,7 +5671,13 @@
             const inv = ud.cloudInv || [];
             const serial = await getNextNftSerial();
             const inst = customInst || serial; // используем серийный номер как inst если не задан вручную
-            inv.push({...itm, inst, nftSerial: serial, from: 'ADMIN', seen: false});
+            const giftEntry = {id:itm.id, n:itm.n, i:itm.i, img:itm.img||null, rarity:itm.rarity||0, nft:itm.nft||false, price:itm.price||0};
+            if (giftEntry.img && giftEntry.img.startsWith('data:')) delete giftEntry.img;
+            giftEntry.inst = inst;
+            giftEntry.nftSerial = serial;
+            giftEntry.from = 'ADMIN';
+            giftEntry.seen = false;
+            inv.push(giftEntry);
             await update(ref(db, `users/${_givePlayerId}`), {cloudInv: inv});
             if (ud.tgChatId) sendTg(ud.tgChatId, `🎁 <b>Подарок от администратора!</b>\n\nТебе выдали:\n${itm.i} <b>${itm.n}</b> №${serial}\n\n✅ Подарок уже в твоём инвентаре!`);
             showToast(`✅ ${itm.i} №${serial} выдан (ID: ${inst})!`, 'var(--green)');
