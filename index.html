@@ -18,6 +18,17 @@
             --secondary: #7f91a4; --err: #e74c3c; --green: #2ecc71; --orange: #f39c12;
             --glass: rgba(23, 33, 43, 0.95); --tg: #229ED9;
         }
+        body.light-theme {
+            --bg: #f0f4f8; --card: #ffffff; --accent: #2481cc; --text: #1a1a2e;
+            --secondary: #5a6a7a; --err: #e74c3c; --green: #27ae60; --orange: #e67e22;
+            --glass: rgba(240, 244, 248, 0.97); --tg: #229ED9;
+        }
+        body.light-theme input, body.light-theme textarea, body.light-theme select {
+            background: #e8edf2; border-color: #c8d4e0; color: #1a1a2e;
+        }
+        body.light-theme .nav { background: rgba(240,244,248,0.97); border-color: rgba(0,0,0,0.1); }
+        body.light-theme .card { border-color: rgba(0,0,0,0.08); }
+        body.light-theme #theme-toggle { background:rgba(0,0,0,0.08); border-color:rgba(0,0,0,0.15); }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
 
@@ -906,7 +917,10 @@
 <div id="app" style="display:none">
     <div style="padding:15px 20px;background:var(--glass);position:sticky;top:0;z-index:100;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);">
         <b id="header-name" style="display:inline-block;">...</b>
-        <div style="font-weight:bold;"><span id="u-bal" style="color:var(--accent);">0</span> 💰</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div style="font-weight:bold;"><span id="u-bal" style="color:var(--accent);">0</span> 💰</div>
+            <button id="theme-toggle" onclick="toggleTheme()" title="Сменить тему" style="background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:var(--text);width:34px;height:34px;border-radius:50%;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;transition:all 0.25s;flex-shrink:0;">🌙</button>
+        </div>
     </div>
 
     <div id="shop" class="page active"></div>
@@ -7416,6 +7430,25 @@ window.openChangePasswordModal = function() {
     err.style.display = 'none';
     document.getElementById('change-pass-modal').style.display = 'flex';
 };
+
+// ===== THEME TOGGLE =====
+function toggleTheme() {
+    const body = document.body;
+    const btn = document.getElementById('theme-toggle');
+    const isLight = body.classList.toggle('light-theme');
+    btn.textContent = isLight ? '☀️' : '🌙';
+    try { localStorage.setItem('theme', isLight ? 'light' : 'dark'); } catch(e){}
+}
+(function() {
+    try {
+        if (localStorage.getItem('theme') === 'light') {
+            document.body.classList.add('light-theme');
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.textContent = '☀️';
+        }
+    } catch(e){}
+})();
+// ===== END THEME TOGGLE =====
 
 window.openChangeEmailModal = function() {
     const modal = document.getElementById('change-email-modal');
