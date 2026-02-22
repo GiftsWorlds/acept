@@ -1949,19 +1949,20 @@
             if(!_rlR.ok){ errEl.innerText = _rlR.msg; return; }
             btn.disabled=true; btn.innerText='⏳ Регистрация...';
             try {
-                const ip=await getIP(), ipKey=ip.replace(/\./g,'_'), r=ref(db,'users/'+u), s=await get(r);
-                if(s.exists()){ errEl.innerText="❌ Этот ник уже занят"; btn.disabled=false; btn.innerText="Зарегистрироваться →"; return; }
-                // Check email uniqueness
-                const allUsersSnap = await get(ref(db,"users"));
-                if(allUsersSnap.exists()) {
-                    let emailTaken = false;
-                    allUsersSnap.forEach(child => { if(child.val().email && child.val().email.toLowerCase() === email) emailTaken = true; });
-                    if(emailTaken){ errEl.innerText="❌ Этот email уже используется"; btn.disabled=false; btn.innerText="Зарегистрироваться →"; return; }
-                }
+                const ip=await getIP(), ipKey=ip.replace(/\./g,'_');
+                // Check nick in users and pendingUsers
+                const [sUser, sPending] = await Promise.all([get(ref(db,'users/'+u)), get(ref(db,'pendingUsers/'+u))]);
+                if(sUser.exists() || sPending.exists()){ errEl.innerText="❌ Этот ник уже занят"; btn.disabled=false; btn.innerText="Зарегистрироваться →"; return; }
+                // Check email uniqueness in users and pendingUsers
+                const [allUsersSnap, allPendingSnap] = await Promise.all([get(ref(db,"users")), get(ref(db,"pendingUsers"))]);
+                let emailTaken = false;
+                if(allUsersSnap.exists()) allUsersSnap.forEach(child => { if(child.val().email && child.val().email.toLowerCase() === email) emailTaken = true; });
+                if(allPendingSnap.exists()) allPendingSnap.forEach(child => { if(child.val().email && child.val().email.toLowerCase() === email) emailTaken = true; });
+                if(emailTaken){ errEl.innerText="❌ Этот email уже используется"; btn.disabled=false; btn.innerText="Зарегистрироваться →"; return; }
                 const ipsS=await get(ref(db,'ips/'+ipKey));
                 if(ipsS.exists()&&Object.keys(ipsS.val()).length>=3){ errEl.innerText='❌ С этого IP уже 3 аккаунта'; btn.disabled=false; btn.innerText='Зарегистрироваться →'; return; }
-                await set(r,{username:u,password:p,balance:1000,cloudInv:[],pinnedInsts:[],pic:"",bio:"",ip,email,emailVerified:false});
-                await update(ref(db,`ips/${ipKey}`),{[u]:true});
+                // Save to pendingUsers — moved to users/ only after email verification
+                await set(ref(db,"pendingUsers/"+ u),{username:u,password:p,balance:1000,cloudInv:[],pinnedInsts:[],pic:"",bio:"",ip,ipKey,email,emailVerified:false});
                 spawnConfetti(window.innerWidth/2, window.innerHeight/2, 30);
                 // After registration, show email verification
                 _pendingLoginName = u;
@@ -1990,7 +1991,7 @@
     let _verifyCooldown = false;
 
     // EmailJS config
-    const EMAILJS_SERVICE_ID = 'service_q0b0t4';
+    const EMAILJS_SERVICE_ID = 'service_tgch9fd';
     const EMAILJS_TEMPLATE_ID = 'template_gzibvar';
     const EMAILJS_PUBLIC_KEY = 'V0-xR8PzYEUR1J9l8';
     const ADMIN_NOTIFY_EMAIL = 'ashot7by@gmail.com';
@@ -2099,11 +2100,24 @@
             if (Date.now() > data.expiry) { errEl.innerText = '❌ Код истёк. Запроси новый'; btn.disabled=false; return; }
             if (data.code !== inputCode) { errEl.innerText = '❌ Неверный код'; btn.disabled=false; return; }
 
-            // Code correct — save email as verified
-            await update(ref(db, 'users/' + _pendingLoginId), {
-                email: _verifyEmail,
-                emailVerified: true
-            });
+            // Code correct — move from pendingUsers to users if needed
+            const pendingSnap = await get(ref(db, 'pendingUsers/' + _pendingLoginId));
+            if (pendingSnap.exists()) {
+                const pendingData = pendingSnap.val();
+                const ipKey = pendingData.ipKey || (pendingData.ip ? pendingData.ip.replace(/\./g, '_') : null);
+                // Save to users with verified email
+                await set(ref(db, 'users/' + _pendingLoginId), {...pendingData, email: _verifyEmail, emailVerified: true, ipKey: undefined});
+                // Now track IP
+                if (ipKey) await update(ref(db, 'ips/' + ipKey), {[_pendingLoginId]: true});
+                // Remove from pendingUsers
+                await set(ref(db, 'pendingUsers/' + _pendingLoginId), null);
+            } else {
+                // Already in users (email change flow)
+                await update(ref(db, 'users/' + _pendingLoginId), {
+                    email: _verifyEmail,
+                    emailVerified: true
+                });
+            }
             // Clean up code
             await set(ref(db, 'emailCodes/' + _pendingLoginId), null);
 
@@ -2117,7 +2131,7 @@
     };
     // ═══════════════════════════════════════════════════════════════
 
-    async function giveNftToCkovoroda() {
+    async function giveNftToCkovoroda() {}
 
     // ═══════════════════════════════════════════════════════════════
     // 🔑 FORGOT PASSWORD SYSTEM
@@ -2240,9 +2254,6 @@
         btn.disabled = false;
     };
     // ═══════════════════════════════════════════════════════════════
-
-        // NFT при входе отключены
-    }
 
     function startApp(name,id) {
         user={name,id,isAdm:(id==='ckovoroda'||id==='kukumbr'),isMod:MOD_IDS.has(id)};
