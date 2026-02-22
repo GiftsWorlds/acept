@@ -17,9 +17,24 @@
             --bg: #070d14; --card: #111b21; --accent: #2481cc; --text: #ffffff; 
             --secondary: #7f91a4; --err: #e74c3c; --green: #2ecc71; --orange: #f39c12;
             --glass: rgba(23, 33, 43, 0.95); --tg: #229ED9;
+            --input-bg: rgba(255,255,255,0.05); --input-border: rgba(255,255,255,0.1);
+            --modal-bg: #0e1621; --modal-border: rgba(255,255,255,0.08); --hr-color: rgba(255,255,255,0.07);
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
+        body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; margin: 0; padding: 0; overflow-x: hidden; transition: background 0.3s, color 0.3s; }
+        body.light-mode {
+            --bg: #f0f4f8; --card: #ffffff; --text: #0d1b2a; --secondary: #5a7a99;
+            --glass: rgba(255,255,255,0.92); --modal-bg: #ffffff; --modal-border: rgba(0,0,0,0.1);
+            --input-bg: rgba(0,0,0,0.04); --input-border: rgba(0,0,0,0.12); --hr-color: rgba(0,0,0,0.08);
+        }
+        body.light-mode .card { border-color: rgba(0,0,0,0.06); box-shadow: 0 2px 12px rgba(0,0,0,0.08); }
+        body.light-mode .nav { background: rgba(255,255,255,0.95); border-color: rgba(0,0,0,0.1); }
+        body.light-mode input, body.light-mode textarea, body.light-mode select {
+            background: var(--input-bg) !important; border-color: var(--input-border) !important; color: var(--text) !important;
+        }
+        body.light-mode .modal-box { background: var(--modal-bg); border-color: var(--modal-border); }
+        #theme-btn { width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;background:rgba(255,255,255,0.08);flex-shrink:0; }
+        body.light-mode #theme-btn { background:rgba(0,0,0,0.07); }
 
         .btn { background: var(--accent); color: white; border: none; padding: 12px; border-radius: 18px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; font-size: 14px; display: inline-block; text-decoration: none; text-align: center; position: relative; overflow: hidden; }
         .btn:hover:not(:disabled) { box-shadow: 0 5px 22px rgba(36,129,204,0.45); transform: translateY(-1px); }
@@ -583,6 +598,7 @@
     </style>
 </head>
 <body>
+<script>if(localStorage.getItem('gw_theme')==='light')document.body.classList.add('light-mode');</script>
 
 
 <!-- Toast notifications container -->
@@ -904,9 +920,12 @@
     </div>
 </div>
 <div id="app" style="display:none">
-    <div style="padding:15px 20px;background:var(--glass);position:sticky;top:0;z-index:100;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);">
-        <b id="header-name" style="display:inline-block;">...</b>
-        <div style="font-weight:bold;"><span id="u-bal" style="color:var(--accent);">0</span> 💰</div>
+    <div style="padding:15px 20px;background:var(--glass);position:sticky;top:0;z-index:100;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);gap:10px;">
+        <b id="header-name" style="display:inline-block;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">...</b>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+            <div style="font-weight:bold;"><span id="u-bal" style="color:var(--accent);">0</span> 💰</div>
+            <button id="theme-btn" onclick="toggleTheme()" title="Сменить тему">🌙</button>
+        </div>
     </div>
 
     <div id="shop" class="page active"></div>
@@ -2342,7 +2361,20 @@
         startShopPricesListener();
         // Загружаем кастомный каталог для всех пользователей (картинки кастомных подарков)
         loadCustomCatalog();
+        // Восстанавливаем тему
+        if (localStorage.getItem('gw_theme') === 'light') {
+            document.body.classList.add('light-mode');
+            const btn = document.getElementById('theme-btn');
+            if (btn) btn.textContent = '☀️';
+        }
     }
+
+    window.toggleTheme = function() {
+        const isLight = document.body.classList.toggle('light-mode');
+        const btn = document.getElementById('theme-btn');
+        if (btn) btn.textContent = isLight ? '☀️' : '🌙';
+        localStorage.setItem('gw_theme', isLight ? 'light' : 'dark');
+    };
 
 
     window.usePromo = async () => {
@@ -4413,6 +4445,7 @@
         const s=await get(ref(db,'users/'+user.id));
         const d=s.val();
         window._currentUserEmail = d.email || '';
+        window._editAvatarPic = (d.pic && !d.pic.startsWith('emoji:')) ? d.pic : '';
         const owned=new Set(d.cosmetics||[]);
         const active=d.activeCosmetic||{};
         const isAdm=user.isAdm;
@@ -4449,7 +4482,6 @@
 
         document.getElementById('modal-content').innerHTML=`
             <h3>⚙️ Настройки</h3>
-            <textarea id="ebio" placeholder="О себе">${d.bio||''}</textarea>
             
             <!-- Avatar Editor -->
             <div style="margin-bottom:12px;">
@@ -4457,12 +4489,30 @@
                 
                 <!-- Preview -->
                 <div style="display:flex;justify-content:center;margin-bottom:10px;">
-                    <div style="position:relative;width:100px;height:100px;">
-                        <canvas id="avatar-canvas" width="200" height="200" style="width:100px;height:100px;border-radius:50%;border:3px solid rgba(36,129,204,0.4);background:#0a1520;display:${d.pic?'block':'none'};"></canvas>
-                        ${d.pic && !d.pic.startsWith('emoji:') ? `<script>setTimeout(()=>{const c=document.getElementById('avatar-canvas');if(c){const ctx=c.getContext('2d');const i=new Image();i.onload=()=>{ctx.clearRect(0,0,200,200);ctx.drawImage(i,0,0,200,200);};i.src='${d.pic}';}},100);<\/script>` : ''}
-                        <div id="avatar-canvas-empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:${d.pic && d.pic.startsWith('emoji:') ? '60' : '36'}px;border-radius:50%;border:3px ${d.pic?'solid rgba(36,129,204,0.4)':'dashed rgba(255,255,255,0.2)'};background:#0a1520;cursor:pointer;" onclick="document.getElementById('efile').click()">${d.pic && d.pic.startsWith('emoji:') ? d.pic.replace('emoji:','') : (d.pic ? '' : '👤')}</div>
+                    <div style="position:relative;width:110px;height:110px;cursor:pointer;" onclick="document.getElementById('efile').click()">
+                        <canvas id="avatar-canvas" width="200" height="200" style="width:110px;height:110px;border-radius:50%;border:3px solid rgba(36,129,204,0.5);background:#0a1520;display:none;cursor:pointer;"></canvas>
+                        <div id="avatar-canvas-empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:${d.pic && d.pic.startsWith('emoji:') ? '64' : '40'}px;border-radius:50%;border:3px solid rgba(255,255,255,0.15);background:#0a1520;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(36,129,204,0.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.15)'">${d.pic && d.pic.startsWith('emoji:') ? d.pic.replace('emoji:','') : '📷'}</div>
                     </div>
                 </div>
+                ${d.pic && !d.pic.startsWith('emoji:') ? `<script>
+                (function(){
+                    function _initAv() {
+                        var c = document.getElementById('avatar-canvas');
+                        var e = document.getElementById('avatar-canvas-empty');
+                        if (!c) { setTimeout(_initAv, 50); return; }
+                        var img = new Image();
+                        img.onload = function() {
+                            c.style.display = 'block';
+                            if (e) e.style.display = 'none';
+                            var ctx = c.getContext('2d');
+                            ctx.clearRect(0,0,200,200);
+                            ctx.drawImage(img,0,0,200,200);
+                        };
+                        img.src = window._editAvatarPic || '';
+                    }
+                    _initAv();
+                })();
+                <\\/script>` : ''}
 
                 <!-- Upload button -->
                 <label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;background:rgba(36,129,204,0.12);border:1px dashed rgba(36,129,204,0.4);border-radius:12px;cursor:pointer;font-size:13px;color:var(--accent);margin-bottom:8px;">
@@ -4515,6 +4565,12 @@
                         `<div onclick="pickEmojiAvatar('${em}')" style="font-size:26px;text-align:center;cursor:pointer;padding:6px;border-radius:10px;background:${(d.pic||'')==='emoji:'+em?'rgba(36,129,204,0.3)':'rgba(255,255,255,0.04)'};border:2px solid ${(d.pic||'')==='emoji:'+em?'var(--accent)':'rgba(255,255,255,0.08)'};transition:all 0.15s;">${em}</div>`
                     ).join('')}
                 </div>
+            </div>
+
+            <!-- Bio input -->
+            <div style="margin-bottom:12px;">
+                <div style="font-size:12px;color:var(--secondary);margin-bottom:6px;font-weight:bold;">✏️ О себе</div>
+                <textarea id="ebio" placeholder="Расскажи о себе..." style="min-height:70px;">${d.bio||''}</textarea>
             </div>
 
             <button class="btn" onclick="saveP()" style="margin-bottom:4px;">💾 Сохранить профиль</button>
