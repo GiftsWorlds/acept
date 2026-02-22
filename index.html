@@ -1996,7 +1996,7 @@
     const EMAILJS_PUBLIC_KEY = 'V0-xR8PzYEUR1J9l8';
     const ADMIN_NOTIFY_EMAIL = 'ashot7by@gmail.com';
     // Init EmailJS once
-    emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
+    window.emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
 
     function showEmailVerifyScreen(userId, existingEmail) {
         document.getElementById('auth-screen').style.display = 'none';
@@ -2048,7 +2048,7 @@
 
         let sent = false;
         try {
-            await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+            await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                 email: _verifyEmail,
                 to_name: _pendingLoginId,
                 code: _verifyCode
@@ -2193,7 +2193,7 @@
 
         let sent = false;
         try {
-            await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+            await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                 email: _fpEmail, to_name: _fpUserId, code: _fpCode
             });
             sent = true;
