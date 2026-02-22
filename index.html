@@ -1602,7 +1602,9 @@
         function resolveImg(x) {
             const xid = x && (x.id !== undefined && x.id !== null) ? Number(x.id) : null;
             if(xid !== null && CATALOG_IMG_OVERRIDE[xid]) return CATALOG_IMG_OVERRIDE[xid];
-            const cat = xid !== null ? catalog.find(c => c.id == xid) : null;
+            let cat = xid !== null ? catalog.find(c => c.id == xid) : null;
+            // Если не нашли по id — ищем по fbId (кастомные подарки меняют id при перезагрузке)
+            if (!cat && x && x.fbId) cat = catalog.find(c => c.fbId === x.fbId);
             return (x&&x.imgKey==='pan'?PAN_IMG:null) || (cat && cat.img) || (x && x.img) || null;
         }
         function giftImg(x, size='normal') {
@@ -6870,6 +6872,8 @@
                 from: 'ADMIN',
                 seen: false
             };
+            // Сохраняем fbId для кастомных подарков — чтобы картинка находилась по fbId
+            if (itm.fbId) giftEntry.fbId = itm.fbId;
             // Не сохраняем base64 картинки в Firebase
             if (itm.img && !itm.img.startsWith('data:')) giftEntry.img = itm.img;
 
