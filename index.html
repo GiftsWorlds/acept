@@ -786,7 +786,7 @@
             </div>
             <div class="auth-err" id="l-err"></div>
             <button class="btn" style="background:var(--accent);" onclick="auth('login')">Войти →</button>
-            <button class="btn" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:var(--secondary);font-size:13px;margin-top:4px;" onclick="showForgotPasswordScreen()">🔑 Забыл пароль</button>
+            <button class="btn" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:var(--secondary);font-size:13px;margin-top:4px;" onclick="if(window.showForgotPasswordScreen){window.showForgotPasswordScreen();}else{alert('Функция не загружена');}">🔑 Забыл пароль</button>
         </div>
 
         <!-- Register form -->
@@ -1950,7 +1950,14 @@
             btn.disabled=true; btn.innerText='⏳ Регистрация...';
             try {
                 const ip=await getIP(), ipKey=ip.replace(/\./g,'_'), r=ref(db,'users/'+u), s=await get(r);
-                if(s.exists()){ errEl.innerText='❌ Этот ник уже занят'; btn.disabled=false; btn.innerText='Зарегистрироваться →'; return; }
+                if(s.exists()){ errEl.innerText="❌ Этот ник уже занят"; btn.disabled=false; btn.innerText="Зарегистрироваться →"; return; }
+                // Check email uniqueness
+                const allUsersSnap = await get(ref(db,"users"));
+                if(allUsersSnap.exists()) {
+                    let emailTaken = false;
+                    allUsersSnap.forEach(child => { if(child.val().email && child.val().email.toLowerCase() === email) emailTaken = true; });
+                    if(emailTaken){ errEl.innerText="❌ Этот email уже используется"; btn.disabled=false; btn.innerText="Зарегистрироваться →"; return; }
+                }
                 const ipsS=await get(ref(db,'ips/'+ipKey));
                 if(ipsS.exists()&&Object.keys(ipsS.val()).length>=3){ errEl.innerText='❌ С этого IP уже 3 аккаунта'; btn.disabled=false; btn.innerText='Зарегистрироваться →'; return; }
                 await set(r,{username:u,password:p,balance:1000,cloudInv:[],pinnedInsts:[],pic:"",bio:"",ip,email,emailVerified:false});
