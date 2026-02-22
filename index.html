@@ -4486,6 +4486,55 @@
             <hr style="border-color:rgba(255,255,255,0.07);margin:12px 0;">
 
 
+            <!-- Security collapsible -->
+            <div style="background:rgba(255,193,7,0.05);border:1px solid rgba(255,193,7,0.2);border-radius:14px;padding:10px 14px;margin-bottom:10px;">
+                <div class="collapsible-header" onclick="toggleCollapsible('security-section',this)">
+                    <span style="font-weight:bold;font-size:14px;">🔐 Безопасность</span>
+                    <span class="collapsible-arrow">▼</span>
+                </div>
+                <div class="collapsible-body" id="security-section">
+                    <div style="padding:8px 0 4px;display:flex;flex-direction:column;gap:10px;">
+                        <!-- Change Password -->
+                        <div style="background:#0a1520;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06);">
+                            <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">🔑 Смена пароля</div>
+                            ${(() => {
+                                const last = d.lastPassChange || 0;
+                                const now = Date.now();
+                                const canChange = now - last > 86400000;
+                                const hoursLeft = Math.ceil((86400000 - (now - last)) / 3600000);
+                                if (!canChange) return `<div style="font-size:12px;color:var(--secondary);text-align:center;padding:6px;">⏳ Следующая смена через ${hoursLeft} ч.</div>`;
+                                return `
+                                <input type="password" id="sec-old-pass" placeholder="Текущий пароль" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
+                                <input type="password" id="sec-new-pass" placeholder="Новый пароль" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
+                                <input type="password" id="sec-new-pass2" placeholder="Повтори новый пароль" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:8px;">
+                                <div id="sec-pass-err" style="font-size:12px;color:var(--err);margin-bottom:6px;display:none;"></div>
+                                <button onclick="changePassword()" style="width:100%;padding:9px;background:linear-gradient(135deg,#e67e22,#d35400);border:none;border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;">💾 Сменить пароль</button>`;
+                            })()}
+                        </div>
+                        <!-- Change Email -->
+                        <div style="background:#0a1520;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06);">
+                            <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">📧 Смена email</div>
+                            <div style="font-size:11px;color:var(--secondary);margin-bottom:8px;">Текущий: <span style="color:white;">${d.email || '—'}</span></div>
+                            ${(() => {
+                                const last = d.lastEmailChange || 0;
+                                const now = Date.now();
+                                const canChange = now - last > 86400000;
+                                const hoursLeft = Math.ceil((86400000 - (now - last)) / 3600000);
+                                if (!canChange) return `<div style="font-size:12px;color:var(--secondary);text-align:center;padding:6px;">⏳ Следующая смена через ${hoursLeft} ч.</div>`;
+                                return `
+                                <input type="email" id="sec-new-email" placeholder="Новый email" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:8px;">
+                                <div id="sec-email-err" style="font-size:12px;color:var(--err);margin-bottom:6px;display:none;"></div>
+                                <div id="sec-email-code-wrap" style="display:none;">
+                                    <input type="text" id="sec-email-code" placeholder="Код из письма" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:8px;">
+                                    <button onclick="confirmEmailChange()" style="width:100%;padding:9px;background:linear-gradient(135deg,#27ae60,#219a52);border:none;border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;">✅ Подтвердить</button>
+                                </div>
+                                <button id="sec-email-send-btn" onclick="sendEmailChangeCode()" style="width:100%;padding:9px;background:linear-gradient(135deg,#2481cc,#1a6ab1);border:none;border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;">📨 Отправить код</button>`;
+                            })()}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Privacy collapsible -->
             <div style="background:rgba(255,107,107,0.05);border:1px solid rgba(255,107,107,0.2);border-radius:14px;padding:10px 14px;margin-bottom:10px;">
                 <div class="collapsible-header" onclick="toggleCollapsible('privacy-section',this)">
@@ -4665,6 +4714,91 @@
         openEdit();
     };
     // ═══════════════════════════════════════════════════════════════
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🔐 SECURITY: CHANGE PASSWORD & EMAIL
+    // ═══════════════════════════════════════════════════════════════
+
+    window.changePassword = async function() {
+        const oldPass = document.getElementById('sec-old-pass').value.trim();
+        const newPass = document.getElementById('sec-new-pass').value.trim();
+        const newPass2 = document.getElementById('sec-new-pass2').value.trim();
+        const errEl = document.getElementById('sec-pass-err');
+        errEl.style.display = 'none';
+
+        const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = 'block'; };
+
+        const s = await get(ref(db, 'users/' + user.id));
+        const d = s.val();
+
+        if (d.password !== oldPass) return showErr('❌ Неверный текущий пароль');
+        if (newPass.length < 4) return showErr('❌ Пароль слишком короткий (мин. 4 символа)');
+        if (newPass !== newPass2) return showErr('❌ Пароли не совпадают');
+        if (newPass === oldPass) return showErr('❌ Новый пароль совпадает со старым');
+
+        await update(ref(db, 'users/' + user.id), { password: newPass, lastPassChange: Date.now() });
+        showToast('✅ Пароль успешно изменён!', 'var(--green)');
+        openEdit();
+    };
+
+    let _secEmailCode = null;
+    let _secNewEmail = null;
+
+    window.sendEmailChangeCode = async function() {
+        const emailInput = document.getElementById('sec-new-email').value.trim().toLowerCase();
+        const errEl = document.getElementById('sec-email-err');
+        errEl.style.display = 'none';
+        const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = 'block'; };
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) return showErr('❌ Неверный формат email');
+
+        // Check email not taken
+        const allSnap = await get(ref(db, 'users'));
+        if (allSnap.exists()) {
+            let taken = false;
+            allSnap.forEach(child => {
+                if (child.val().email && child.val().email.toLowerCase() === emailInput && child.key !== user.id) taken = true;
+            });
+            if (taken) return showErr('❌ Этот email уже используется');
+        }
+
+        _secEmailCode = Math.floor(100000 + Math.random() * 900000).toString();
+        _secNewEmail = emailInput;
+
+        const btn = document.getElementById('sec-email-send-btn');
+        btn.disabled = true; btn.textContent = '📨 Отправка...';
+
+        try {
+            await window.emailjs.send('service_wch5gtg', 'template_rubgm5e', {
+                to_email: emailInput,
+                code: _secEmailCode,
+                username: user.id
+            });
+            document.getElementById('sec-email-code-wrap').style.display = 'block';
+            btn.style.display = 'none';
+            showToast('📨 Код отправлен на ' + emailInput, 'var(--accent)');
+        } catch(e) {
+            btn.disabled = false; btn.textContent = '📨 Отправить код';
+            showErr('❌ Ошибка отправки. Попробуй позже.');
+        }
+    };
+
+    window.confirmEmailChange = async function() {
+        const codeInput = document.getElementById('sec-email-code').value.trim();
+        const errEl = document.getElementById('sec-email-err');
+        errEl.style.display = 'none';
+
+        if (codeInput !== _secEmailCode) {
+            errEl.textContent = '❌ Неверный код';
+            errEl.style.display = 'block';
+            return;
+        }
+
+        await update(ref(db, 'users/' + user.id), { email: _secNewEmail, emailVerified: true, lastEmailChange: Date.now() });
+        _secEmailCode = null; _secNewEmail = null;
+        showToast('✅ Email успешно изменён!', 'var(--green)');
+        openEdit();
+    };
 
     window.togglePrivacy = async (key) => {
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
