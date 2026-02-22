@@ -4378,6 +4378,7 @@
     window.openEdit = async () => {
         const s=await get(ref(db,'users/'+user.id));
         const d=s.val();
+        window._currentUserEmail = d.email || '';
         const owned=new Set(d.cosmetics||[]);
         const active=d.activeCosmetic||{};
         const isAdm=user.isAdm;
@@ -4493,44 +4494,23 @@
                     <span class="collapsible-arrow">▼</span>
                 </div>
                 <div class="collapsible-body" id="security-section">
-                    <div style="padding:8px 0 4px;display:flex;flex-direction:column;gap:10px;">
-                        <!-- Change Password -->
-                        <div style="background:#0a1520;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06);">
-                            <div style="font-size:13px;font-weight:bold;margin-bottom:8px;">🔑 Смена пароля</div>
-                            ${(() => {
-                                const last = d.lastPassChange || 0;
-                                const now = Date.now();
-                                const canChange = now - last > 86400000;
-                                const hoursLeft = Math.ceil((86400000 - (now - last)) / 3600000);
-                                if (!canChange) return `<div style="font-size:12px;color:var(--secondary);text-align:center;padding:6px;">⏳ Следующая смена через ${hoursLeft} ч.</div>`;
-                                return `
-                                <input type="password" id="sec-old-pass" placeholder="Текущий пароль" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
-                                <input type="password" id="sec-new-pass" placeholder="Новый пароль" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:6px;">
-                                <input type="password" id="sec-new-pass2" placeholder="Повтори новый пароль" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:8px;">
-                                <div id="sec-pass-err" style="font-size:12px;color:var(--err);margin-bottom:6px;display:none;"></div>
-                                <button onclick="changePassword()" style="width:100%;padding:9px;background:linear-gradient(135deg,#e67e22,#d35400);border:none;border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;">💾 Сменить пароль</button>`;
-                            })()}
-                        </div>
-                        <!-- Change Email -->
-                        <div style="background:#0a1520;border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,0.06);">
-                            <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">📧 Смена email</div>
-                            <div style="font-size:11px;color:var(--secondary);margin-bottom:8px;">Текущий: <span style="color:white;">${d.email || '—'}</span></div>
-                            ${(() => {
-                                const last = d.lastEmailChange || 0;
-                                const now = Date.now();
-                                const canChange = now - last > 86400000;
-                                const hoursLeft = Math.ceil((86400000 - (now - last)) / 3600000);
-                                if (!canChange) return `<div style="font-size:12px;color:var(--secondary);text-align:center;padding:6px;">⏳ Следующая смена через ${hoursLeft} ч.</div>`;
-                                return `
-                                <input type="email" id="sec-new-email" placeholder="Новый email" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:8px;">
-                                <div id="sec-email-err" style="font-size:12px;color:var(--err);margin-bottom:6px;display:none;"></div>
-                                <div id="sec-email-code-wrap" style="display:none;">
-                                    <input type="text" id="sec-email-code" placeholder="Код из письма" style="width:100%;padding:9px 12px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:white;font-size:13px;box-sizing:border-box;margin-bottom:8px;">
-                                    <button onclick="confirmEmailChange()" style="width:100%;padding:9px;background:linear-gradient(135deg,#27ae60,#219a52);border:none;border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;">✅ Подтвердить</button>
-                                </div>
-                                <button id="sec-email-send-btn" onclick="sendEmailChangeCode()" style="width:100%;padding:9px;background:linear-gradient(135deg,#2481cc,#1a6ab1);border:none;border-radius:10px;color:white;font-size:13px;font-weight:600;cursor:pointer;">📨 Отправить код</button>`;
-                            })()}
-                        </div>
+                    <div style="padding:8px 0 4px;display:flex;flex-direction:column;gap:8px;">
+                        <button onclick="openChangePasswordModal()" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;background:#0a1520;border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:white;font-size:14px;font-weight:600;cursor:pointer;text-align:left;">
+                            <span style="font-size:20px;">🔑</span>
+                            <div>
+                                <div>Сменить пароль</div>
+                                <div style="font-size:11px;color:var(--secondary);font-weight:400;margin-top:2px;">${(() => { const l=d.lastPassChange||0; const h=Math.ceil((86400000-(Date.now()-l))/3600000); return Date.now()-l<86400000?'⏳ Доступно через '+h+' ч.':'Последнее изменение: '+(l?new Date(l).toLocaleDateString('ru'):'никогда'); })()}</div>
+                            </div>
+                            <span style="margin-left:auto;color:var(--secondary);font-size:16px;">›</span>
+                        </button>
+                        <button onclick="openChangeEmailModal()" style="display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;background:#0a1520;border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:white;font-size:14px;font-weight:600;cursor:pointer;text-align:left;">
+                            <span style="font-size:20px;">📧</span>
+                            <div>
+                                <div>Сменить email</div>
+                                <div style="font-size:11px;color:var(--secondary);font-weight:400;margin-top:2px;">${(() => { const l=d.lastEmailChange||0; const h=Math.ceil((86400000-(Date.now()-l))/3600000); return Date.now()-l<86400000?'⏳ Доступно через '+h+' ч.':d.email||'не привязан'; })()}</div>
+                            </div>
+                            <span style="margin-left:auto;color:var(--secondary);font-size:16px;">›</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -4720,37 +4700,50 @@
     // ═══════════════════════════════════════════════════════════════
 
     window.changePassword = async function() {
-        const oldPass = document.getElementById('sec-old-pass').value.trim();
-        const newPass = document.getElementById('sec-new-pass').value.trim();
-        const newPass2 = document.getElementById('sec-new-pass2').value.trim();
-        const errEl = document.getElementById('sec-pass-err');
+        const oldPass = document.getElementById('cp-old').value.trim();
+        const newPass = document.getElementById('cp-new').value.trim();
+        const newPass2 = document.getElementById('cp-new2').value.trim();
+        const errEl = document.getElementById('cp-err');
         errEl.style.display = 'none';
-
         const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = 'block'; };
 
         const s = await get(ref(db, 'users/' + user.id));
         const d = s.val();
 
+        // Check cooldown
+        if (Date.now() - (d.lastPassChange || 0) < 86400000) {
+            const h = Math.ceil((86400000 - (Date.now() - (d.lastPassChange||0))) / 3600000);
+            return showErr('⏳ Смена пароля доступна через ' + h + ' ч.');
+        }
         if (d.password !== oldPass) return showErr('❌ Неверный текущий пароль');
         if (newPass.length < 4) return showErr('❌ Пароль слишком короткий (мин. 4 символа)');
         if (newPass !== newPass2) return showErr('❌ Пароли не совпадают');
         if (newPass === oldPass) return showErr('❌ Новый пароль совпадает со старым');
 
         await update(ref(db, 'users/' + user.id), { password: newPass, lastPassChange: Date.now() });
+        document.getElementById('change-pass-modal').style.display = 'none';
         showToast('✅ Пароль успешно изменён!', 'var(--green)');
         openEdit();
     };
 
-    let _secEmailCode = null;
-    let _secNewEmail = null;
+    window._secEmailCode = null;
+    window._secNewEmail = null;
 
     window.sendEmailChangeCode = async function() {
-        const emailInput = document.getElementById('sec-new-email').value.trim().toLowerCase();
-        const errEl = document.getElementById('sec-email-err');
+        const emailInput = document.getElementById('ce-new-email').value.trim().toLowerCase();
+        const errEl = document.getElementById('ce-err');
         errEl.style.display = 'none';
         const showErr = (msg) => { errEl.textContent = msg; errEl.style.display = 'block'; };
 
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) return showErr('❌ Неверный формат email');
+
+        // Check cooldown
+        const s2 = await get(ref(db, 'users/' + user.id));
+        const d2 = s2.val();
+        if (Date.now() - (d2.lastEmailChange || 0) < 86400000) {
+            const h = Math.ceil((86400000 - (Date.now() - (d2.lastEmailChange||0))) / 3600000);
+            return showErr('⏳ Смена email доступна через ' + h + ' ч.');
+        }
 
         // Check email not taken
         const allSnap = await get(ref(db, 'users'));
@@ -4762,20 +4755,21 @@
             if (taken) return showErr('❌ Этот email уже используется');
         }
 
-        _secEmailCode = Math.floor(100000 + Math.random() * 900000).toString();
-        _secNewEmail = emailInput;
+        window._secEmailCode = Math.floor(100000 + Math.random() * 900000).toString();
+        window._secNewEmail = emailInput;
 
-        const btn = document.getElementById('sec-email-send-btn');
+        const btn = document.getElementById('ce-send-btn');
         btn.disabled = true; btn.textContent = '📨 Отправка...';
 
         try {
             await window.emailjs.send('service_wch5gtg', 'template_rubgm5e', {
                 to_email: emailInput,
-                code: _secEmailCode,
+                code: window._secEmailCode,
                 username: user.id
             });
-            document.getElementById('sec-email-code-wrap').style.display = 'block';
-            btn.style.display = 'none';
+            document.getElementById('ce-step1').style.display = 'none';
+            document.getElementById('ce-step2').style.display = 'block';
+            document.getElementById('ce-sent-to').textContent = emailInput;
             showToast('📨 Код отправлен на ' + emailInput, 'var(--accent)');
         } catch(e) {
             btn.disabled = false; btn.textContent = '📨 Отправить код';
@@ -4784,18 +4778,19 @@
     };
 
     window.confirmEmailChange = async function() {
-        const codeInput = document.getElementById('sec-email-code').value.trim();
-        const errEl = document.getElementById('sec-email-err');
+        const codeInput = document.getElementById('ce-code').value.trim();
+        const errEl = document.getElementById('ce-err2');
         errEl.style.display = 'none';
 
-        if (codeInput !== _secEmailCode) {
+        if (codeInput !== window._secEmailCode) {
             errEl.textContent = '❌ Неверный код';
             errEl.style.display = 'block';
             return;
         }
 
-        await update(ref(db, 'users/' + user.id), { email: _secNewEmail, emailVerified: true, lastEmailChange: Date.now() });
-        _secEmailCode = null; _secNewEmail = null;
+        await update(ref(db, 'users/' + user.id), { email: window._secNewEmail, emailVerified: true, lastEmailChange: Date.now() });
+        window._secEmailCode = null; window._secNewEmail = null;
+        document.getElementById('change-email-modal').style.display = 'none';
         showToast('✅ Email успешно изменён!', 'var(--green)');
         openEdit();
     };
@@ -7187,6 +7182,80 @@ window.avEdApply = function() {
     if (typeof showToast === 'function') showToast('✅ Аватар готов! Нажми «Сохранить»', '#2481cc');
 };
 </script>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  CHANGE PASSWORD MODAL                                  -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="change-pass-modal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+    <div style="width:100%;max-width:380px;background:#0e1621;border-radius:20px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div style="font-size:17px;font-weight:700;">🔑 Смена пароля</div>
+            <button onclick="document.getElementById('change-pass-modal').style.display='none'" style="background:rgba(255,255,255,0.08);border:none;border-radius:10px;color:white;font-size:18px;width:34px;height:34px;cursor:pointer;">✕</button>
+        </div>
+        <input type="password" id="cp-old" placeholder="Текущий пароль" style="width:100%;padding:11px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none;">
+        <input type="password" id="cp-new" placeholder="Новый пароль" style="width:100%;padding:11px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none;">
+        <input type="password" id="cp-new2" placeholder="Повтори новый пароль" style="width:100%;padding:11px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none;">
+        <div id="cp-err" style="font-size:12px;color:#e74c3c;margin-bottom:10px;display:none;padding:8px 12px;background:rgba(231,76,60,0.1);border-radius:8px;border:1px solid rgba(231,76,60,0.2);"></div>
+        <button onclick="changePassword()" style="width:100%;padding:13px;background:linear-gradient(135deg,#e67e22,#d35400);border:none;border-radius:13px;color:white;font-size:15px;font-weight:700;cursor:pointer;">💾 Сменить пароль</button>
+    </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!--  CHANGE EMAIL MODAL                                     -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="change-email-modal" style="display:none;position:fixed;inset:0;z-index:99998;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px;box-sizing:border-box;">
+    <div style="width:100%;max-width:380px;background:#0e1621;border-radius:20px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+            <div style="font-size:17px;font-weight:700;">📧 Смена email</div>
+            <button onclick="document.getElementById('change-email-modal').style.display='none';window._secEmailCode=null;" style="background:rgba(255,255,255,0.08);border:none;border-radius:10px;color:white;font-size:18px;width:34px;height:34px;cursor:pointer;">✕</button>
+        </div>
+        <div id="ce-current" style="font-size:12px;color:var(--secondary);margin-bottom:14px;padding:8px 12px;background:rgba(255,255,255,0.04);border-radius:10px;border:1px solid rgba(255,255,255,0.06);">📌 Текущий: <span id="ce-current-val" style="color:white;"></span></div>
+
+        <!-- Step 1: enter new email -->
+        <div id="ce-step1">
+            <input type="email" id="ce-new-email" placeholder="Новый email" style="width:100%;padding:11px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;font-size:14px;box-sizing:border-box;margin-bottom:10px;outline:none;">
+            <div id="ce-err" style="font-size:12px;color:#e74c3c;margin-bottom:10px;display:none;padding:8px 12px;background:rgba(231,76,60,0.1);border-radius:8px;border:1px solid rgba(231,76,60,0.2);"></div>
+            <button id="ce-send-btn" onclick="sendEmailChangeCode()" style="width:100%;padding:13px;background:linear-gradient(135deg,#2481cc,#1a6ab1);border:none;border-radius:13px;color:white;font-size:15px;font-weight:700;cursor:pointer;">📨 Отправить код</button>
+        </div>
+
+        <!-- Step 2: enter code -->
+        <div id="ce-step2" style="display:none;">
+            <div style="font-size:13px;color:var(--secondary);text-align:center;margin-bottom:14px;">Код отправлен на <span id="ce-sent-to" style="color:white;font-weight:bold;"></span></div>
+            <input type="text" id="ce-code" placeholder="Введи код из письма" style="width:100%;padding:11px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:white;font-size:16px;letter-spacing:4px;text-align:center;box-sizing:border-box;margin-bottom:10px;outline:none;">
+            <div id="ce-err2" style="font-size:12px;color:#e74c3c;margin-bottom:10px;display:none;padding:8px 12px;background:rgba(231,76,60,0.1);border-radius:8px;border:1px solid rgba(231,76,60,0.2);"></div>
+            <button onclick="confirmEmailChange()" style="width:100%;padding:13px;background:linear-gradient(135deg,#27ae60,#219a52);border:none;border-radius:13px;color:white;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px;">✅ Подтвердить</button>
+            <button onclick="document.getElementById('ce-step2').style.display='none';document.getElementById('ce-step1').style.display='block';" style="width:100%;padding:10px;background:transparent;border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:var(--secondary);font-size:13px;cursor:pointer;">← Назад</button>
+        </div>
+    </div>
+</div>
+
+<script>
+window.openChangePasswordModal = function() {
+    document.getElementById('cp-old').value = '';
+    document.getElementById('cp-new').value = '';
+    document.getElementById('cp-new2').value = '';
+    const err = document.getElementById('cp-err');
+    err.style.display = 'none';
+    document.getElementById('change-pass-modal').style.display = 'flex';
+};
+
+window.openChangeEmailModal = function() {
+    const modal = document.getElementById('change-email-modal');
+    document.getElementById('ce-new-email').value = '';
+    document.getElementById('ce-code').value = '';
+    document.getElementById('ce-err').style.display = 'none';
+    document.getElementById('ce-err2').style.display = 'none';
+    document.getElementById('ce-step1').style.display = 'block';
+    document.getElementById('ce-step2').style.display = 'none';
+    document.getElementById('ce-send-btn').disabled = false;
+    document.getElementById('ce-send-btn').textContent = '📨 Отправить код';
+    window._secEmailCode = null;
+    window._secNewEmail = null;
+    document.getElementById('ce-current-val').textContent = window._currentUserEmail || '—';
+    modal.style.display = 'flex';
+};
+</script>
+
 
 </body>
 </html>
