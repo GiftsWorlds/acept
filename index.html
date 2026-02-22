@@ -2048,6 +2048,7 @@
 
         let sent = false;
         try {
+            window.emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
             await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                 email: _verifyEmail,
                 to_name: _pendingLoginId,
@@ -2193,6 +2194,7 @@
 
         let sent = false;
         try {
+            window.emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
             await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                 email: _fpEmail, to_name: _fpUserId, code: _fpCode
             });
