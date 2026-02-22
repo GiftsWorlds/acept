@@ -1887,13 +1887,8 @@
                 let resolvedId = u;
                 let userData = null;
 
-                // Try direct login by username
-                const s=await get(ref(db,'users/'+u));
-                if(s.exists() && s.val().password == p) {
-                    userData = s.val();
-                    resolvedId = u;
-                } else if(u.includes('@')) {
-                    // Try login by email — scan users (small DB assumed)
+                if(u.includes('@')) {
+                    // Login by email — scan users
                     const allUsers = await get(ref(db,'users'));
                     if(allUsers.exists()) {
                         allUsers.forEach(child => {
@@ -1903,6 +1898,13 @@
                                 resolvedId = child.key;
                             }
                         });
+                    }
+                } else {
+                    // Try direct login by username
+                    const s=await get(ref(db,'users/'+u));
+                    if(s.exists() && s.val().password == p) {
+                        userData = s.val();
+                        resolvedId = u;
                     }
                 }
 
