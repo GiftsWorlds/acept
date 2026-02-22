@@ -28,6 +28,8 @@
 
         .page { display: none; padding: 15px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; padding-bottom: 120px; }
         .page.active { display: grid; animation: fadeInUp 0.3s ease both; }
+        #leaderboard.active { display: flex !important; flex-direction: column; }
+        #friends.active { display: flex !important; flex-direction: column; }
         #friends, #admin { display: none; flex-direction: column; width: 100%; max-width: 600px; margin: 0 auto; }
         #friends.active, #admin.active { display: flex; animation: fadeInUp 0.3s ease both; }
 
@@ -199,18 +201,15 @@
         @keyframes rainbow { 0%{color:#ff6b6b} 16%{color:#ffd93d} 33%{color:#6bcb77} 50%{color:#4d96ff} 66%{color:#c77dff} 83%{color:#ff6bcd} 100%{color:#ff6b6b} }
         .lb-tab { flex:1;padding:9px 6px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:var(--secondary);font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s; }
         .lb-tab-active { background:rgba(36,129,204,0.2);border-color:rgba(36,129,204,0.5);color:var(--accent); }
-        .lb-row { display:flex;align-items:center;gap:12px;background:#0e1621;border-radius:14px;padding:12px 14px;border:1px solid rgba(255,255,255,0.06);transition:transform 0.15s; }
+        .lb-row { display:flex;align-items:center;gap:10px;background:#0e1621;border-radius:14px;padding:11px 12px;border:1px solid rgba(255,255,255,0.06);transition:transform 0.15s;width:100%;box-sizing:border-box; }
         .lb-row:active { transform:scale(0.98); }
         .lb-row.lb-me { border-color:rgba(36,129,204,0.4);background:rgba(36,129,204,0.08); }
-        .lb-rank { font-size:18px;font-weight:900;min-width:32px;text-align:center; }
-        .lb-rank-1 { color:#ffd700; }
-        .lb-rank-2 { color:#c0c0c0; }
-        .lb-rank-3 { color:#cd7f32; }
-        .lb-avatar { width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.1);flex-shrink:0;background:#0a1520;display:flex;align-items:center;justify-content:center;font-size:20px; }
-        .lb-info { flex:1;min-width:0; }
-        .lb-name { font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
-        .lb-sub { font-size:12px;color:var(--secondary);margin-top:2px; }
-        .lb-val { font-size:15px;font-weight:800;color:var(--accent);text-align:right;flex-shrink:0; }
+        .lb-rank { font-size:17px;font-weight:900;min-width:28px;text-align:center;flex-shrink:0; }
+        .lb-avatar { width:38px;height:38px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.1);flex-shrink:0;background:#0a1520;display:flex;align-items:center;justify-content:center;font-size:20px; }
+        .lb-info { flex:1;min-width:0;overflow:hidden; }
+        .lb-name { font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+        .lb-sub { font-size:11px;color:var(--secondary);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+        .lb-val { font-size:14px;font-weight:800;color:var(--accent);text-align:right;flex-shrink:0;white-space:nowrap; }
         .rarity-nft { animation: rainbow 2s linear infinite; font-weight:bold; }
 
         /* ===== MERGE SYSTEM ===== */
@@ -932,7 +931,7 @@
     <div id="profile" class="page"></div>
 
     <!-- ===== LEADERBOARD ===== -->
-    <div id="leaderboard" class="page" style="padding:15px;padding-bottom:120px;">
+    <div id="leaderboard" class="page" style="padding:15px;padding-bottom:120px;display:none;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
             <div style="font-size:20px;font-weight:800;color:white;">🏆 Рейтинг</div>
             <button onclick="loadLeaderboard()" style="background:rgba(36,129,204,0.15);border:1px solid rgba(36,129,204,0.3);border-radius:10px;padding:6px 14px;color:var(--accent);font-size:13px;cursor:pointer;">🔄</button>
