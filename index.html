@@ -2781,8 +2781,7 @@
         const itm=toArr(d.cloudInv).find(x=>x.inst==inst);
         if(!itm) return showToast("Не найден!",'var(--err)');
         const cat=catalog.find(c=>c.id==itm.id);
-        // 🔧 Картинка: приоритет каталога (актуальная), затем сохранённая (не data:)
-        const img=(cat&&cat.img)||(itm.img&&!itm.img.startsWith('data:')?itm.img:'')||'';
+        const img=(itm.img)||(cat&&cat.img)||'';
         const emo=(itm.i)||(cat&&cat.i)||'🎁';
         document.getElementById('modal-content').innerHTML=`
             <div style="text-align:center;padding:5px;">
@@ -2821,10 +2820,9 @@
             const btnLow  = document.getElementById('mkt-btn-low');
             const btnAuto = document.getElementById('mkt-btn-auto');
             const btnHigh = document.getElementById('mkt-btn-high');
-            // 🔧 -20%/+20% работают относительно ТЕКУЩЕГО значения в поле, а не фиксированного sp
-            if (btnLow)  btnLow.onclick  = ()=>{ const cur=parseInt(inp.value)||sp; inp.value = Math.max(MIN_PRICE, Math.round(cur*0.8)); };
+            if (btnLow)  btnLow.onclick  = ()=>{ inp.value = Math.max(MIN_PRICE, Math.round(sp*0.8)); };
             if (btnAuto) btnAuto.onclick = ()=>{ inp.value = sp; };
-            if (btnHigh) btnHigh.onclick = ()=>{ const cur=parseInt(inp.value)||sp; inp.value = Math.round(cur*1.2); };
+            if (btnHigh) btnHigh.onclick = ()=>{ inp.value = Math.round(sp*1.2); };
         })();
         openModal();
     };
@@ -2836,10 +2834,7 @@
         const itm=_cinv.find(x=>x.inst==inst);
         if(!itm) return showToast("Не найден!",'var(--err)');
         const cat=catalog.find(c=>c.id==itm.id);
-        // Картинка: приоритет каталога, затем сохранённая (не data:), не сохраняем base64
-        const _catImg = (cat&&cat.img&&!cat.img.startsWith('data:')) ? cat.img : null;
-        const _itmImg = (itm.img&&!itm.img.startsWith('data:')) ? itm.img : null;
-        const enriched={...itm, img:_catImg||_itmImg||null, i:(itm.i)||(cat&&cat.i)||'🎁'};
+        const enriched={...itm, img:(itm.img)||(cat&&cat.img)||null, i:(itm.i)||(cat&&cat.i)||'🎁'};
         await update(r,{cloudInv:_cinv.filter(x=>x.inst!=inst),pinnedInsts:(d.pinnedInsts||[]).filter(id=>String(id)!=String(inst))});
         const uc=await get(ref(db,'users/'+user.id));
         const sCosm=(uc.exists()&&uc.val().activeCosmetic)||{};
