@@ -2123,18 +2123,9 @@
             // Clean up code
             await set(ref(db, 'emailCodes/' + _pendingLoginId), null);
 
-            // Log email bind
-            try { const _lr3=ref(db,'activity_log'); const _nl3=push(_lr3); await set(_nl3,{type:'email_bind',userId:_pendingLoginId,user:_pendingLoginId,email:_verifyEmail,time:Date.now()}); } catch(e){}
             showToast('✅ Email подтверждён!', 'var(--green)');
             document.getElementById('email-verify-screen').style.display = 'none';
-            // If already in app (email change flow), restore app view
-            if(user && user.id) {
-                document.getElementById('app').style.display = 'block';
-                document.getElementById('main-nav').style.display = 'flex';
-                if(user.isAdm) document.getElementById('adm-nav').style.display = 'flex';
-            } else {
-                loginOk(_pendingLoginName, _pendingLoginId);
-            }
+            loginOk(_pendingLoginName, _pendingLoginId);
         } catch(e) {
             errEl.innerText = '❌ Ошибка: ' + e.message;
             btn.disabled = false;
@@ -4159,9 +4150,12 @@
                         }).join('')}</div>`;
                     })()}
                     <div class="tg-avatar-wrap" style="position:relative;z-index:2;margin:0;flex-shrink:0;">
-                        <img src="${d.pic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}"
-                             class="tg-avatar" onclick="openEdit()"
-                             onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">
+                        ${d.pic && d.pic.startsWith('emoji:')
+                            ? `<div class="tg-avatar" onclick="openEdit()" style="display:flex;align-items:center;justify-content:center;font-size:64px;background:#0a1520;cursor:pointer;">${d.pic.replace('emoji:','')}</div>`
+                            : `<img src="${d.pic || 'https://cdn-icons-png.flaticon.com/512/149/149071.png'}"
+                                 class="tg-avatar" onclick="openEdit()"
+                                 onerror="this.src='https://cdn-icons-png.flaticon.com/512/149/149071.png'">`
+                        }
                         <div class="tg-avatar-edit" onclick="openEdit()">✏️</div>
                     </div>
                 </div>
@@ -4421,9 +4415,74 @@
         document.getElementById('modal-content').innerHTML=`
             <h3>⚙️ Настройки</h3>
             <textarea id="ebio" placeholder="О себе">${d.bio||''}</textarea>
-            <p style="font-size:12px;color:var(--secondary)">Аватар (с устройства):</p>
-            <input type="file" id="efile" accept="image/*" style="padding:5px;font-size:12px;">
-            <button class="btn" onclick="saveP()" style="margin-bottom:4px;">Сохранить профиль</button>
+            
+            <!-- Avatar Editor -->
+            <div style="margin-bottom:12px;">
+                <div style="font-size:12px;color:var(--secondary);margin-bottom:8px;font-weight:bold;">🖼️ Аватар</div>
+                
+                <!-- Preview -->
+                <div style="display:flex;justify-content:center;margin-bottom:10px;">
+                    <div style="position:relative;width:100px;height:100px;">
+                        <canvas id="avatar-canvas" width="200" height="200" style="width:100px;height:100px;border-radius:50%;border:3px solid rgba(36,129,204,0.4);background:#0a1520;display:${d.pic?'block':'none'};"></canvas>
+                        ${d.pic && !d.pic.startsWith('emoji:') ? `<script>setTimeout(()=>{const c=document.getElementById('avatar-canvas');if(c){const ctx=c.getContext('2d');const i=new Image();i.onload=()=>{ctx.clearRect(0,0,200,200);ctx.drawImage(i,0,0,200,200);};i.src='${d.pic}';}},100);<\/script>` : ''}
+                        <div id="avatar-canvas-empty" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:${d.pic && d.pic.startsWith('emoji:') ? '60' : '36'}px;border-radius:50%;border:3px ${d.pic?'solid rgba(36,129,204,0.4)':'dashed rgba(255,255,255,0.2)'};background:#0a1520;cursor:pointer;" onclick="document.getElementById('efile').click()">${d.pic && d.pic.startsWith('emoji:') ? d.pic.replace('emoji:','') : (d.pic ? '' : '👤')}</div>
+                    </div>
+                </div>
+
+                <!-- Upload button -->
+                <label style="display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;background:rgba(36,129,204,0.12);border:1px dashed rgba(36,129,204,0.4);border-radius:12px;cursor:pointer;font-size:13px;color:var(--accent);margin-bottom:8px;">
+                    📷 Загрузить фото
+                    <input type="file" id="efile" accept="image/*" style="display:none;" onchange="avatarFileSelected(this)">
+                </label>
+
+                <!-- Editor tools (shown after file selected) -->
+                <div id="avatar-editor-tools" style="display:none;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:10px;margin-bottom:8px;">
+                    <div style="font-size:11px;color:var(--secondary);margin-bottom:8px;text-align:center;">✏️ Редактор аватара</div>
+                    <!-- Scale -->
+                    <div style="margin-bottom:8px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                            <span style="font-size:11px;color:var(--secondary);">🔍 Размер</span>
+                            <span id="av-scale-val" style="font-size:11px;color:var(--accent);">100%</span>
+                        </div>
+                        <input type="range" id="av-scale" min="20" max="300" value="100" style="width:100%;accent-color:var(--accent);" oninput="avatarUpdateCanvas()">
+                    </div>
+                    <!-- Offset -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;">
+                        <div>
+                            <div style="font-size:10px;color:var(--secondary);margin-bottom:3px;">← → X</div>
+                            <input type="range" id="av-offx" min="-100" max="100" value="0" style="width:100%;accent-color:var(--accent);" oninput="avatarUpdateCanvas()">
+                        </div>
+                        <div>
+                            <div style="font-size:10px;color:var(--secondary);margin-bottom:3px;">↑ ↓ Y</div>
+                            <input type="range" id="av-offy" min="-100" max="100" value="0" style="width:100%;accent-color:var(--accent);" oninput="avatarUpdateCanvas()">
+                        </div>
+                    </div>
+                    <!-- Rotate -->
+                    <div style="margin-bottom:8px;">
+                        <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+                            <span style="font-size:11px;color:var(--secondary);">🔄 Поворот</span>
+                            <span id="av-rotate-val" style="font-size:11px;color:var(--accent);">0°</span>
+                        </div>
+                        <input type="range" id="av-rotate" min="-180" max="180" value="0" style="width:100%;accent-color:var(--accent);" oninput="avatarUpdateCanvas()">
+                    </div>
+                    <!-- Mirror + RemoveBg + Reset -->
+                    <div style="display:flex;gap:6px;">
+                        <button onclick="avatarToggleMirror()" id="av-mirror-btn" style="flex:1;padding:7px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:10px;color:white;font-size:12px;cursor:pointer;">🪞 Зеркально</button>
+                        <button onclick="avatarRemoveBg()" style="flex:1;padding:7px;background:linear-gradient(135deg,#6c3ce1,#a855f7);border:none;border-radius:10px;color:white;font-size:12px;cursor:pointer;font-weight:600;">✨ Убрать фон</button>
+                        <button onclick="avatarReset()" style="padding:7px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:var(--secondary);font-size:12px;cursor:pointer;">↺</button>
+                    </div>
+                </div>
+
+                <!-- Emoji avatars gallery -->
+                <div style="font-size:11px;color:var(--secondary);margin-bottom:6px;">или выбери эмодзи аватар:</div>
+                <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px;">
+                    ${['😎','🤩','😏','🥸','🤑','👻','💀','🤖','👾','🦊','🐱','🐶','🐸','🐼','🦁','🐯','🦄','🐉','👽','🤡','😈','🧙','🥷','🤠','🦸','🦹'].map(em =>
+                        `<div onclick="pickEmojiAvatar('${em}')" style="font-size:26px;text-align:center;cursor:pointer;padding:6px;border-radius:10px;background:${(d.pic||'')==='emoji:'+em?'rgba(36,129,204,0.3)':'rgba(255,255,255,0.04)'};border:2px solid ${(d.pic||'')==='emoji:'+em?'var(--accent)':'rgba(255,255,255,0.08)'};transition:all 0.15s;">${em}</div>`
+                    ).join('')}
+                </div>
+            </div>
+
+            <button class="btn" onclick="saveP()" style="margin-bottom:4px;">💾 Сохранить профиль</button>
             <hr style="border-color:rgba(255,255,255,0.07);margin:12px 0;">
 
 
@@ -4477,66 +4536,6 @@
                 </div>
             </div>
 
-            <!-- Password Change collapsible -->
-            <div style="background:rgba(243,156,18,0.05);border:1px solid rgba(243,156,18,0.2);border-radius:14px;padding:10px 14px;margin-bottom:10px;">
-                <div class="collapsible-header" onclick="toggleCollapsible('passchange-section',this)">
-                    <span style="font-weight:bold;font-size:14px;">🔑 Сменить пароль</span>
-                    <span class="collapsible-arrow">▼</span>
-                </div>
-                <div class="collapsible-body" id="passchange-section">
-                    <div style="padding-bottom:10px;display:flex;flex-direction:column;gap:8px;">
-                        <input type="password" id="pc-old" placeholder="Текущий пароль" style="margin:0;">
-                        <input type="password" id="pc-new" placeholder="Новый пароль (мин. 4 символа)" style="margin:0;">
-                        <input type="password" id="pc-new2" placeholder="Повтори новый пароль" style="margin:0;">
-                        <div id="pc-err" style="color:var(--err);font-size:12px;min-height:16px;"></div>
-                        <button class="btn" style="background:rgba(243,156,18,0.15);border:1px solid rgba(243,156,18,0.3);color:var(--orange);" onclick="doChangePassword()">🔑 Сменить пароль</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Change Email collapsible -->
-            <div style="background:rgba(46,204,113,0.05);border:1px solid rgba(46,204,113,0.2);border-radius:14px;padding:10px 14px;margin-bottom:10px;">
-                <div class="collapsible-header" onclick="toggleCollapsible('emailchange-section',this)">
-                    <span style="font-weight:bold;font-size:14px;">📧 Сменить Email</span>
-                    <span class="collapsible-arrow">▼</span>
-                </div>
-                <div class="collapsible-body" id="emailchange-section">
-                    <div style="padding-bottom:10px;display:flex;flex-direction:column;gap:8px;">
-                        ${d.email ? `<div style="background:rgba(46,204,113,0.1);border-radius:10px;padding:8px 12px;font-size:13px;color:#00b894;">📧 Текущий: <b>${d.email}</b> ${d.emailVerified?'✅':''}</div>` : '<div style="font-size:13px;color:var(--secondary);">Email не привязан</div>'}
-                        <input type="email" id="ec-email" placeholder="Новый email" style="margin:0;">
-                        <input type="password" id="ec-pass" placeholder="Подтверди паролем" style="margin:0;">
-                        <div id="ec-err" style="color:var(--err);font-size:12px;min-height:16px;"></div>
-                        <button class="btn" style="background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.3);color:#00b894;" onclick="doChangeEmail()">📧 Сменить Email</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Avatar gallery collapsible -->
-            <div style="background:rgba(36,129,204,0.05);border:1px solid rgba(36,129,204,0.2);border-radius:14px;padding:10px 14px;margin-bottom:10px;">
-                <div class="collapsible-header" onclick="toggleCollapsible('avatar-section',this)">
-                    <span style="font-weight:bold;font-size:14px;">🖼️ Аватар из галереи</span>
-                    <span class="collapsible-arrow">▼</span>
-                </div>
-                <div class="collapsible-body" id="avatar-section">
-                    <div style="padding-bottom:10px;">
-                        <p style="font-size:12px;color:var(--secondary);margin:0 0 10px;">Выбери готовый аватар или загрузи свой выше</p>
-                        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;">
-                            ${['https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                               'https://cdn-icons-png.flaticon.com/512/4140/4140051.png',
-                               'https://cdn-icons-png.flaticon.com/512/4140/4140037.png',
-                               'https://cdn-icons-png.flaticon.com/512/4140/4140061.png',
-                               'https://cdn-icons-png.flaticon.com/512/4140/4140047.png',
-                               'https://cdn-icons-png.flaticon.com/512/4140/4140060.png',
-                               'https://cdn-icons-png.flaticon.com/512/4140/4140077.png',
-                               'https://cdn-icons-png.flaticon.com/512/4140/4140055.png',
-                               'https://cdn-icons-png.flaticon.com/512/4140/4140064.png',
-                               'https://cdn-icons-png.flaticon.com/512/4140/4140044.png'
-                              ].map(url => `<img src="${url}" onclick="pickAvatar('${url}')" style="width:100%;aspect-ratio:1;border-radius:50%;object-fit:cover;cursor:pointer;border:2px solid ${d.pic===url?'var(--accent)':'rgba(255,255,255,0.1)'};transition:border 0.2s;" onerror="this.style.display='none'">`).join('')}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Cosmetics collapsible -->
             <div style="background:rgba(162,155,254,0.05);border:1px solid rgba(162,155,254,0.15);border-radius:14px;padding:10px 14px;">
                 <div class="collapsible-header" onclick="toggleCollapsible('cosm-section',this)">
@@ -4558,74 +4557,125 @@
 
 
 
-    window.doChangePassword = async () => {
-        const oldPass = document.getElementById('pc-old').value.trim();
-        const newPass = document.getElementById('pc-new').value.trim();
-        const newPass2 = document.getElementById('pc-new2').value.trim();
-        const errEl = document.getElementById('pc-err');
-        errEl.innerText = '';
-        if(!oldPass || !newPass || !newPass2) { errEl.innerText = '❌ Заполни все поля'; return; }
-        if(newPass.length < 4) { errEl.innerText = '❌ Пароль минимум 4 символа'; return; }
-        if(newPass !== newPass2) { errEl.innerText = '❌ Пароли не совпадают'; return; }
-        try {
-            const s = await get(ref(db,'users/'+user.id));
-            const d = s.val();
-            if(d.password !== oldPass) { errEl.innerText = '❌ Неверный текущий пароль'; return; }
-            await update(ref(db,'users/'+user.id), {password: newPass, passwordChangedAt: Date.now()});
-            // Log
-            try { const _lr=ref(db,'activity_log'); const _nl=push(_lr); await set(_nl,{type:'password_change',userId:user.id,user:user.name,time:Date.now()}); } catch(e){}
-            showToast('✅ Пароль изменён!', 'var(--green)');
-            document.getElementById('pc-old').value='';
-            document.getElementById('pc-new').value='';
-            document.getElementById('pc-new2').value='';
-        } catch(e) { errEl.innerText = '❌ Ошибка: ' + e.message; }
+    // ═══════════════════════════════════════════════════════════════
+    // 🖼️ AVATAR EDITOR
+    // ═══════════════════════════════════════════════════════════════
+    let _avatarOrigImg = null;
+    let _avatarMirrored = false;
+    let _avatarImgB64 = null;
+
+    function avatarUpdateCanvas() {
+        if (!_avatarOrigImg) return;
+        const scale  = +document.getElementById('av-scale').value;
+        const offX   = +document.getElementById('av-offx').value;
+        const offY   = +document.getElementById('av-offy').value;
+        const rotate = +document.getElementById('av-rotate').value;
+        document.getElementById('av-scale-val').textContent = scale + '%';
+        document.getElementById('av-rotate-val').textContent = rotate + '°';
+
+        const canvas = document.getElementById('avatar-canvas');
+        const SIZE = 200;
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, SIZE, SIZE);
+
+        // Circular clip
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(SIZE/2, SIZE/2, SIZE/2, 0, Math.PI*2);
+        ctx.clip();
+
+        ctx.translate(SIZE/2 + offX*2, SIZE/2 + offY*2);
+        if (_avatarMirrored) ctx.scale(-1, 1);
+        ctx.rotate(rotate * Math.PI / 180);
+        const s = scale / 100;
+        const fw = _avatarOrigImg.naturalWidth * s;
+        const fh = _avatarOrigImg.naturalHeight * s;
+        ctx.drawImage(_avatarOrigImg, -fw/2, -fh/2, fw, fh);
+        ctx.restore();
+
+        _avatarImgB64 = canvas.toDataURL('image/png');
+
+        // Show canvas, hide empty placeholder
+        canvas.style.display = 'block';
+        const empty = document.getElementById('avatar-canvas-empty');
+        if (empty) empty.style.display = 'none';
+    }
+
+    window.avatarFileSelected = function(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                _avatarOrigImg = img;
+                _avatarMirrored = false;
+                document.getElementById('av-scale').value = 100;
+                document.getElementById('av-offx').value = 0;
+                document.getElementById('av-offy').value = 0;
+                document.getElementById('av-rotate').value = 0;
+                document.getElementById('avatar-editor-tools').style.display = 'block';
+                avatarUpdateCanvas();
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
     };
 
-    window.doChangeEmail = async () => {
-        const newEmail = document.getElementById('ec-email').value.trim().toLowerCase();
-        const pass = document.getElementById('ec-pass').value.trim();
-        const errEl = document.getElementById('ec-err');
-        errEl.innerText = '';
-        if(!newEmail || !pass) { errEl.innerText = '❌ Заполни все поля'; return; }
-        if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) { errEl.innerText = '❌ Неверный формат email'; return; }
-        try {
-            const s = await get(ref(db,'users/'+user.id));
-            const d = s.val();
-            if(d.password !== pass) { errEl.innerText = '❌ Неверный пароль'; return; }
-            // Check email not taken
-            const allSnap = await get(ref(db,'users'));
-            let taken = false;
-            if(allSnap.exists()) allSnap.forEach(ch => { if(ch.key !== user.id && ch.val().email && ch.val().email.toLowerCase() === newEmail) taken = true; });
-            if(taken) { errEl.innerText = '❌ Этот email уже используется'; return; }
-            // Start verification flow
-            closeModal();
-            _pendingLoginId = user.id;
-            _pendingLoginName = user.name;
-            _verifyEmail = newEmail;
-            const expiry = Date.now() + 10 * 60 * 1000;
-            const code = Math.floor(100000 + Math.random() * 900000).toString();
-            _verifyCode = code;
-            await set(ref(db, 'emailCodes/' + user.id), {code, email: newEmail, expiry});
-            try {
-                window.emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
-                await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                    email: newEmail, name: user.name,
-                    message: 'Твой код для смены email: ' + code + '\n\nКод действует 10 минут.'
-                });
-                showToast('📧 Код отправлен на ' + newEmail, 'var(--green)');
-            } catch(e) { showToast('Код: ' + code, 'var(--orange)'); }
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('app').style.display = 'none';
-            document.getElementById('main-nav').style.display = 'none';
-            showEmailVerifyScreen(user.id, newEmail);
-        } catch(e) { errEl.innerText = '❌ Ошибка: ' + e.message; }
+    window.avatarToggleMirror = function() {
+        _avatarMirrored = !_avatarMirrored;
+        const btn = document.getElementById('av-mirror-btn');
+        if (btn) {
+            btn.style.background = _avatarMirrored ? 'rgba(36,129,204,0.25)' : 'rgba(255,255,255,0.06)';
+            btn.style.borderColor = _avatarMirrored ? 'var(--accent)' : 'rgba(255,255,255,0.12)';
+        }
+        avatarUpdateCanvas();
     };
 
-    window.pickAvatar = async (url) => {
-        await update(ref(db,'users/'+user.id), {pic: url});
+    window.avatarRemoveBg = function() {
+        if (!_avatarOrigImg) return;
+        avatarUpdateCanvas();
+        const canvas = document.getElementById('avatar-canvas');
+        // Apply bg removal then re-clip to circle
+        const SIZE = 200;
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = SIZE; tempCanvas.height = SIZE;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(canvas, 0, 0);
+        _removeBgFromCanvas(tempCanvas);
+        // Re-draw with circle clip
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, SIZE, SIZE);
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(SIZE/2, SIZE/2, SIZE/2, 0, Math.PI*2);
+        ctx.clip();
+        ctx.drawImage(tempCanvas, 0, 0);
+        ctx.restore();
+        _avatarImgB64 = canvas.toDataURL('image/png');
+        showToast('✨ Фон удалён!', '#27ae60');
+    };
+
+    window.avatarReset = function() {
+        _avatarMirrored = false;
+        document.getElementById('av-scale').value = 100;
+        document.getElementById('av-offx').value = 0;
+        document.getElementById('av-offy').value = 0;
+        document.getElementById('av-rotate').value = 0;
+        document.getElementById('av-scale-val').textContent = '100%';
+        document.getElementById('av-rotate-val').textContent = '0°';
+        const btn = document.getElementById('av-mirror-btn');
+        if (btn) { btn.style.background = 'rgba(255,255,255,0.06)'; btn.style.borderColor = 'rgba(255,255,255,0.12)'; }
+        if (_avatarOrigImg) avatarUpdateCanvas();
+    };
+
+    window.pickEmojiAvatar = async function(emoji) {
+        await update(ref(db,'users/'+user.id), {pic: 'emoji:' + emoji});
         showToast('✅ Аватар обновлён!', 'var(--green)');
         openEdit();
     };
+    // ═══════════════════════════════════════════════════════════════
 
     window.togglePrivacy = async (key) => {
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
@@ -4660,15 +4710,18 @@
         openEdit();
     };
     window.saveP = async () => {
-        const file=document.getElementById('efile').files[0];
-        if(file){
-            const reader=new FileReader();
-            reader.onload=async(e)=>{await update(ref(db,'users/'+user.id),{bio:document.getElementById('ebio').value,pic:e.target.result});closeModal();showToast("Сохранено!");};
-            reader.readAsDataURL(file);
-        } else {
-            await update(ref(db,'users/'+user.id),{bio:document.getElementById('ebio').value});
-            closeModal();showToast("Сохранено!");
+        const bio = document.getElementById('ebio').value;
+        // If avatar editor was used, save that
+        if (_avatarImgB64) {
+            await update(ref(db,'users/'+user.id), {bio, pic: _avatarImgB64});
+            _avatarImgB64 = null;
+            _avatarOrigImg = null;
+            closeModal(); showToast('✅ Сохранено!');
+            return;
         }
+        // Otherwise just save bio
+        await update(ref(db,'users/'+user.id), {bio});
+        closeModal(); showToast('✅ Сохранено!');
     };
     window.openUserProfile = async (uid) => {
         const s = await get(ref(db,'users/'+uid));
