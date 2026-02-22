@@ -197,6 +197,20 @@
         .filter-btn.active { background: var(--accent); border-color: var(--accent); color: white; box-shadow: 0 4px 12px rgba(36,129,204,0.35); }
 
         @keyframes rainbow { 0%{color:#ff6b6b} 16%{color:#ffd93d} 33%{color:#6bcb77} 50%{color:#4d96ff} 66%{color:#c77dff} 83%{color:#ff6bcd} 100%{color:#ff6b6b} }
+        .lb-tab { flex:1;padding:9px 6px;border-radius:12px;border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.04);color:var(--secondary);font-size:13px;font-weight:600;cursor:pointer;transition:all 0.2s; }
+        .lb-tab-active { background:rgba(36,129,204,0.2);border-color:rgba(36,129,204,0.5);color:var(--accent); }
+        .lb-row { display:flex;align-items:center;gap:12px;background:#0e1621;border-radius:14px;padding:12px 14px;border:1px solid rgba(255,255,255,0.06);transition:transform 0.15s; }
+        .lb-row:active { transform:scale(0.98); }
+        .lb-row.lb-me { border-color:rgba(36,129,204,0.4);background:rgba(36,129,204,0.08); }
+        .lb-rank { font-size:18px;font-weight:900;min-width:32px;text-align:center; }
+        .lb-rank-1 { color:#ffd700; }
+        .lb-rank-2 { color:#c0c0c0; }
+        .lb-rank-3 { color:#cd7f32; }
+        .lb-avatar { width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,0.1);flex-shrink:0;background:#0a1520;display:flex;align-items:center;justify-content:center;font-size:20px; }
+        .lb-info { flex:1;min-width:0; }
+        .lb-name { font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis; }
+        .lb-sub { font-size:12px;color:var(--secondary);margin-top:2px; }
+        .lb-val { font-size:15px;font-weight:800;color:var(--accent);text-align:right;flex-shrink:0; }
         .rarity-nft { animation: rainbow 2s linear infinite; font-weight:bold; }
 
         /* ===== MERGE SYSTEM ===== */
@@ -917,6 +931,22 @@
 
     <div id="profile" class="page"></div>
 
+    <!-- ===== LEADERBOARD ===== -->
+    <div id="leaderboard" class="page" style="padding:15px;padding-bottom:120px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div style="font-size:20px;font-weight:800;color:white;">🏆 Рейтинг</div>
+            <button onclick="loadLeaderboard()" style="background:rgba(36,129,204,0.15);border:1px solid rgba(36,129,204,0.3);border-radius:10px;padding:6px 14px;color:var(--accent);font-size:13px;cursor:pointer;">🔄</button>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:16px;">
+            <button id="lb-tab-gifts" onclick="switchLbTab('gifts')" class="lb-tab lb-tab-active">🎁 Подарки</button>
+            <button id="lb-tab-coins" onclick="switchLbTab('coins')" class="lb-tab">💰 Монеты</button>
+            <button id="lb-tab-friends" onclick="switchLbTab('friends')" class="lb-tab">👥 Друзья</button>
+        </div>
+        <div id="lb-list" style="display:flex;flex-direction:column;gap:8px;">
+            <div style="text-align:center;color:var(--secondary);padding:40px;font-size:14px;">Загрузка...</div>
+        </div>
+    </div>
+
     <!-- ===== ADMIN PANEL ===== -->
     <div id="admin" class="page" style="padding:15px;padding-bottom:120px;">
 
@@ -1308,6 +1338,7 @@
         <button class="nav-btn" onclick="tab('friends',this)"><div id="badge-fr" class="badge">0</div><i>👥</i><span>Друзья</span></button>
         <button class="nav-btn" id="duel-nav-btn" onclick="openDuelFromNav()" style="position:relative;"><div id="badge-duel" class="badge" style="right:8px;display:none;">0</div><i>⚔️</i><span>Дуэль</span></button>
         <button class="nav-btn" onclick="tab('profile',this)"><i>👤</i><span>Профиль</span></button>
+        <button class="nav-btn" id="lb-nav" onclick="tab('leaderboard',this)"><i>🏆</i><span>Рейтинг</span></button>
         <button id="adm-nav" class="nav-btn" style="display:none;color:var(--orange)" onclick="tab('admin',this)"><i>⚙️</i><span>Админ</span></button>
     </div>
 </div>
@@ -2267,7 +2298,7 @@
         document.getElementById('auth-screen').style.display='none'; document.getElementById('auth-screen').style.minHeight='0';
         document.getElementById('app').style.display='block';
         document.getElementById('main-nav').style.display='flex';
-        if(user.isAdm){document.getElementById('adm-nav').style.display='flex';initAdmin();}
+        if(user.isAdm){document.getElementById('adm-nav').style.display='flex';initAdmin();document.getElementById('lb-nav').style.display='none';}
         // Выдать NFT Сковорода пользователю ckovoroda (один раз)
         if(id==='ckovoroda'){
             (async()=>{
@@ -2280,7 +2311,7 @@
                 }
             })();
         }
-        else if(user.isMod){document.getElementById('adm-nav').style.display='flex';initAdminMod();}
+        else if(user.isMod){document.getElementById('adm-nav').style.display='flex';initAdminMod();document.getElementById('lb-nav').style.display='none';}
 
         // === PRESENCE (онлайн-статус) ===
         const presenceRef = ref(db, 'presence/' + id);
@@ -4799,6 +4830,133 @@
         openEdit();
     };
 
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🏆 LEADERBOARD
+    // ═══════════════════════════════════════════════════════════════
+    // Хардкод + динамическая проверка isAdm из Firebase
+    const HARDCODED_ADMINS = new Set(['ckovoroda', 'kukumbr']);
+    let _lbTab = 'gifts';
+    let _lbUnsubscribe = null; // для отписки от onValue
+
+    window.switchLbTab = function(tab) {
+        _lbTab = tab;
+        ['gifts','coins','friends'].forEach(t => {
+            const btn = document.getElementById('lb-tab-' + t);
+            if (btn) btn.classList.toggle('lb-tab-active', t === tab);
+        });
+        if (window._lbData) renderLeaderboard(window._lbData);
+    };
+
+    window.loadLeaderboard = function() {
+        const list = document.getElementById('lb-list');
+        if (!list) return;
+
+        // Отписываемся от предыдущего слушателя если есть
+        if (_lbUnsubscribe) { _lbUnsubscribe(); _lbUnsubscribe = null; }
+
+        list.innerHTML = '<div style="text-align:center;color:var(--secondary);padding:40px;font-size:14px;">⏳ Загрузка...</div>';
+
+        // Realtime listener — обновляется автоматически при любом изменении
+        _lbUnsubscribe = onValue(ref(db, 'users'), snap => {
+            const all = snap.val() || {};
+            const players = Object.entries(all)
+                .filter(([id, d]) => {
+                    // Исключаем хардкодных админов и тех у кого isAdm=true в базе
+                    if (HARDCODED_ADMINS.has(id)) return false;
+                    if (d.isAdm === true) return false;
+                    return true;
+                })
+                .map(([id, d]) => ({
+                    id,
+                    name: id,
+                    pic: d.pic || '',
+                    bio: d.bio || '',
+                    balance: d.balance || 0,
+                    gifts: Array.isArray(d.cloudInv) ? d.cloudInv.length
+                         : (d.cloudInv ? Object.keys(d.cloudInv).length : 0),
+                    friends: d.friends ? Object.keys(d.friends).length : 0,
+                }));
+            window._lbData = players;
+            // Обновляем только если вкладка активна
+            if (document.getElementById('leaderboard')?.classList.contains('active')) {
+                renderLeaderboard(players);
+            }
+        }, err => {
+            if (list) list.innerHTML = '<div style="color:var(--err);text-align:center;padding:20px;">Ошибка загрузки</div>';
+        });
+    };
+
+    // Останавливаем слушатель при уходе с вкладки рейтинга — встроено в window.tab ниже
+
+    function renderLeaderboard(players) {
+        const list = document.getElementById('lb-list');
+        if (!list) return;
+
+        let sorted, valLabel;
+        if (_lbTab === 'gifts') {
+            sorted = [...players].sort((a, b) => b.gifts - a.gifts);
+            valLabel = p => p.gifts + ' 🎁';
+        } else if (_lbTab === 'coins') {
+            sorted = [...players].sort((a, b) => b.balance - a.balance);
+            valLabel = p => p.balance.toLocaleString('ru') + ' 💰';
+        } else {
+            sorted = [...players].sort((a, b) => b.friends - a.friends);
+            valLabel = p => p.friends + ' 👥';
+        }
+
+        const myIdx = sorted.findIndex(p => p.id === user.id);
+        const medalColors = ['#ffd700', '#c0c0c0', '#cd7f32'];
+
+        const rankIcon = i => {
+            if (i === 0) return '🥇';
+            if (i === 1) return '🥈';
+            if (i === 2) return '🥉';
+            return '<span style="color:#7f91a4;font-size:13px;">#' + (i + 1) + '</span>';
+        };
+
+        const rowHTML = (p, i) => {
+            const isMe = p.id === user.id;
+            const medal = i < 3 ? medalColors[i] : null;
+            const borderStyle = isMe
+                ? 'border-color:rgba(36,129,204,0.5);background:rgba(36,129,204,0.08);'
+                : medal ? `border-color:${medal}44;` : '';
+            const valColor = medal ? medal : 'var(--accent)';
+
+            let avatarHTML;
+            if (p.pic && p.pic.startsWith('emoji:')) {
+                avatarHTML = `<div class="lb-avatar" style="font-size:22px;">${p.pic.replace('emoji:','')}</div>`;
+            } else if (p.pic && !p.pic.startsWith('data:')) {
+                avatarHTML = `<img class="lb-avatar" src="${p.pic}" onerror="this.outerHTML='<div class=&quot;lb-avatar&quot;>👤</div>'">`;
+            } else {
+                avatarHTML = '<div class="lb-avatar">👤</div>';
+            }
+
+            return `<div class="lb-row" style="${borderStyle}cursor:pointer;" onclick="openUserProfile('${p.id}')">
+                <div class="lb-rank">${rankIcon(i)}</div>
+                ${avatarHTML}
+                <div class="lb-info">
+                    <div class="lb-name">${isMe ? '<span style="color:var(--accent);">★ ' + p.name + '</span>' : p.name}</div>
+                    ${p.bio ? '<div class="lb-sub">' + p.bio.substring(0,35) + (p.bio.length>35?'…':'') + '</div>' : ''}
+                </div>
+                <div class="lb-val" style="color:${valColor};">${valLabel(p)}</div>
+            </div>`;
+        };
+
+        let html = sorted.slice(0, 50).map((p, i) => rowHTML(p, i)).join('');
+
+        if (myIdx > 49) {
+            html += '<div style="text-align:center;color:var(--secondary);font-size:12px;padding:8px 0;">· · ·</div>';
+            html += rowHTML(sorted[myIdx], myIdx);
+        }
+
+        if (!sorted.length) {
+            html = '<div style="text-align:center;color:var(--secondary);padding:40px;font-size:14px;">Нет игроков</div>';
+        }
+
+        list.innerHTML = html;
+    }
+
     window.togglePrivacy = async (key) => {
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
         const privacy = d.privacy || {};
@@ -5635,6 +5793,8 @@
     };
 
     window.tab=(id,b)=>{
+        // Отписываемся от realtime рейтинга при уходе с вкладки
+        if (id !== 'leaderboard' && _lbUnsubscribe) { _lbUnsubscribe(); _lbUnsubscribe = null; }
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
         document.getElementById(id).classList.add('active');b.classList.add('active');
@@ -5642,6 +5802,7 @@
         if(id==='shop') { renderShop(); renderShopCards(); }
         if(id==='market') listenMarket();
         if(id==='profile') { get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); }); }
+        if(id==='leaderboard') loadLeaderboard();
     };
     // ===== TELEGRAM INTEGRATION =====
     const TG_BOT_TOKEN = '8080771405:AAGsN_dudAoaiNmqLdgWsol8iL7ZDwqu-Ho';
