@@ -2051,7 +2051,7 @@
             await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                 email: _verifyEmail,
                 to_name: _pendingLoginId,
-                code: _verifyCode
+                код: _verifyCode
             });
             sent = true;
         } catch(e) {
@@ -2194,7 +2194,7 @@
         let sent = false;
         try {
             await window.emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-                email: _fpEmail, to_name: _fpUserId, code: _fpCode
+                email: _fpEmail, to_name: _fpUserId, код: _fpCode
             });
             sent = true;
         } catch(e) { console.warn('EmailJS error:', e); showToast('EmailJS: ' + (e.text || e.message || JSON.stringify(e)), 'red'); }
