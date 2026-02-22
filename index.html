@@ -2047,7 +2047,7 @@
             });
             sent = true;
         } catch(e) {
-            console.warn('EmailJS error:', e);
+            console.warn('EmailJS error:', e); showToast('EmailJS: ' + (e.text || e.message || JSON.stringify(e)), 'red');
         }
 
         sendBtn.disabled = false;
@@ -2176,7 +2176,7 @@
                 email: _fpEmail, to_name: _fpUserId, code: _fpCode
             });
             sent = true;
-        } catch(e) { console.warn('EmailJS error:', e); }
+        } catch(e) { console.warn('EmailJS error:', e); showToast('EmailJS: ' + (e.text || e.message || JSON.stringify(e)), 'red'); }
 
         sendBtn.disabled = false; sendBtn.innerText = 'Получить код';
         document.getElementById('fp-step-1').style.display = 'none';
