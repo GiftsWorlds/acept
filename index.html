@@ -4923,7 +4923,7 @@
             let avatarHTML;
             if (p.pic && p.pic.startsWith('emoji:')) {
                 avatarHTML = `<div class="lb-avatar" style="font-size:22px;background:#0e1824;">${p.pic.replace('emoji:','')}</div>`;
-            } else if (p.pic && !p.pic.startsWith('data:')) {
+            } else if (p.pic) {
                 avatarHTML = `<img class="lb-avatar" src="${p.pic}" onerror="this.outerHTML='<div class=&quot;lb-avatar&quot; style=&quot;background:#0e1824;&quot;>👤</div>'">`;
             } else {
                 avatarHTML = '<div class="lb-avatar" style="background:#0e1824;">👤</div>';
