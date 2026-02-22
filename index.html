@@ -165,30 +165,25 @@
             box-shadow: 0 0 14px 3px rgba(255,215,0,0.18) !important;
         }
         /* NFT level cards keep their dramatic look but lighter */
-        body.light-theme .nft-lvl1-fire { background: linear-gradient(145deg,#ffeedd,#fff0e0,#ffeedd) !important; border-color: rgba(255,80,0,0.5) !important; }
-        body.light-theme .nft-lvl1-ocean { background: linear-gradient(145deg,#ddf0ff,#e8f6ff,#ddf0ff) !important; border-color: rgba(0,150,255,0.5) !important; }
-        body.light-theme .nft-lvl1-forest { background: linear-gradient(145deg,#ddfff0,#e8fff6,#ddfff0) !important; border-color: rgba(0,200,80,0.5) !important; }
-        body.light-theme .nft-lvl1-galaxy { background: linear-gradient(145deg,#f0ddff,#f8e8ff,#f0ddff) !important; border-color: rgba(180,0,255,0.5) !important; }
-        body.light-theme .nft-lvl1-sunset { background: linear-gradient(145deg,#ffddf0,#ffe8f8,#ffddf0) !important; border-color: rgba(255,100,150,0.5) !important; }
+        /* NFT LVL1 cards light (только lvl1, lvl2-5 не трогаем!) */
+        body.light-theme .card.nft-lvl1-fire { background: linear-gradient(145deg,#ffeedd,#fff0e0,#ffeedd) !important; border-color: rgba(255,80,0,0.5) !important; }
+        body.light-theme .card.nft-lvl1-ocean { background: linear-gradient(145deg,#ddf0ff,#e8f6ff,#ddf0ff) !important; border-color: rgba(0,150,255,0.5) !important; }
+        body.light-theme .card.nft-lvl1-forest { background: linear-gradient(145deg,#ddfff0,#e8fff6,#ddfff0) !important; border-color: rgba(0,200,80,0.5) !important; }
+        body.light-theme .card.nft-lvl1-galaxy { background: linear-gradient(145deg,#f0ddff,#f8e8ff,#f0ddff) !important; border-color: rgba(180,0,255,0.5) !important; }
+        body.light-theme .card.nft-lvl1-sunset { background: linear-gradient(145deg,#ffddf0,#ffe8f8,#ffddf0) !important; border-color: rgba(255,100,150,0.5) !important; }
 
-        /* ===== MARKET LISTINGS ===== */
-        /* NFT listing dark card (Пепе, Ящерица) */
-        body.light-theme #market [style*="background:linear-gradient(135deg,#120d2e"],
-        body.light-theme #market [style*="background: linear-gradient(135deg,#120d2e"] {
-            background: linear-gradient(135deg,#ede8ff,#e4d8ff) !important;
-            border-color: rgba(130,100,220,0.5) !important;
-        }
-        body.light-theme #market [style*="background:linear-gradient(135deg,#001a08"],
-        body.light-theme #market [style*="background: linear-gradient(135deg,#001a08"] {
-            background: linear-gradient(135deg,#d8ffed,#e0fff4) !important;
-            border-color: rgba(0,180,80,0.5) !important;
-        }
-        /* Market item text in dark NFT rows */
-        body.light-theme #market [style*="background:linear-gradient"] * { color: #1a1a2e !important; }
-        body.light-theme #market [style*="background:linear-gradient"] [style*="color:#4dff91"] { color: #0a7a3a !important; }
-        body.light-theme #market [style*="background:linear-gradient"] .btn { color: #fff !important; }
-        /* Regular market rows (белые с тенью) */
-        body.light-theme #market .card { background: #ffffff !important; }
+        /* ===== MARKET LISTINGS - data-rarity based ===== */
+        body.light-theme .market-listing-card { color: #1a1a2e; }
+        body.light-theme .market-listing-card[data-rarity="common"] { background: #ffffff !important; border-color: rgba(0,0,0,0.08) !important; box-shadow: none !important; }
+        body.light-theme .market-listing-card[data-rarity="rare"] { background: linear-gradient(145deg,#e8f0ff,#d8e8ff) !important; border-color: rgba(36,100,220,0.4) !important; box-shadow: none !important; }
+        body.light-theme .market-listing-card[data-rarity="epic"] { background: linear-gradient(145deg,#f0e8ff,#e8d8ff) !important; border-color: rgba(130,100,220,0.4) !important; box-shadow: none !important; }
+        body.light-theme .market-listing-card[data-rarity="legendary"] { background: linear-gradient(145deg,#fff8e0,#fffbe8) !important; border-color: rgba(200,160,0,0.5) !important; box-shadow: none !important; }
+        body.light-theme .market-listing-card[data-rarity="nft"] { background: linear-gradient(145deg,#fff8e0,#fffbe8) !important; border-color: rgba(200,160,0,0.5) !important; box-shadow: none !important; }
+        body.light-theme .market-listing-card[data-rarity="lizard"] { background: linear-gradient(145deg,#d8ffed,#e0fff4) !important; border-color: rgba(0,180,80,0.5) !important; box-shadow: none !important; }
+        /* Fix divider and thumbnail in light market */
+        body.light-theme .market-listing-card [style*="background:rgba(255,255,255,0.06)"] { background: rgba(0,0,0,0.06) !important; }
+        body.light-theme .market-listing-card [style*="background:rgba(255,255,255,0.04)"] { background: rgba(0,0,0,0.04) !important; border-color: rgba(0,0,0,0.08) !important; }
+        body.light-theme .market-listing-card [style*="color:#4a6080"] { color: #6a8090 !important; }
 
         /* ===== MODALS & OVERLAYS ===== */
         body.light-theme [style*="background:#0e1621"][style*="border-radius:20px"],
@@ -203,17 +198,12 @@
         /* Merge panel in light */
         body.light-theme [style*="background:#0d0a1a"] { background: #eee8ff !important; }
         /* Недоступно button in NFT banner */
-        body.light-theme .nft-feb-card .btn[disabled],
-        body.light-theme .nft-feb-card [style*="background:#2a2a2a"] {
-            background: #c8c8c8 !important; color: #666 !important;
-        }
+        body.light-theme .nft-feb-card [style*="background:#2a2a2a"] { background: #c8c8c8 !important; color: #666 !important; }
         body.light-theme [style*="background:#2a2a2a"] { background: #d0d0d0 !important; color: #555 !important; }
-        /* Lizard NFT banner in market light */
-        body.light-theme .card.nft-card[style*="#001a08"] {
+        /* Lizard NFT banner in shop light */
+        body.light-theme .card.nft-card:not(.nft-lvl1-fire):not(.nft-lvl1-ocean):not(.nft-lvl1-forest):not(.nft-lvl1-galaxy):not(.nft-lvl1-sunset):not(.nft-lvl2-grid):not(.nft-lvl2-dots):not(.nft-lvl2-hex):not(.nft-lvl2-waves):not(.nft-lvl2-stars):not(.nft-lvl3-fire):not(.nft-lvl3-ocean):not(.nft-lvl3-forest):not(.nft-lvl3-galaxy):not(.nft-lvl3-sunset):not(.nft-lvl4-particles):not(.nft-lvl5-holo)[style*="#001a08"] {
             background: linear-gradient(135deg,#d8ffed,#e8fff6) !important;
         }
-        body.light-theme .card.nft-card[style*="#001a08"] * { color: #0a3a20 !important; }
-        body.light-theme .card.nft-card[style*="#001a08"] .btn { color: #000 !important; }
         /* ===== SEARCH & FILTER BAR ===== */
         body.light-theme .search-box { background: #e8edf2 !important; border-color: #c8d4e0 !important; }
         body.light-theme .search-filter-bar input { background: #e8edf2 !important; border-color: #c8d4e0 !important; color: #1a1a2e !important; }
@@ -3344,7 +3334,7 @@
                 const rarLabel = isNFT?'':isLeg?'🟡 Легенд.':isEpic?'🟣 Эпик':isRare?'🔵 Редкий':'';
                 const itemId = x.nftSerial ? x.nftSerial : (x.inst ? String(x.inst).slice(-6) : '');
 
-                return `<div style="padding:0;display:flex;flex-direction:column;background:${cardBg};border:1.5px solid ${cardBorder};box-shadow:${cardGlow};border-radius:20px;position:relative;overflow:hidden;">
+                return `<div class="market-listing-card" data-rarity="${isLizard?'lizard':isNFT?'nft':isLeg?'legendary':isEpic?'epic':isRare?'rare':'common'}" style="padding:0;display:flex;flex-direction:column;background:${cardBg};border:1.5px solid ${cardBorder};box-shadow:${cardGlow};border-radius:20px;position:relative;overflow:hidden;">
                     ${isNFT||isLeg?`<div style="position:absolute;inset:0;border-radius:20px;background:linear-gradient(120deg,transparent 30%,${isLizard?'rgba(77,255,145,0.05)':isLeg?'rgba(255,215,0,0.06)':'rgba(255,215,0,0.06)'} 50%,transparent 70%);background-size:200% 100%;pointer-events:none;"></div>`:''}
 
                     <!-- Image area -->
