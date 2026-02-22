@@ -4851,37 +4851,34 @@
         const list = document.getElementById('lb-list');
         if (!list) return;
 
-        // Отписываемся от предыдущего слушателя если есть
         if (_lbUnsubscribe) { _lbUnsubscribe(); _lbUnsubscribe = null; }
-
         list.innerHTML = '<div style="text-align:center;color:var(--secondary);padding:40px;font-size:14px;">⏳ Загрузка...</div>';
 
-        // Realtime listener — обновляется автоматически при любом изменении
         _lbUnsubscribe = onValue(ref(db, 'users'), snap => {
             const all = snap.val() || {};
             const players = Object.entries(all)
                 .filter(([id, d]) => {
-                    // Исключаем хардкодных админов и тех у кого isAdm=true в базе
                     if (HARDCODED_ADMINS.has(id)) return false;
                     if (d.isAdm === true) return false;
                     return true;
                 })
                 .map(([id, d]) => ({
                     id,
-                    name: id,
+                    username: id,
                     pic: d.pic || '',
                     bio: d.bio || '',
                     balance: d.balance || 0,
                     gifts: Array.isArray(d.cloudInv) ? d.cloudInv.length
                          : (d.cloudInv ? Object.keys(d.cloudInv).length : 0),
                     friends: d.friends ? Object.keys(d.friends).length : 0,
+                    activeCosmetic: d.activeCosmetic || {},
+                    cloudInv: d.cloudInv || [],
                 }));
             window._lbData = players;
-            // Обновляем только если вкладка активна
             if (document.getElementById('leaderboard')?.classList.contains('active')) {
                 renderLeaderboard(players);
             }
-        }, err => {
+        }, () => {
             if (list) list.innerHTML = '<div style="color:var(--err);text-align:center;padding:20px;">Ошибка загрузки</div>';
         });
     };
@@ -4895,13 +4892,13 @@
         let sorted, valLabel;
         if (_lbTab === 'gifts') {
             sorted = [...players].sort((a, b) => b.gifts - a.gifts);
-            valLabel = p => p.gifts + ' 🎁';
+            valLabel = p => `<span style="font-size:15px;font-weight:800;">${p.gifts}</span> <span style="font-size:13px;">🎁</span>`;
         } else if (_lbTab === 'coins') {
             sorted = [...players].sort((a, b) => b.balance - a.balance);
-            valLabel = p => p.balance.toLocaleString('ru') + ' 💰';
+            valLabel = p => `<span style="font-size:15px;font-weight:800;">${p.balance.toLocaleString('ru')}</span> <span style="font-size:13px;">💰</span>`;
         } else {
             sorted = [...players].sort((a, b) => b.friends - a.friends);
-            valLabel = p => p.friends + ' 👥';
+            valLabel = p => `<span style="font-size:15px;font-weight:800;">${p.friends}</span> <span style="font-size:13px;">👥</span>`;
         }
 
         const myIdx = sorted.findIndex(p => p.id === user.id);
@@ -4911,7 +4908,7 @@
             if (i === 0) return '🥇';
             if (i === 1) return '🥈';
             if (i === 2) return '🥉';
-            return '<span style="color:#7f91a4;font-size:13px;">#' + (i + 1) + '</span>';
+            return `<span style="color:#7f91a4;font-size:12px;font-weight:700;">#${i + 1}</span>`;
         };
 
         const rowHTML = (p, i) => {
@@ -4919,26 +4916,35 @@
             const medal = i < 3 ? medalColors[i] : null;
             const borderStyle = isMe
                 ? 'border-color:rgba(36,129,204,0.5);background:rgba(36,129,204,0.08);'
-                : medal ? `border-color:${medal}44;` : '';
+                : medal ? `border-color:${medal}55;background:${medal}08;` : '';
             const valColor = medal ? medal : 'var(--accent)';
 
+            // Аватар
             let avatarHTML;
             if (p.pic && p.pic.startsWith('emoji:')) {
-                avatarHTML = `<div class="lb-avatar" style="font-size:22px;">${p.pic.replace('emoji:','')}</div>`;
+                avatarHTML = `<div class="lb-avatar" style="font-size:22px;background:#0e1824;">${p.pic.replace('emoji:','')}</div>`;
             } else if (p.pic && !p.pic.startsWith('data:')) {
-                avatarHTML = `<img class="lb-avatar" src="${p.pic}" onerror="this.outerHTML='<div class=&quot;lb-avatar&quot;>👤</div>'">`;
+                avatarHTML = `<img class="lb-avatar" src="${p.pic}" onerror="this.outerHTML='<div class=&quot;lb-avatar&quot; style=&quot;background:#0e1824;&quot;>👤</div>'">`;
             } else {
-                avatarHTML = '<div class="lb-avatar">👤</div>';
+                avatarHTML = '<div class="lb-avatar" style="background:#0e1824;">👤</div>';
             }
+
+            // Имя с косметикой через buildUsername
+            const nameHTML = buildUsername(p);
+
+            // Подпись: bio или пусто
+            const subHTML = p.bio
+                ? `<div class="lb-sub">${p.bio.substring(0,30)}${p.bio.length>30?'…':''}</div>`
+                : '';
 
             return `<div class="lb-row" style="${borderStyle}cursor:pointer;" onclick="openUserProfile('${p.id}')">
                 <div class="lb-rank">${rankIcon(i)}</div>
                 ${avatarHTML}
                 <div class="lb-info">
-                    <div class="lb-name">${isMe ? '<span style="color:var(--accent);">★ ' + p.name + '</span>' : p.name}</div>
-                    ${p.bio ? '<div class="lb-sub">' + p.bio.substring(0,35) + (p.bio.length>35?'…':'') + '</div>' : ''}
+                    <div class="lb-name">${nameHTML}</div>
+                    ${subHTML}
                 </div>
-                <div class="lb-val" style="color:${valColor};">${valLabel(p)}</div>
+                <div class="lb-val" style="color:${valColor};display:flex;align-items:center;gap:3px;">${valLabel(p)}</div>
             </div>`;
         };
 
