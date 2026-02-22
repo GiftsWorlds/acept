@@ -1857,50 +1857,6 @@
     };
     window.clearAuthErr = (id) => { const el=document.getElementById(id); if(el) el.innerText=''; };
 
-
-    // ═══════════════════════════════════════════════════════════════
-    // 🚫 ФИЛЬТР ПЛОХИХ СЛОВ В НИКАХ
-    // ═══════════════════════════════════════════════════════════════
-    const BAD_WORDS = [
-        // Русские
-        'хуй','хуя','хуе','хую','хуев','хуйня','пизда','пизд','пиздец','пиздат',
-        'блядь','бляд','блять','сука','суки','ёбан','ебан','еба','ёба','ебать','ебал','ебла',
-        'пидор','пидар','пидр','педик','педераст','мудак','мудила','мудила',
-        'залупа','дрочить','дроч','шлюха','шлюх','проститутка','проститут',
-        'гандон','презик','сперма','влагалище','анус','жопа','жоп','очко',
-        'мразь','тварь','урод','уроды','дебил','дебилы','идиот','кретин',
-        'ублюдок','ублюд','выблядок','ублюдки','нигер','негр','чурка','чурки',
-        // English
-        'fuck','fuk','fck','fuck','shit','shyt','bitch','btch','b1tch',
-        'cunt','cnt','pussy','puss','pussy','cock','cok','dick','d1ck','dik',
-        'ass','arse','asshole','assh0le','nigger','nigga','n1gger','faggot','fag','f4g',
-        'whore','wh0re','slut','sl ut','porn','p0rn','piss','pis',
-        'retard','ret4rd','idiot','moron','bastard','b4stard','basterd',
-        'homo','h0mo','pedophile','pedo','ped0',
-        'rape','r4pe','hitler','nazi','n4zi',
-        // Замаскированные варианты (leet speak)
-        'p1dor','p1dar','p1dr','pidor','pidr','pidar',
-        'hui','huy','huey','pizda','pizd','blyad','blyat',
-        'ebat','ebal','eblan','yeban',
-    ];
-
-    function containsBadWord(str) {
-        // Normalize: remove spaces, dots, dashes, replace leet
-        const normalized = str.toLowerCase()
-            .replace(/[\s\.\-_\*@!0-9]/g, s => ({
-                '0':'o','1':'i','3':'e','4':'a','5':'s','6':'g','7':'t','8':'b','9':'g','@':'a','!':'i'
-            }[s] || ''))
-            .replace(/ph/g,'f')
-            .replace(/ck/g,'k');
-        
-        for(const word of BAD_WORDS) {
-            const norm = word.toLowerCase().replace(/[\s\.\-_]/g,'');
-            if(normalized.includes(norm)) return true;
-        }
-        return false;
-    }
-    // ═══════════════════════════════════════════════════════════════
-
     let checkUsernameTimer = null;
     window.checkUsername = (val) => {
         clearAuthErr('r-err');
@@ -1908,7 +1864,6 @@
         const v = val.trim().toLowerCase();
         if(!v) { st.innerText=''; return; }
         if(v.length < 3) { st.innerText='⚠️'; return; }
-        if(containsBadWord(v)) { st.innerText='🚫'; clearAuthErr('r-err'); document.getElementById('r-err').innerText='❌ Ник содержит запрещённые слова'; return; }
         clearTimeout(checkUsernameTimer);
         st.innerText='⏳';
         checkUsernameTimer = setTimeout(async () => {
@@ -1988,7 +1943,6 @@
             const btn=document.querySelector('#form-reg .btn');
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
             if(u.length<3){ errEl.innerText='❌ Логин минимум 3 символа'; return; }
-            if(containsBadWord(u)){ errEl.innerText='❌ Ник содержит запрещённые слова'; return; }
             if(p.length<4){ errEl.innerText='❌ Пароль минимум 4 символа'; return; }
             if(!email){ errEl.innerText='❌ Укажи email для верификации'; return; }
             if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.innerText='❌ Неверный формат email'; return; }
@@ -2169,6 +2123,8 @@
             // Clean up code
             await set(ref(db, 'emailCodes/' + _pendingLoginId), null);
 
+            // Log email bind
+            try { const _logRef2 = ref(db,'activity_log'); const _newLog2 = push(_logRef2); await set(_newLog2, {type:'email_bind', userId:_pendingLoginId, user:_pendingLoginId, email:_verifyEmail, time:Date.now()}); } catch(e){}
             showToast('✅ Email подтверждён!', 'var(--green)');
             document.getElementById('email-verify-screen').style.display = 'none';
             loginOk(_pendingLoginName, _pendingLoginId);
@@ -2296,8 +2252,10 @@
         const btn = document.querySelector('#fp-step-3 .btn');
         btn.disabled = true;
         try {
-            await update(ref(db, 'users/' + _fpUserId), { password: pass1 });
+            await update(ref(db, 'users/' + _fpUserId), { password: pass1, passwordChangedAt: Date.now() });
             await set(ref(db, 'resetCodes/' + _fpUserId), null);
+            // Log password change
+            try { const _logRef = ref(db,'activity_log'); const _newLog = push(_logRef); await set(_newLog, {type:'password_change', userId:_fpUserId, user:_fpUserId, time:Date.now()}); } catch(e){}
             showToast('Пароль изменён! Войди с новым паролем', 'var(--green)');
             document.getElementById('forgot-password-screen').style.display = 'none';
             document.getElementById('auth-screen').style.display = 'flex';
@@ -4910,10 +4868,17 @@
                             <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:10px;">
                                 <div style="font-size:10px;color:#4a6080;margin-bottom:3px;">🔑 Пароль</div>
                                 <div style="font-size:12px;font-family:monospace;color:#7f91a4;word-break:break-all;">${u.password||'—'}</div>
+                                ${u.passwordChangedAt ? `<div style="font-size:9px;color:var(--orange);margin-top:3px;">🕐 Изменён: ${new Date(u.passwordChangedAt).toLocaleString('ru')}</div>` : ''}
                             </div>
                             <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:10px;">
                                 <div style="font-size:10px;color:#4a6080;margin-bottom:3px;">🌐 IP</div>
                                 <div style="font-size:12px;font-family:monospace;color:#7f91a4;">${u.ip||'—'}</div>
+                            </div>
+                            <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:10px;grid-column:1/-1;">
+                                <div style="font-size:10px;color:#4a6080;margin-bottom:3px;">📧 Привязанная почта</div>
+                                <div style="font-size:12px;font-family:monospace;word-break:break-all;color:${u.emailVerified?'#00b894':'#e17055'};">
+                                    ${u.email||'—'} ${u.email?(u.emailVerified?'✅ верифицирован':'❌ не верифицирован'):''}
+                                </div>
                             </div>
                             <div style="background:rgba(36,129,204,0.08);border:1px solid rgba(36,129,204,0.15);border-radius:12px;padding:10px;">
                                 <div style="font-size:10px;color:#4a6080;margin-bottom:3px;">💰 Баланс</div>
@@ -6400,6 +6365,8 @@
         friend_add:    { icon:'👥', label:'Друзья',  color:'rgba(46,204,113,0.1)',    balDelta: null, fmt: e => `Добавил в друзья @${e.friendId}` },
         friend_request:{ icon:'👋', label:'Друзья',  color:'rgba(46,204,113,0.07)',   balDelta: null, fmt: e => `Запрос в друзья → @${e.toId}` },
         nft_upgrade:   { icon:'⚗️', label:'NFT',    color:'rgba(162,155,254,0.12)', balDelta: null, fmt: e => `Улучшил: <b>${e.item}</b> до ур.${e.level}` },
+        password_change: { icon:'🔑', label:'Безопасность', color:'rgba(243,156,18,0.12)', balDelta: null, fmt: e => `Сменил пароль` },
+        email_bind:    { icon:'📧', label:'Безопасность', color:'rgba(46,204,113,0.1)',   balDelta: null, fmt: e => `Привязал email: <b>${e.email}</b>` },
     };
 
     window.admShowUserLog = async (userId, username) => {
