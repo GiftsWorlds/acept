@@ -786,6 +786,7 @@
             </div>
             <div class="auth-err" id="l-err"></div>
             <button class="btn" style="background:var(--accent);" onclick="auth('login')">Войти →</button>
+            <button class="btn" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:var(--secondary);font-size:13px;margin-top:4px;" onclick="showForgotPasswordScreen()">🔑 Забыл пароль</button>
         </div>
 
         <!-- Register form -->
@@ -845,6 +846,50 @@
     </div>
 </div>
 
+
+<!-- ===== FORGOT PASSWORD SCREEN ===== -->
+<div id="forgot-password-screen" style="display:none;" class="auth-wrap">
+    <div class="auth-logo">
+        <div style="font-size:52px;">🔑</div>
+        <h1 style="font-size:24px;">Сброс пароля</h1>
+        <p id="fp-desc" style="color:var(--secondary);font-size:13px;text-align:center;margin:0;padding:0 10px;">Введи свой email — пришлём код для сброса</p>
+    </div>
+    <div class="auth-card" style="padding:20px;">
+        <!-- Step 1: Enter email -->
+        <div id="fp-step-1">
+            <div class="input-wrap" style="margin-bottom:8px;">
+                <input type="email" id="fp-email" placeholder="📧 Твой email" autocomplete="email" oninput="clearAuthErr('fp-err')">
+            </div>
+            <div class="auth-err" id="fp-err"></div>
+            <button class="btn" style="background:var(--accent);" onclick="sendForgotCode()">Получить код →</button>
+        </div>
+        <!-- Step 2: Enter code -->
+        <div id="fp-step-2" style="display:none;">
+            <p style="color:var(--secondary);font-size:13px;text-align:center;margin:0 0 12px;">Код отправлен на <span id="fp-email-display" style="color:white;font-weight:bold;"></span></p>
+            <div class="input-wrap" style="margin-bottom:8px;">
+                <input type="text" id="fp-code" placeholder="🔑 6-значный код" maxlength="6" autocomplete="one-time-code" oninput="clearAuthErr('fp-err2')" style="text-align:center;font-size:22px;letter-spacing:6px;font-weight:bold;">
+            </div>
+            <div class="auth-err" id="fp-err2"></div>
+            <button class="btn" style="background:var(--green);margin-bottom:8px;" onclick="confirmForgotCode()">✅ Подтвердить код</button>
+            <button class="btn" style="background:#1a2636;color:var(--secondary);border:1px solid rgba(255,255,255,0.08);font-size:13px;" onclick="resendForgotCode()">🔄 Отправить снова</button>
+        </div>
+        <!-- Step 3: New password -->
+        <div id="fp-step-3" style="display:none;">
+            <p style="color:var(--secondary);font-size:13px;text-align:center;margin:0 0 12px;">Придумай новый пароль</p>
+            <div class="input-wrap" style="margin-bottom:8px;">
+                <input type="password" id="fp-newpass" placeholder="🔒 Новый пароль" autocomplete="new-password" oninput="clearAuthErr('fp-err3')">
+            </div>
+            <div class="input-wrap" style="margin-bottom:8px;">
+                <input type="password" id="fp-newpass2" placeholder="🔒 Повтори пароль" autocomplete="new-password" oninput="clearAuthErr('fp-err3')">
+            </div>
+            <div class="auth-err" id="fp-err3"></div>
+            <button class="btn" style="background:var(--green);" onclick="setNewPassword()">💾 Сохранить пароль</button>
+        </div>
+    </div>
+    <div style="color:var(--secondary);font-size:12px;text-align:center;margin-top:8px;">
+        <span onclick="hideForgotPasswordScreen()" style="cursor:pointer;text-decoration:underline;">← Вернуться ко входу</span>
+    </div>
+</div>
 <div id="app" style="display:none">
     <div style="padding:15px 20px;background:var(--glass);position:sticky;top:0;z-index:100;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.05);">
         <b id="header-name" style="display:inline-block;">...</b>
@@ -1996,7 +2041,6 @@
             emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
             await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
                 to_email: _verifyEmail,
-                to_name: _verifyEmail,
                 to_name: _pendingLoginId,
                 code: _verifyCode
             });
@@ -2066,6 +2110,130 @@
     // ═══════════════════════════════════════════════════════════════
 
     async function giveNftToCkovoroda() {
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🔑 FORGOT PASSWORD SYSTEM
+    // ═══════════════════════════════════════════════════════════════
+    let _fpEmail = '';
+    let _fpCode = '';
+    let _fpUserId = '';
+    let _fpCooldown = false;
+
+    window.showForgotPasswordScreen = function() {
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('forgot-password-screen').style.display = 'flex';
+        document.getElementById('fp-step-1').style.display = 'block';
+        document.getElementById('fp-step-2').style.display = 'none';
+        document.getElementById('fp-step-3').style.display = 'none';
+        document.getElementById('fp-err').innerText = '';
+        document.getElementById('fp-err2').innerText = '';
+        document.getElementById('fp-err3').innerText = '';
+        document.getElementById('fp-email').value = '';
+        _fpEmail = ''; _fpCode = ''; _fpUserId = ''; _fpCooldown = false;
+    };
+
+    window.hideForgotPasswordScreen = function() {
+        document.getElementById('forgot-password-screen').style.display = 'none';
+        document.getElementById('auth-screen').style.display = 'flex';
+    };
+
+    window.sendForgotCode = async function() {
+        const emailInput = document.getElementById('fp-email').value.trim().toLowerCase();
+        const errEl = document.getElementById('fp-err');
+        if (!emailInput) { errEl.innerText = 'Введи email'; return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailInput)) { errEl.innerText = 'Неверный формат email'; return; }
+        if (_fpCooldown) { errEl.innerText = 'Подожди 60 секунд'; return; }
+
+        let foundId = null;
+        try {
+            const snap = await get(ref(db, 'users'));
+            if (snap.exists()) {
+                snap.forEach(child => {
+                    const d = child.val();
+                    if (d.email && d.email.toLowerCase() === emailInput) foundId = child.key;
+                });
+            }
+        } catch(e) { errEl.innerText = 'Ошибка базы данных'; return; }
+
+        if (!foundId) { errEl.innerText = 'Аккаунт с таким email не найден'; return; }
+
+        _fpEmail = emailInput;
+        _fpUserId = foundId;
+        _fpCode = generateCode();
+
+        const expiry = Date.now() + 10 * 60 * 1000;
+        try {
+            await set(ref(db, 'resetCodes/' + foundId), { code: _fpCode, email: _fpEmail, expiry });
+        } catch(e) { errEl.innerText = 'Ошибка базы данных'; return; }
+
+        const sendBtn = document.querySelector('#fp-step-1 .btn');
+        sendBtn.disabled = true; sendBtn.innerText = 'Отправляем...';
+
+        let sent = false;
+        try {
+            emailjs.init({publicKey: EMAILJS_PUBLIC_KEY});
+            await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                to_email: _fpEmail, to_name: _fpUserId, code: _fpCode
+            });
+            sent = true;
+        } catch(e) { console.warn('EmailJS error:', e); }
+
+        sendBtn.disabled = false; sendBtn.innerText = 'Получить код';
+        document.getElementById('fp-step-1').style.display = 'none';
+        document.getElementById('fp-step-2').style.display = 'block';
+        document.getElementById('fp-email-display').innerText = _fpEmail;
+
+        if (sent) showToast('Код отправлен на ' + _fpEmail, 'var(--green)');
+        else showToast('Код: ' + _fpCode, 'var(--orange)');
+
+        _fpCooldown = true;
+        setTimeout(() => { _fpCooldown = false; }, 60000);
+    };
+
+    window.resendForgotCode = function() {
+        document.getElementById('fp-step-1').style.display = 'block';
+        document.getElementById('fp-step-2').style.display = 'none';
+        document.getElementById('fp-err').innerText = '';
+        _fpCooldown = false;
+    };
+
+    window.confirmForgotCode = async function() {
+        const inputCode = document.getElementById('fp-code').value.trim();
+        const errEl = document.getElementById('fp-err2');
+        if (!inputCode || inputCode.length !== 6) { errEl.innerText = 'Введи 6-значный код'; return; }
+        const btn = document.querySelector('#fp-step-2 .btn');
+        btn.disabled = true;
+        try {
+            const snap = await get(ref(db, 'resetCodes/' + _fpUserId));
+            if (!snap.exists()) { errEl.innerText = 'Код не найден. Запроси новый'; btn.disabled=false; return; }
+            const data = snap.val();
+            if (Date.now() > data.expiry) { errEl.innerText = 'Код истёк. Запроси новый'; btn.disabled=false; return; }
+            if (data.code !== inputCode) { errEl.innerText = 'Неверный код'; btn.disabled=false; return; }
+            document.getElementById('fp-step-2').style.display = 'none';
+            document.getElementById('fp-step-3').style.display = 'block';
+        } catch(e) { errEl.innerText = 'Ошибка: ' + e.message; }
+        btn.disabled = false;
+    };
+
+    window.setNewPassword = async function() {
+        const pass1 = document.getElementById('fp-newpass').value;
+        const pass2 = document.getElementById('fp-newpass2').value;
+        const errEl = document.getElementById('fp-err3');
+        if (!pass1 || pass1.length < 4) { errEl.innerText = 'Пароль минимум 4 символа'; return; }
+        if (pass1 !== pass2) { errEl.innerText = 'Пароли не совпадают'; return; }
+        const btn = document.querySelector('#fp-step-3 .btn');
+        btn.disabled = true;
+        try {
+            await update(ref(db, 'users/' + _fpUserId), { password: pass1 });
+            await set(ref(db, 'resetCodes/' + _fpUserId), null);
+            showToast('Пароль изменён! Войди с новым паролем', 'var(--green)');
+            document.getElementById('forgot-password-screen').style.display = 'none';
+            document.getElementById('auth-screen').style.display = 'flex';
+        } catch(e) { errEl.innerText = 'Ошибка: ' + e.message; }
+        btn.disabled = false;
+    };
+    // ═══════════════════════════════════════════════════════════════
+
         // NFT при входе отключены
     }
 
