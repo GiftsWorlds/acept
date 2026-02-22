@@ -33,7 +33,6 @@
             background: var(--input-bg) !important; border-color: var(--input-border) !important; color: var(--text) !important;
         }
         body.light-mode .modal-box { background: var(--modal-bg); border-color: var(--modal-border); }
-        body.light-mode .nft-card { background: linear-gradient(135deg,#fffbea,#fff8e1) !important; }
         #theme-btn { width:36px;height:36px;border-radius:50%;border:none;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.2s;background:rgba(255,255,255,0.08);flex-shrink:0; }
         body.light-mode #theme-btn { background:rgba(0,0,0,0.07); }
 
@@ -2982,7 +2981,7 @@
         let nftHtml = '';
         if(tl!==null){
             const av=isNftAvailable();
-            nftHtml=`<div class="card nft-card" style="grid-column:1/-1;border:2px solid gold;background:${document.body.classList.contains('light-mode')?'linear-gradient(135deg,#fffbea,#fff8e1)':'linear-gradient(135deg,#1a1200,#111b21)'};position:relative;overflow:hidden;text-align:center;padding:20px;">
+            nftHtml=`<div class="card nft-card" style="grid-column:1/-1;border:2px solid gold;background:linear-gradient(135deg,#1a1200,#111b21);position:relative;overflow:hidden;text-align:center;padding:20px;">
                 <div style="position:absolute;top:10px;right:12px;font-size:11px;background:gold;color:#000;padding:3px 10px;border-radius:20px;font-weight:bold;z-index:2;letter-spacing:1px;">NFT</div>
                 <div style="display:flex;justify-content:center;gap:16px;margin-bottom:8px;">
                     <div style="text-align:center;">
@@ -2998,7 +2997,7 @@
                 <p style="color:var(--secondary);font-size:12px;margin:5px 0 4px;position:relative;z-index:2;">Эксклюзивный подарок — только 23 февраля! 🍺 Пиво + 🧦 Носок</p>
                 <div style="font-weight:bold;color:gold;font-size:16px;margin-bottom:4px;position:relative;z-index:2;">🍺 10 000 💰 + 🧦 5 000 💰</div>
                 <div style="font-size:12px;color:var(--orange);margin-bottom:8px;position:relative;z-index:2;">${tl}</div>
-                ${av?`<button class="btn" style="background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;font-weight:bold;position:relative;z-index:2;" onclick="buyNft(event)">🛒 Купить оба NFT за 15 000 💰</button>`:`<button class="btn" style="background:${document.body.classList.contains('light-mode')?'#e0e0e0;color:#999':'#2a2a2a;color:#666'};cursor:default;position:relative;z-index:2;" disabled>🔒 Недоступно</button>`}
+                ${av?`<button class="btn" style="background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;font-weight:bold;position:relative;z-index:2;" onclick="buyNft(event)">🛒 Купить оба NFT за 15 000 💰</button>`:`<button class="btn" style="background:#2a2a2a;color:#666;cursor:default;position:relative;z-index:2;" disabled>🔒 Недоступно</button>`}
             </div>`;
         }
         document.getElementById('shop').innerHTML = `
