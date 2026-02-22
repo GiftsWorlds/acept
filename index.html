@@ -4605,20 +4605,10 @@
     window.avatarFileSelected = function(input) {
         const file = input.files[0];
         if (!file) return;
+        input.value = '';
         const reader = new FileReader();
         reader.onload = (e) => {
-            const img = new Image();
-            img.onload = () => {
-                _avatarOrigImg = img;
-                _avatarMirrored = false;
-                document.getElementById('av-scale').value = 100;
-                document.getElementById('av-offx').value = 0;
-                document.getElementById('av-offy').value = 0;
-                document.getElementById('av-rotate').value = 0;
-                document.getElementById('avatar-editor-tools').style.display = 'block';
-                avatarUpdateCanvas();
-            };
-            img.src = e.target.result;
+            openAvEditorModal(e.target.result);
         };
         reader.readAsDataURL(file);
     };
@@ -6867,5 +6857,203 @@
     };
 
 </script>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!--  FULLSCREEN AVATAR EDITOR MODAL                                -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div id="av-editor-modal" style="
+    display:none;
+    position:fixed;inset:0;z-index:99999;
+    background:rgba(0,0,0,0.92);
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-start;
+    overflow-y:auto;
+    padding:16px;
+    box-sizing:border-box;
+">
+    <div style="width:100%;max-width:420px;background:#0e1621;border-radius:20px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,0.6);border:1px solid rgba(255,255,255,0.08);">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <div style="font-size:16px;font-weight:700;color:white;">✏️ Редактор аватара</div>
+            <button onclick="closeAvEditorModal()" style="background:rgba(255,255,255,0.08);border:none;border-radius:10px;color:white;font-size:18px;width:36px;height:36px;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+
+        <!-- Canvas preview -->
+        <div style="display:flex;justify-content:center;margin-bottom:16px;">
+            <canvas id="av-editor-canvas" width="200" height="200" style="width:200px;height:200px;border-radius:50%;border:4px solid rgba(36,129,204,0.5);background:#0a1520;"></canvas>
+        </div>
+
+        <!-- Scale -->
+        <div style="margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="font-size:12px;color:#7f91a4;">🔍 Размер</span>
+                <span id="av-ed-scale-val" style="font-size:12px;color:#2481cc;">100%</span>
+            </div>
+            <input type="range" id="av-ed-scale" min="20" max="300" value="100" style="width:100%;accent-color:#2481cc;" oninput="avEdUpdate()">
+        </div>
+
+        <!-- Offset X / Y -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+            <div>
+                <div style="font-size:11px;color:#7f91a4;margin-bottom:3px;">← → X</div>
+                <input type="range" id="av-ed-offx" min="-100" max="100" value="0" style="width:100%;accent-color:#2481cc;" oninput="avEdUpdate()">
+            </div>
+            <div>
+                <div style="font-size:11px;color:#7f91a4;margin-bottom:3px;">↑ ↓ Y</div>
+                <input type="range" id="av-ed-offy" min="-100" max="100" value="0" style="width:100%;accent-color:#2481cc;" oninput="avEdUpdate()">
+            </div>
+        </div>
+
+        <!-- Rotate -->
+        <div style="margin-bottom:16px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                <span style="font-size:12px;color:#7f91a4;">🔄 Поворот</span>
+                <span id="av-ed-rotate-val" style="font-size:12px;color:#2481cc;">0°</span>
+            </div>
+            <input type="range" id="av-ed-rotate" min="-180" max="180" value="0" style="width:100%;accent-color:#2481cc;" oninput="avEdUpdate()">
+        </div>
+
+        <!-- Mirror + Remove BG + Reset -->
+        <div style="display:flex;gap:8px;margin-bottom:16px;">
+            <button onclick="avEdToggleMirror()" id="av-ed-mirror-btn" style="flex:1;padding:10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:white;font-size:13px;cursor:pointer;">🪞 Зеркально</button>
+            <button onclick="avEdRemoveBg()" style="flex:1;padding:10px;background:linear-gradient(135deg,#6c3ce1,#a855f7);border:none;border-radius:12px;color:white;font-size:13px;cursor:pointer;font-weight:600;">✨ Убрать фон</button>
+            <button onclick="avEdReset()" style="padding:10px 14px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#7f91a4;font-size:14px;cursor:pointer;">↺</button>
+        </div>
+
+        <!-- Apply button -->
+        <button onclick="avEdApply()" style="width:100%;padding:14px;background:linear-gradient(135deg,#2481cc,#1a6ab1);border:none;border-radius:14px;color:white;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:0.3px;">✅ Применить аватар</button>
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  AVATAR EDITOR MODAL LOGIC
+// ═══════════════════════════════════════════════════════════════
+let _avEdOrigImg = null;
+let _avEdMirrored = false;
+
+window.openAvEditorModal = function(imgSrc) {
+    _avEdMirrored = false;
+    document.getElementById('av-ed-scale').value = 100;
+    document.getElementById('av-ed-offx').value = 0;
+    document.getElementById('av-ed-offy').value = 0;
+    document.getElementById('av-ed-rotate').value = 0;
+    document.getElementById('av-ed-scale-val').textContent = '100%';
+    document.getElementById('av-ed-rotate-val').textContent = '0°';
+    const btn = document.getElementById('av-ed-mirror-btn');
+    if (btn) { btn.style.background = 'rgba(255,255,255,0.06)'; btn.style.borderColor = 'rgba(255,255,255,0.12)'; }
+
+    const img = new Image();
+    img.onload = () => {
+        _avEdOrigImg = img;
+        document.getElementById('av-editor-modal').style.display = 'flex';
+        avEdUpdate();
+    };
+    img.src = imgSrc;
+};
+
+window.closeAvEditorModal = function() {
+    document.getElementById('av-editor-modal').style.display = 'none';
+    _avEdOrigImg = null;
+};
+
+window.avEdUpdate = function() {
+    if (!_avEdOrigImg) return;
+    const scale  = +document.getElementById('av-ed-scale').value;
+    const offX   = +document.getElementById('av-ed-offx').value;
+    const offY   = +document.getElementById('av-ed-offy').value;
+    const rotate = +document.getElementById('av-ed-rotate').value;
+    document.getElementById('av-ed-scale-val').textContent = scale + '%';
+    document.getElementById('av-ed-rotate-val').textContent = rotate + '°';
+
+    const canvas = document.getElementById('av-editor-canvas');
+    const SIZE = 200;
+    canvas.width = SIZE; canvas.height = SIZE;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, SIZE, SIZE);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(SIZE/2, SIZE/2, SIZE/2, 0, Math.PI*2);
+    ctx.clip();
+
+    ctx.translate(SIZE/2 + offX*2, SIZE/2 + offY*2);
+    if (_avEdMirrored) ctx.scale(-1, 1);
+    ctx.rotate(rotate * Math.PI / 180);
+    const s = scale / 100;
+    const fw = _avEdOrigImg.naturalWidth * s;
+    const fh = _avEdOrigImg.naturalHeight * s;
+    ctx.drawImage(_avEdOrigImg, -fw/2, -fh/2, fw, fh);
+    ctx.restore();
+};
+
+window.avEdToggleMirror = function() {
+    _avEdMirrored = !_avEdMirrored;
+    const btn = document.getElementById('av-ed-mirror-btn');
+    if (btn) {
+        btn.style.background = _avEdMirrored ? 'rgba(36,129,204,0.25)' : 'rgba(255,255,255,0.06)';
+        btn.style.borderColor = _avEdMirrored ? '#2481cc' : 'rgba(255,255,255,0.12)';
+    }
+    avEdUpdate();
+};
+
+window.avEdReset = function() {
+    _avEdMirrored = false;
+    document.getElementById('av-ed-scale').value = 100;
+    document.getElementById('av-ed-offx').value = 0;
+    document.getElementById('av-ed-offy').value = 0;
+    document.getElementById('av-ed-rotate').value = 0;
+    document.getElementById('av-ed-scale-val').textContent = '100%';
+    document.getElementById('av-ed-rotate-val').textContent = '0°';
+    const btn = document.getElementById('av-ed-mirror-btn');
+    if (btn) { btn.style.background = 'rgba(255,255,255,0.06)'; btn.style.borderColor = 'rgba(255,255,255,0.12)'; }
+    avEdUpdate();
+};
+
+window.avEdRemoveBg = function() {
+    if (!_avEdOrigImg) return;
+    avEdUpdate();
+    const canvas = document.getElementById('av-editor-canvas');
+    const SIZE = 200;
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = SIZE; tempCanvas.height = SIZE;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.drawImage(canvas, 0, 0);
+    if (typeof _removeBgFromCanvas === 'function') _removeBgFromCanvas(tempCanvas);
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, SIZE, SIZE);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(SIZE/2, SIZE/2, SIZE/2, 0, Math.PI*2);
+    ctx.clip();
+    ctx.drawImage(tempCanvas, 0, 0);
+    ctx.restore();
+    if (typeof showToast === 'function') showToast('✨ Фон удалён!', '#27ae60');
+};
+
+window.avEdApply = function() {
+    const canvas = document.getElementById('av-editor-canvas');
+    const b64 = canvas.toDataURL('image/png');
+
+    // Copy result to the profile form canvas
+    _avatarImgB64 = b64;
+    const profileCanvas = document.getElementById('avatar-canvas');
+    if (profileCanvas) {
+        profileCanvas.width = 200; profileCanvas.height = 200;
+        const ctx = profileCanvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => { ctx.clearRect(0,0,200,200); ctx.drawImage(img,0,0,200,200); };
+        img.src = b64;
+        profileCanvas.style.display = 'block';
+        const empty = document.getElementById('avatar-canvas-empty');
+        if (empty) empty.style.display = 'none';
+    }
+
+    closeAvEditorModal();
+    if (typeof showToast === 'function') showToast('✅ Аватар готов! Нажми «Сохранить»', '#2481cc');
+};
+</script>
+
 </body>
 </html>
