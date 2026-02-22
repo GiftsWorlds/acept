@@ -1232,7 +1232,7 @@
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getDatabase, ref, set, get, onValue, push, remove, update, onDisconnect } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+    import { getDatabase, ref, set, get, onValue, push, remove, update, onDisconnect, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
     const config = {
         apiKey: "AIzaSyDkKqqEKpB3KHpmf9umilK1mkMdHRrSNiA",
@@ -1309,6 +1309,152 @@
     const MOD_IDS = new Set(['batlukov','nowkie']);
     const MOD_PREFIXES = { batlukov: '🎨 Художник', nowkie: '🧪 Тестировщик' };
 
+    // Нормализация cloudInv: Firebase может вернуть объект вместо массива
+    function toArr(v) { return Array.isArray(v) ? v : (v && typeof v === 'object' ? Object.values(v) : []); }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🛡️ ЗАЩИТА ОТ БОТОВ И DDOS
+    // ═══════════════════════════════════════════════════════════════
+    const _protection = (() => {
+        // --- Хранилище счётчиков (в памяти, сбрасывается при перезагрузке) ---
+        const _counters = {};      // { key: { count, firstTs, blockedUntil } }
+        const _lsKey = 'gw_sec';   // localStorage key для persistent блокировок
+
+        // Получить / сохранить постоянные блокировки
+        function _loadBlocks() {
+            try { return JSON.parse(localStorage.getItem(_lsKey) || '{}'); } catch { return {}; }
+        }
+        function _saveBlocks(b) {
+            try { localStorage.setItem(_lsKey, JSON.stringify(b)); } catch {}
+        }
+
+        // Основная функция rate-limit
+        // key        — уникальный ключ действия (напр. 'login', 'buy_123')
+        // maxCount   — макс. кол-во попыток за windowMs
+        // windowMs   — окно времени (мс)
+        // blockMs    — блокировка при превышении (мс)
+        function check(key, maxCount = 5, windowMs = 60_000, blockMs = 300_000) {
+            const now = Date.now();
+
+            // Проверяем постоянную блокировку (localStorage)
+            const blocks = _loadBlocks();
+            if (blocks[key] && blocks[key] > now) {
+                const left = Math.ceil((blocks[key] - now) / 1000);
+                return { ok: false, msg: `🚫 Слишком много попыток. Подождите ${left} сек.`, blocked: true };
+            }
+
+            // In-memory счётчик
+            if (!_counters[key] || now - _counters[key].firstTs > windowMs) {
+                _counters[key] = { count: 1, firstTs: now };
+            } else {
+                _counters[key].count++;
+            }
+
+            if (_counters[key].count > maxCount) {
+                // Записываем блокировку в localStorage
+                blocks[key] = now + blockMs;
+                _saveBlocks(blocks);
+                delete _counters[key];
+                const left = Math.ceil(blockMs / 1000);
+                return { ok: false, msg: `🚫 Слишком много попыток. Подождите ${left} сек.`, blocked: true };
+            }
+
+            return { ok: true };
+        }
+
+        // Очистка устаревших блокировок в localStorage
+        function cleanup() {
+            const now = Date.now();
+            const blocks = _loadBlocks();
+            const fresh = Object.fromEntries(Object.entries(blocks).filter(([,v]) => v > now));
+            _saveBlocks(fresh);
+        }
+        setInterval(cleanup, 60_000);
+
+        // Показать ошибку в элементе (или toast)
+        function showErr(msg, errElId) {
+            if (errElId) {
+                const el = document.getElementById(errElId);
+                if (el) { el.innerText = msg; return; }
+            }
+            showToast(msg, '#e74c3c');
+        }
+
+        // ---- Конкретные лимиты ----
+        return {
+            // Вход: 5 попыток за 60с, блок 5 мин
+            login(username) {
+                const r1 = check('login_global', 10, 60_000, 300_000);
+                if (!r1.ok) return r1;
+                const r2 = check('login_u_' + username, 5, 60_000, 300_000);
+                return r2;
+            },
+            // Регистрация: 3 за 60с, блок 10 мин
+            register() {
+                return check('register', 3, 60_000, 600_000);
+            },
+            // Покупка в магазине: 15 за 30с
+            buy() {
+                return check('buy', 15, 30_000, 60_000);
+            },
+            // Покупка с рынка: 10 за 30с
+            buyMarket() {
+                return check('buyM', 10, 30_000, 60_000);
+            },
+            // Дарение: 10 за 60с
+            sendGift() {
+                return check('sendG', 10, 60_000, 120_000);
+            },
+            // Слияние: 10 за 30с
+            merge() {
+                return check('merge', 10, 30_000, 60_000);
+            },
+            // Промокод: 5 за 60с, блок 10 мин (защита от перебора)
+            promo() {
+                return check('promo', 5, 60_000, 600_000);
+            },
+            // Торговля: 10 за 60с
+            trade() {
+                return check('trade', 10, 60_000, 120_000);
+            },
+            // Дуэль: 10 за 60с
+            duel() {
+                return check('duel', 10, 60_000, 120_000);
+            },
+        };
+    })();
+
+    // Rate limiting реализован на уровне каждой функции через _protection.*
+    // Перехват Firebase get() не нужен — это создаёт конфликт с импортом
+
+    // ─── Детектор автоматизации (простые эвристики) ───────────────
+    (function detectBot() {
+        const signals = [];
+        // 1. WebDriver
+        if (navigator.webdriver) signals.push('webdriver');
+        // 2. headless Chrome
+        if (/HeadlessChrome/.test(navigator.userAgent)) signals.push('headless');
+        // 3. PhantomJS
+        if (window._phantom || window.callPhantom) signals.push('phantom');
+        // 4. Selenium
+        if (document.documentElement.getAttribute('webdriver')) signals.push('selenium');
+        // 5. Нет тач/мыши после 3с (боты не двигают мышь)
+        let hasInteraction = false;
+        const interactionEvents = ['mousemove','touchstart','keydown','scroll','click'];
+        const markInteraction = () => { hasInteraction = true; interactionEvents.forEach(e => document.removeEventListener(e, markInteraction)); };
+        interactionEvents.forEach(e => document.addEventListener(e, markInteraction, {passive:true}));
+
+        if (signals.length > 0) {
+            console.warn('🤖 Bot signals detected:', signals);
+            // Задержка ответа для ботов
+            document.getElementById('auth-screen') && (document.getElementById('auth-screen').style.pointerEvents = 'none');
+            setTimeout(() => {
+                document.getElementById('auth-screen') && (document.getElementById('auth-screen').style.pointerEvents = '');
+            }, 3000);
+        }
+    })();
+    // ═══════════════════════════════════════════════════════════════
+
     function buildUsername(d, uid) {
         const resolvedId = uid || (typeof d.username === 'string' ? d.username.toLowerCase() : '');
         const isAdmin = ADMIN_IDS.has(resolvedId);
@@ -1350,7 +1496,7 @@
         }
 
         // Lizard badge — shown if user owns NFT_LIZARD (id 997)
-        const hasLizard = (d.cloudInv||[]).some(x => x.id === 997);
+        const hasLizard = toArr(d.cloudInv).some(x => x.id === 997);
         const lizard = hasLizard ? `<span class="lizard-badge">🦎</span>` : '';
 
         return `${prefix}${nameEl}${badge}${lizard}`;
@@ -1650,11 +1796,25 @@
             const errEl=document.getElementById('l-err');
             const btn=document.querySelector('#form-login .btn');
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
+            // 🛡️ Rate limit
+            const _rl = _protection.login(u);
+            if(!_rl.ok){ errEl.innerText = _rl.msg; return; }
             btn.disabled=true; btn.innerText='⏳ Входим...';
             try {
                 const s=await get(ref(db,'users/'+u));
-                if(s.exists()&&s.val().password==p){ loginOk(s.val().username,u); }
-                else { errEl.innerText='❌ Неверный логин или пароль'; document.getElementById('l-pass').value=''; }
+                if(s.exists()&&s.val().password==p){
+                    loginOk(s.val().username,u);
+                } else {
+                    // 🛡️ Прогрессивная задержка при неверном пароле (замедляет брутфорс)
+                    const _failKey = 'fail_'+u;
+                    const _fails = (parseInt(localStorage.getItem(_failKey)||'0'))+1;
+                    localStorage.setItem(_failKey, _fails);
+                    const _delay = Math.min(_fails * 500, 5000); // 0.5s → 5s макс
+                    await new Promise(r=>setTimeout(r,_delay));
+                    errEl.innerText='❌ Неверный логин или пароль';
+                    document.getElementById('l-pass').value='';
+                    if(_fails>=3) errEl.innerText+=` (попытка ${_fails})`;
+                }
             } catch(e) {
                 errEl.innerText='❌ Ошибка подключения: ' + e.message;
             } finally {
@@ -1668,6 +1828,9 @@
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
             if(u.length<3){ errEl.innerText='❌ Логин минимум 3 символа'; return; }
             if(p.length<4){ errEl.innerText='❌ Пароль минимум 4 символа'; return; }
+            // 🛡️ Rate limit
+            const _rlR = _protection.register();
+            if(!_rlR.ok){ errEl.innerText = _rlR.msg; return; }
             btn.disabled=true; btn.innerText='⏳ Регистрация...';
             try {
                 const ip=await getIP(), ipKey=ip.replace(/\./g,'_'), r=ref(db,'users/'+u), s=await get(r);
@@ -1685,7 +1848,11 @@
         }
     };
 
-    function loginOk(name,id){localStorage.setItem('gifts_user',JSON.stringify({name,id}));startApp(name,id);}
+    function loginOk(name,id){
+        localStorage.removeItem('fail_'+id); // 🛡️ сброс счётчика неудачных попыток
+        localStorage.setItem('gifts_user',JSON.stringify({name,id}));
+        startApp(name,id);
+    }
 
     async function giveNftToCkovoroda() {
         // NFT при входе отключены
@@ -1701,10 +1868,10 @@
         if(id==='ckovoroda'){
             (async()=>{
                 const _r=ref(db,'users/ckovoroda'),_s=await get(_r),_d=_s.val();
-                const _inv=(_d&&_d.cloudInv)||[];
+                const _inv=toArr(_d&&_d.cloudInv);
                 if(!_inv.some(x=>x.id===996&&x.nft)){
                     const _serial=await getNextNftSerial();
-                    const _p={...NFT_PAN};delete _p.img;_inv.push({..._p,inst:Date.now(),seen:false,nftSerial:_serial,from:'🎁 Подарок'});
+                    const _p={...NFT_PAN};delete _p.img;_inv.push({..._p,inst:_serial,seen:false,nftSerial:_serial,from:'🎁 Подарок'});
                     await update(_r,{cloudInv:_inv});
                 }
             })();
@@ -1727,7 +1894,7 @@
             document.getElementById('u-bal').innerText=d.balance;
             renderFriends(d); renderMyProfile(d);
             // 🔴 Unseen gifts badge
-            const inv=d.cloudInv||[];
+            const inv=toArr(d.cloudInv);
             const unseen=inv.filter(x=>!x.seen).length;
             const bInv=document.getElementById('badge-inv');
             bInv.innerText=unseen; bInv.style.display=unseen>0?'flex':'none';
@@ -1745,6 +1912,8 @@
     window.usePromo = async () => {
         const code = document.getElementById('promo-input')?.value?.trim().toUpperCase();
         if(!code) return showToast("Введи промокод!",'var(--err)');
+        // 🛡️ Rate limit
+        const _rlP = _protection.promo(); if(!_rlP.ok) return showToast(_rlP.msg, '#e74c3c');
         const ps = await get(ref(db,'promos/'+code));
         if(!ps.exists()) return showToast("Промокод не найден!",'var(--err)');
         const promo = ps.val();
@@ -1754,13 +1923,13 @@
         const updates = { balance: us.val().balance + (promo.reward||0) };
         // Support new giftObj (full item) and legacy gift (emoji string)
         if(promo.giftObj) {
-            const inv = us.val().cloudInv||[];
+            const inv = toArr(us.val().cloudInv);
             const serial = await getNextNftSerial();
-            const _g={...promo.giftObj};if(_g.img&&_g.img.startsWith('data:'))delete _g.img;inv.push({..._g, inst:Date.now(), from:"PROMO", seen:false, nftSerial:serial});
+            const _g={...promo.giftObj};if(_g.img&&_g.img.startsWith('data:'))delete _g.img;inv.push({..._g, inst:serial, from:"PROMO", seen:false, nftSerial:serial});
             updates.cloudInv = inv;
         } else if(promo.gift) {
             const itm = catalog.find(x=>x.i===promo.gift)||{id:0,n:"Подарок",i:promo.gift};
-            const inv = us.val().cloudInv||[];
+            const inv = toArr(us.val().cloudInv);
             inv.push({...itm, inst:Date.now(), from:"PROMO", seen:false});
             updates.cloudInv = inv;
         }
@@ -1778,7 +1947,7 @@
     };
     window.togglePin = async (inst) => {
         const r=ref(db,'users/'+user.id),s=await get(r),d=s.val();
-        const cloudInv=d.cloudInv||[];
+        const cloudInv=toArr(d.cloudInv);
         let pinnedInsts=(d.pinnedInsts||[]).filter(id=>cloudInv.some(x=>String(x.inst)==String(id)));
         const isP=pinnedInsts.some(id=>String(id)==String(inst));
         if(isP){pinnedInsts=pinnedInsts.filter(id=>String(id)!=String(inst));showToast("Снято","var(--secondary)");}
@@ -1794,7 +1963,7 @@
     window.sellItem = async (inst, reward) => {
         const r = ref(db, 'users/' + user.id);
         const s = await get(r), d = s.val();
-        const inv = d.cloudInv || [];
+        const inv = toArr(d.cloudInv);
         const item = inv.find(x => String(x.inst) === String(inst));
         if (!item) return showToast('Предмет не найден!', 'var(--err)');
         if (item.nft && !user.isAdm) return showToast('❌ NFT нельзя удалять!', 'var(--err)');
@@ -1814,7 +1983,8 @@
     };
 
         window.renderInv = async () => {
-        const s=await get(ref(db,'users/'+user.id)),d=s.val(),inv=d.cloudInv||[];
+        const s=await get(ref(db,'users/'+user.id)),d=s.val();
+        const inv=toArr(d.cloudInv);
         const upd=inv.map(x=>({...x,seen:true}));
         await update(ref(db,'users/'+user.id),{cloudInv:upd});
         
@@ -1910,8 +2080,10 @@
     function getRarityObj(item) { return RARITY_LEVELS[getRarityLevel(item)]||RARITY_LEVELS[0]; }
 
     async function getNextNftSerial() {
-        const r=ref(db,"nft_counter"),snap=await get(r),next=(snap.val()||1000)+1;
-        await set(r,next); return next;
+        const r=ref(db,"nft_counter");
+        let next;
+        await runTransaction(r, current => { next = (current||1000)+1; return next; });
+        return next;
     }
 
     function getMergeable(inv) {
@@ -1928,7 +2100,7 @@
     }
 
     window.openMergeModal = async () => {
-        const s=await get(ref(db,"users/"+user.id)),d=s.val(),inv=d.cloudInv||[];
+        const s=await get(ref(db,"users/"+user.id)),d=s.val(),inv=toArr(d.cloudInv);
         const groups=getMergeable(inv);
         if(!groups.length){showToast("Нет предметов для слияния! Нужно 3 одинаковых.","var(--secondary)");return;}
         const html=groups.map(g=>{
@@ -1958,8 +2130,10 @@
     };
 
     window.doMerge = async (itemId, currentRarity) => {
+        // 🛡️ Rate limit
+        const _rlM = _protection.merge(); if(!_rlM.ok) return showToast(_rlM.msg, '#e74c3c');
         const r=ref(db,"users/"+user.id),s=await get(r),d=s.val();
-        let inv=d.cloudInv||[];
+        let inv=toArr(d.cloudInv);
         const matching=inv.filter(x=>x.id==itemId&&getRarityLevel(x)===currentRarity);
         if(matching.length<3) return showToast("Нужно минимум 3 одинаковых!","var(--err)");
         const toRemove=matching.slice(0,3).map(x=>x.inst);
@@ -1967,7 +2141,7 @@
         const baseItem={...matching[0]},newRarity=Math.min(currentRarity+1,4);
         const rarObj=RARITY_LEVELS[newRarity],newSerial=await getNextNftSerial();
         const isNewNft=newRarity>=4;
-        const upgradedItem={...baseItem,rarity:newRarity,nftSerial:newSerial,inst:Date.now(),seen:true};delete upgradedItem.from;
+        const upgradedItem={...baseItem,rarity:newRarity,nftSerial:newSerial,inst:newSerial,seen:true};delete upgradedItem.from;
         if(isNewNft){upgradedItem.nft=true;delete upgradedItem.rarity;upgradedItem.price=getPrice(baseItem.id||0);}
         inv.push(upgradedItem);
         await update(r,{cloudInv:inv, totalMerges:(d.totalMerges||0)+1});
@@ -2088,7 +2262,7 @@
     // Open NFT upgrade modal from profile
     window.openNftUpgrade = async (inst) => {
         const s = await get(ref(db, 'users/' + user.id)), d = s.val();
-        const inv = d.cloudInv || [];
+        const inv = toArr(d.cloudInv);
         const item = inv.find(x => String(x.inst) == String(inst));
         if (!item || !item.nft) return showToast('NFT не найден!', 'var(--err)');
 
@@ -2199,7 +2373,7 @@
         const s = await get(r), d = s.val();
         if ((d.balance || 0) < levelDef.cost) return showToast('Недостаточно монет!', 'var(--err)');
 
-        const inv = d.cloudInv || [];
+        const inv = toArr(d.cloudInv);
         const itemIdx = inv.findIndex(x => String(x.inst) == String(inst));
         if (itemIdx < 0) return showToast('NFT не найден!', 'var(--err)');
         if (!inv[itemIdx].nft) return showToast('Только для NFT!', 'var(--err)');
@@ -2235,7 +2409,7 @@
     window.changeNftTheme = async (inst, level, themeId) => {
         const r = ref(db, 'users/' + user.id);
         const s = await get(r), d = s.val();
-        const inv = d.cloudInv || [];
+        const inv = toArr(d.cloudInv);
         const itemIdx = inv.findIndex(x => String(x.inst) == String(inst));
         if (itemIdx < 0) return;
         inv[itemIdx] = { ...inv[itemIdx], upgrade: { ...inv[itemIdx].upgrade, theme: themeId } };
@@ -2380,9 +2554,9 @@
         if(!isLizardAvailable()) return showToast("NFT Ящерица недоступна!",'var(--err)');
         const r=ref(db,'users/'+user.id), s=await get(r), d=s.val();
         if(!user.isAdm && (d.balance||0)<7000) return showToast("Нужно 7 000 💰",'var(--err)');
-        const inv=d.cloudInv||[];
+        const inv=toArr(d.cloudInv);
         const lizSerial=await getNextNftSerial();
-        inv.push({...NFT_LIZARD, inst:Date.now(), seen:true, nftSerial:lizSerial});
+        inv.push({...NFT_LIZARD, inst:lizSerial, seen:true, nftSerial:lizSerial});
         await update(r,{balance:user.isAdm ? (d.balance||0) : d.balance-7000, cloudInv:inv});
         if(e){spawnConfetti(e.clientX,e.clientY,45);flyEmoji('🦎',e.clientX,e.clientY);}
         flashBalance(); showToast(`🦎 NFT Ящерица №${lizSerial} в коллекции!`,'#4dff91');
@@ -2392,22 +2566,24 @@
         if(!isNftAvailable()) return showToast("NFT недоступен!",'var(--err)');
         const r=ref(db,'users/'+user.id),s=await get(r),d=s.val();
         if(!user.isAdm && (d.balance||0)<15000) return showToast("Нужно 15 000💰 (Пиво 10к + Носок 5к)",'var(--err)');
-        const inv=d.cloudInv||[];
+        const inv=toArr(d.cloudInv);
         const beerSerial=await getNextNftSerial(),sockSerial=await getNextNftSerial();
-        inv.push({...NFT_BEER,inst:Date.now(),seen:true,nftSerial:beerSerial});
-        inv.push({...NFT_SOCK,inst:Date.now()+1,seen:true,nftSerial:sockSerial});
+        inv.push({...NFT_BEER,inst:beerSerial,seen:true,nftSerial:beerSerial});
+        inv.push({...NFT_SOCK,inst:sockSerial,seen:true,nftSerial:sockSerial});
         await update(r,{balance:user.isAdm ? (d.balance||0) : (d.balance||0)-15000,cloudInv:inv});
         if(e){spawnConfetti(e.clientX,e.clientY,35);flyEmoji('🍺',e.clientX,e.clientY);}
         flashBalance(); showToast(`🍺 №${beerSerial} 🧦 №${sockSerial} NFT куплены! 🎉`,'gold');
     };
 
     window.buy = async (id, e) => {
+        // 🛡️ Rate limit
+        const _rlB = _protection.buy(); if(!_rlB.ok) return showToast(_rlB.msg, '#e74c3c');
         const p=getPrice(id),itm=catalog.find(x=>x.id===id);
         const r=ref(db,'users/'+user.id),s=await get(r),d=s.val();
         if(user.isAdm || d.balance>=p){
-            const inv=d.cloudInv||[];
+            const inv=toArr(d.cloudInv);
             const serial=await getNextNftSerial();
-            inv.push({...itm,inst:Date.now(),seen:true,nftSerial:serial});
+            inv.push({...itm,inst:serial,seen:true,nftSerial:serial});
             await update(r,{balance:user.isAdm ? (d.balance||0) : d.balance-p,cloudInv:inv});
             // Update shop prices (only this item)
             await incrementShopPrice(id);
@@ -2562,7 +2738,7 @@
                     const ownerSnap = await get(ref(db,'users/'+lot.sI));
                     if(ownerSnap.exists()) {
                         const ownerData = ownerSnap.val();
-                        const ownerInv = ownerData.cloudInv || [];
+                        const ownerInv = toArr(ownerData.cloudInv);
                         const returned = {...lot};
                         delete returned.mP; delete returned.sI; delete returned.sN;
                         delete returned.sCosm; delete returned.expiresAt;
@@ -2602,7 +2778,7 @@
     };
     window.toMarket = async (inst) => {
         const s=await get(ref(db,'users/'+user.id)),d=s.val();
-        const itm=d.cloudInv.find(x=>x.inst==inst);
+        const itm=toArr(d.cloudInv).find(x=>x.inst==inst);
         if(!itm) return showToast("Не найден!",'var(--err)');
         const cat=catalog.find(c=>c.id==itm.id);
         const img=(itm.img)||(cat&&cat.img)||'';
@@ -2654,11 +2830,12 @@
         const price=parseInt(document.getElementById('mkt-price').value);
         if(!price||price<=0) return showToast("Введи цену!",'var(--err)');
         const r=ref(db,'users/'+user.id),s=await get(r),d=s.val();
-        const itm=d.cloudInv.find(x=>x.inst==inst);
+        const _cinv=toArr(d.cloudInv);
+        const itm=_cinv.find(x=>x.inst==inst);
         if(!itm) return showToast("Не найден!",'var(--err)');
         const cat=catalog.find(c=>c.id==itm.id);
         const enriched={...itm, img:(itm.img)||(cat&&cat.img)||null, i:(itm.i)||(cat&&cat.i)||'🎁'};
-        await update(r,{cloudInv:d.cloudInv.filter(x=>x.inst!=inst),pinnedInsts:(d.pinnedInsts||[]).filter(id=>String(id)!=String(inst))});
+        await update(r,{cloudInv:_cinv.filter(x=>x.inst!=inst),pinnedInsts:(d.pinnedInsts||[]).filter(id=>String(id)!=String(inst))});
         const uc=await get(ref(db,'users/'+user.id));
         const sCosm=(uc.exists()&&uc.val().activeCosmetic)||{};
         const expiresAt = ADMIN_IDS.has(user.id) ? null : (Date.now() + 24*60*60*1000);
@@ -2667,6 +2844,8 @@
         logActivity('market_list', {user: user.name, userId: user.id, item: itm.n, emoji: enriched.i||'🎁', price});
     };
     window.buyM = async (k,p,si,e) => {
+        // 🛡️ Rate limit
+        const _rlBM = _protection.buyMarket(); if(!_rlBM.ok) return showToast(_rlBM.msg, '#e74c3c');
         const bR=ref(db,'users/'+user.id),bS=await get(bR);
         if(!user.isAdm && bS.val().balance<p) return showToast("Нет монет!",'var(--err)');
         const mS=await get(ref(db,'market/'+k));if(!mS.exists()) return showToast("Уже купили!",'var(--err)');
@@ -2676,7 +2855,7 @@
         if(!sellerId) return showToast("Ошибка: продавец не найден!",'var(--err)');
         await remove(ref(db,'market/'+k));
         // Preserve original inst so item ID stays the same after purchase
-        const inv=bS.val().cloudInv||[];const itmClean={...itm,seen:false};delete itmClean.from;delete itmClean.sN;inv.push(itmClean);
+        const inv=toArr(bS.val().cloudInv);const itmClean={...itm,seen:false};delete itmClean.from;delete itmClean.sN;inv.push(itmClean);
         await update(bR,{balance:user.isAdm ? (bS.val().balance||0) : bS.val().balance-p,cloudInv:inv});
         // Деньги идут продавцу (не ckovoroda!)
         const sS=await get(ref(db,'users/'+sellerId));
@@ -2736,7 +2915,7 @@
         if(!themeId) return closeModal();
         const r = ref(db,'users/'+user.id);
         const s = await get(r);
-        const inv = (s.val().cloudInv||[]);
+        const inv = toArr(s.val().cloudInv);
         const idx = inv.findIndex(x=>String(x.inst)===String(inst));
         if(idx<0) return closeModal();
         inv[idx] = {...inv[idx], upgrade:{...inv[idx].upgrade, theme:themeId}};
@@ -2756,7 +2935,7 @@
     window.remM = async (k) => {
         const mS=await get(ref(db,'market/'+k));if(!mS.exists()) return;
         const itm=mS.val();await remove(ref(db,'market/'+k));
-        const r=ref(db,'users/'+user.id),s=await get(r),inv=s.val().cloudInv||[];
+        const r=ref(db,'users/'+user.id),s=await get(r),inv=toArr(s.val().cloudInv);
         inv.push({...itm,inst:Date.now(),seen:true});await update(r,{cloudInv:inv});showToast("Снято!");
     };
     // === USER SEARCH DROPDOWN ===
@@ -2912,7 +3091,7 @@
     // ═══════════════════════════════════════════
     window.openTradeModal = async (friendId, friendName) => {
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const myInv = d.cloudInv || [];
+        const myInv = toArr(d.cloudInv);
         if(!myInv.length) return showToast('У тебя нет подарков для обмена!','var(--err)');
         const makeCard = (x) => {
             const cat = catalog.find(c=>c.id==x.id);
@@ -2964,7 +3143,7 @@
     window.sendTradeOffer = async (friendId, friendName) => {
         if(!selectedTradeInst) return showToast('Выбери подарок!','var(--err)');
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const inv = d.cloudInv||[];
+        const inv = toArr(d.cloudInv);
         const itm = inv.find(x=>String(x.inst)==String(selectedTradeInst));
         if(!itm) return showToast('Подарок не найден!','var(--err)');
         const offerKey = `${user.id}_${Date.now()}`;
@@ -2982,7 +3161,7 @@
     window.acceptTradeOffer = async (offerKey, offer) => {
         // Show my gifts to pick what I give in return
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const myInv = d.cloudInv||[];
+        const myInv = toArr(d.cloudInv);
         if(!myInv.length) return showToast('У тебя нет подарков для обмена!','var(--err)');
         const makeCard = (x) => {
             const cat = catalog.find(c=>c.id==x.id);
@@ -3034,10 +3213,12 @@
 
     window.confirmTrade = async (offerKey, fromId, theirInst) => {
         if(!selectedAcceptInst) return showToast('Выбери подарок!','var(--err)');
+        // 🛡️ Rate limit
+        const _rlT = _protection.trade(); if(!_rlT.ok) return showToast(_rlT.msg, '#e74c3c');
         // Fetch both inventories
         const [mySnap, theirSnap] = await Promise.all([get(ref(db,'users/'+user.id)), get(ref(db,'users/'+fromId))]);
         const myD = mySnap.val(), theirD = theirSnap.val();
-        let myInv = myD.cloudInv||[], theirInv = theirD.cloudInv||[];
+        let myInv = toArr(myD.cloudInv), theirInv = toArr(theirD.cloudInv);
         const myItem = myInv.find(x=>String(x.inst)==String(selectedAcceptInst));
         const theirItem = theirInv.find(x=>String(x.inst)==String(theirInst));
         if(!myItem) return showToast('Твой подарок не найден!','var(--err)');
@@ -3118,7 +3299,7 @@
         tab('profile', profBtn);
         setTimeout(async () => {
             const s = await get(ref(db,'users/'+user.id)), d = s.val();
-            const inv = d.cloudInv||[];
+            const inv = toArr(d.cloudInv);
             if(!inv.length) return showToast('У тебя нет подарков для дуэли!','var(--err)');
             const friends = d.friends||{};
             if(!Object.keys(friends).length) return showToast('Нет друзей для дуэли!','var(--err)');
@@ -3142,7 +3323,7 @@
 
     window.openDuelModal = async (inst) => {
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const inv = d.cloudInv||[];
+        const inv = toArr(d.cloudInv);
         const myItem = inv.find(x=>String(x.inst)==String(inst));
         if(!myItem) return showToast('Подарок не найден!','var(--err)');
         const friends = d.friends||{};
@@ -3184,7 +3365,7 @@
         if(dPriv.allowDuel===false) return showToast(`❌ Вы не можете вызвать ${friendName} на дуэль из-за его настроек конфиденциальности`,'var(--err)');
         // Send duel challenge
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const myItem = (d.cloudInv||[]).find(x=>String(x.inst)==String(myInst));
+        const myItem = toArr(d.cloudInv).find(x=>String(x.inst)==String(myInst));
         if(!myItem) return showToast('Подарок не найден!','var(--err)');
         const duelKey = `${user.id}_${Date.now()}`;
         await set(ref(db,`duelChallenges/${friendId}/${duelKey}`),{
@@ -3208,7 +3389,7 @@
     window.acceptDuelChallenge = async (duelKey, challenge) => {
         // Show your gifts to pick your stake
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const myInv = d.cloudInv||[];
+        const myInv = toArr(d.cloudInv);
         if(!myInv.length) return showToast('У тебя нет подарков для дуэли!','var(--err)');
         const makeCard = (x) => {
             const cat = catalog.find(c=>c.id==x.id);
@@ -3258,11 +3439,13 @@
 
     window.fightDuel = async (duelKey, challengerId, theirInst, challengerName, theirEmoji, theirItemName) => {
         if(!selectedDuelInst) return showToast('Выбери ставку!','var(--err)');
+        // 🛡️ Rate limit
+        const _rlD = _protection.duel(); if(!_rlD.ok) return showToast(_rlD.msg, '#e74c3c');
 
         // Fetch both inventories
         const [mySnap, theirSnap] = await Promise.all([get(ref(db,'users/'+user.id)), get(ref(db,'users/'+challengerId))]);
         const myD = mySnap.val(), theirD = theirSnap.val();
-        let myInv = myD.cloudInv||[], theirInv = theirD.cloudInv||[];
+        let myInv = toArr(myD.cloudInv), theirInv = toArr(theirD.cloudInv);
         const myItem = myInv.find(x=>String(x.inst)==String(selectedDuelInst));
         const theirItem = theirInv.find(x=>String(x.inst)==String(theirInst));
         if(!myItem||!theirItem) { closeModal(); return showToast('Один из предметов уже недоступен!','var(--err)'); }
@@ -3277,13 +3460,15 @@
         if(iWin) {
             myInv = myInv.filter(x=>String(x.inst)!=String(selectedDuelInst));
             theirInv = theirInv.filter(x=>String(x.inst)!=String(theirInst));
-            myInv.push({...myItem, from:`⚔️ Дуэль`, inst:Date.now()});
-            myInv.push({...theirItem, from:`⚔️ ${challengerName}`, seen:false, inst:Date.now()+1});
+            const _duelTs=Date.now();
+            myInv.push({...myItem, from:`⚔️ Дуэль`, inst:_duelTs});
+            myInv.push({...theirItem, from:`⚔️ ${challengerName}`, seen:false, inst:_duelTs+1});
         } else {
             myInv = myInv.filter(x=>String(x.inst)!=String(selectedDuelInst));
             theirInv = theirInv.filter(x=>String(x.inst)!=String(theirInst));
-            theirInv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:Date.now()});
-            theirInv.push({...theirItem, from:`⚔️ Дуэль`, inst:Date.now()+1});
+            const _duelTs2=Date.now();
+            theirInv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:_duelTs2});
+            theirInv.push({...theirItem, from:`⚔️ Дуэль`, inst:_duelTs2+1});
         }
 
         await Promise.all([
@@ -3451,8 +3636,10 @@
         openModal();
     };
     window.sendG = async (inst,fid) => {
+        // 🛡️ Rate limit
+        const _rlSG = _protection.sendGift(); if(!_rlSG.ok) return showToast(_rlSG.msg, '#e74c3c');
         const r=ref(db,'users/'+user.id),s=await get(r),d=s.val();
-        const inv=d.cloudInv||[],itm=inv.find(x=>x.inst==inst);
+        const inv=toArr(d.cloudInv),itm=inv.find(x=>x.inst==inst);
         if(!itm) return showToast("Не найден!",'var(--err)');
         // Проверка конфиденциальности получателя
         const frSnap2=await get(ref(db,'users/'+fid));
@@ -3460,7 +3647,7 @@
         if(frPrivacy.allowGifts===false) return showToast("❌ Вы не можете отправить подарок этому пользователю из-за его настроек конфиденциальности",'var(--err)');
         const newGiven=(d.giftsGiven||0)+1;
         await update(r,{cloudInv:inv.filter(x=>x.inst!=inst),pinnedInsts:(d.pinnedInsts||[]).filter(id=>String(id)!=String(inst)),giftsGiven:newGiven});
-        const frS=await get(ref(db,'users/'+fid)),frInv=frS.val().cloudInv||[];
+        const frS=await get(ref(db,'users/'+fid)),frInv=toArr(frS.val().cloudInv);
         frInv.push({...itm,from:user.name,seen:false,inst:Date.now()});
         await update(ref(db,'users/'+fid),{cloudInv:frInv,giftsReceived:(frS.val().giftsReceived||0)+1});
         getTgId(fid).then(cid=>sendTg(cid,`🎁 <b>Новый подарок!</b>\n\n<b>${user.name}</b> подарил тебе:\n${itm.i||'🎁'} <b>${itm.n}</b>\n\n🏷 Редкость: <b>${getRarityObj(itm).label||'Обычный'}</b>\n\nОткрой приложение чтобы посмотреть!`));
@@ -3472,7 +3659,7 @@
         renderInv();
     };
     function renderMyProfile(d) {
-        const inv = d.cloudInv || [];
+        const inv = toArr(d.cloudInv);
         const friends = d.friends || {};
         const friendCount = Object.keys(friends).length;
 
@@ -3597,7 +3784,7 @@
 
     window.openGiftDetail = async (inst) => {
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const inv = d.cloudInv || [];
+        const inv = toArr(d.cloudInv);
         const x = inv.find(i => String(i.inst) == String(inst));
         if (!x) return;
         const cat = catalog.find(c => c.id == x.id);
@@ -3738,7 +3925,7 @@
 
     window.openNftUpgradeSelect = async () => {
         const s = await get(ref(db, 'users/' + user.id)), d = s.val();
-        const inv = (d.cloudInv || []).filter(x => x.nft);
+        const inv = toArr(d.cloudInv).filter(x => x.nft);
         if (!inv.length) return showToast('Нет NFT для прокачки!', 'var(--err)');
         if (inv.length === 1) return openNftUpgrade(inv[0].inst);
         const cat2 = (x) => { const c = catalog.find(cc => cc.id == x.id); return x.img || (c && c.img); };
@@ -3941,7 +4128,7 @@
         const s = await get(ref(db,'users/'+uid));
         if (!s.exists()) return showToast('Пользователь не найден','var(--err)');
         const d = s.val();
-        const inv = d.cloudInv || [];
+        const inv = toArr(d.cloudInv);
         const pinned = (d.pinnedInsts||[]);
         const friends = d.friends || {};
 
@@ -4180,7 +4367,7 @@
                 const ownerSnap = await get(ref(db,'users/'+lot.sI));
                 if(ownerSnap.exists()) {
                     const ownerData = ownerSnap.val();
-                    const ownerInv = ownerData.cloudInv || [];
+                    const ownerInv = toArr(ownerData.cloudInv);
                     const returned = {...lot};
                     delete returned.mP; delete returned.sI; delete returned.sN;
                     delete returned.sCosm; delete returned.expiresAt;
@@ -4221,7 +4408,7 @@
             const userList=Object.entries(us);
             const nonAdminList=userList.filter(([id])=>!ADMIN_IDS.has(id));
             const totalBal=nonAdminList.reduce((a,[,u])=>a+(u.balance||0),0);
-            const totalItems=nonAdminList.reduce((a,[,u])=>a+(u.cloudInv||[]).length,0);
+            const totalItems=nonAdminList.reduce((a,[,u])=>a+toArr(u.cloudInv).length,0);
             const sorted=[...nonAdminList].sort((a,b)=>(b[1].balance||0)-(a[1].balance||0));
 
             // Stats
@@ -4249,7 +4436,7 @@
             const userCount = document.getElementById('adm-user-count');
             if(userCount) userCount.textContent = userList.length + ' игроков';
             document.getElementById('adm-users-list').innerHTML=userList.map(([id,u])=>{
-                const invCount = (u.cloudInv||[]).length;
+                const invCount = toArr(u.cloudInv).length;
                 const hasTg = !!u.tgChatId;
                 const isAdm = ADMIN_IDS.has(id);
                 return `<div>
@@ -4288,7 +4475,7 @@
                         <!-- Inventory -->
                         <div style="font-size:10px;color:#4a6080;margin-bottom:6px;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;">📦 Инвентарь</div>
                         <div class="adm-inv-scroll" style="margin-bottom:14px;">
-                            ${invCount ? (u.cloudInv||[]).map(x=>{
+                            ${invCount ? toArr(u.cloudInv).map(x=>{
                                 const rar=RARITY_LEVELS[x.rarity||0]||RARITY_LEVELS[0];
                                 const borderC=x.nft?'rgba(255,215,0,0.5)':rar.id===3?'rgba(255,215,0,0.4)':rar.id===2?'rgba(162,155,254,0.4)':rar.id===1?'rgba(77,180,255,0.35)':'rgba(255,255,255,0.07)';
                                 return `<div class="adm-inv-item" title="${(catalogMap.get(+x.id)||x).n} ${rar.icon}" style="border:1px solid ${borderC};">${x.img?`<img src="${x.img}" style="width:28px;height:28px;object-fit:contain;">`:x.i}<div style="font-size:7px;color:#4a6080;font-family:monospace;text-align:center;">#${String(x.inst||'').slice(-4)}</div></div>`;
@@ -4424,7 +4611,7 @@
             const userList=Object.entries(us);
             const nonAdminList=userList.filter(([id])=>!ADMIN_IDS.has(id));
             const totalBal=nonAdminList.reduce((a,[,u])=>a+(u.balance||0),0);
-            const totalItems=nonAdminList.reduce((a,[,u])=>a+(u.cloudInv||[]).length,0);
+            const totalItems=nonAdminList.reduce((a,[,u])=>a+toArr(u.cloudInv).length,0);
             const tgLinked=nonAdminList.filter(([,u])=>u.tgChatId).length;
             const adminEl=document.getElementById('admin');
             adminEl.innerHTML=`
@@ -4468,7 +4655,7 @@
                     <input type="text" placeholder="Поиск по нику..." oninput="modFilterUsers(this.value)" style="flex:1;">
                 </div>
                 <div id="mod-users-list">${userList.map(([id,u])=>{
-                    const invCount=(u.cloudInv||[]).length;
+                    const invCount=toArr(u.cloudInv).length;
                     const hasTg=!!u.tgChatId;
                     return `<div class="adm-user-row" data-name="${(u.username||'').toLowerCase()}">
                         <div class="uavatar">${(u.username||'?')[0].toUpperCase()}</div>
@@ -4571,12 +4758,12 @@
         try {
             const s=await get(ref(db,'users/'+id));
             if(!s.exists()) return showToast('Пользователь не найден!','var(--err)');
-            const inv=s.val().cloudInv||[];
+            const inv=toArr(s.val().cloudInv);
             const serial=await getNextNftSerial();
             const itmClean={...itm};
             // Strip large base64 images before writing to Firebase
             if(itmClean.img&&itmClean.img.startsWith('data:')) delete itmClean.img;
-            const entry={...itmClean, inst:Date.now(), from:"ADMIN", seen:false, nftSerial:serial};
+            const entry={...itmClean, inst:serial, from:"ADMIN", seen:false, nftSerial:serial};
             // NFT items must not have rarity field, regular items get rarity
             if(itm.nft) { delete entry.rarity; } else { entry.rarity=rar; }
             inv.push(entry);
@@ -4642,8 +4829,9 @@
         const up={};
         for(let id in us){
             const serial = await getNextNftSerial();
-            const inv=(us[id].cloudInv||[]);
-            inv.push({...itm, inst:Date.now(), nftSerial:serial, from:"ADMIN", seen:false});
+            const inv=toArr(us[id].cloudInv);
+            const itmClean2={...itm};if(itmClean2.img&&itmClean2.img.startsWith("data:"))delete itmClean2.img;
+            inv.push({...itmClean2, inst:serial, nftSerial:serial, from:"ADMIN", seen:false});
             up[`users/${id}/cloudInv`]=inv;
         }
         await update(ref(db),up);
@@ -4698,7 +4886,7 @@
     };
     // ===== INSTANT NFT AVATAR THEME UPDATE =====
     window.applyPinnedNftThemeToAvatar = (d) => {
-        const inv = d.cloudInv || [];
+        const inv = toArr(d.cloudInv);
         const pinnedInsts = new Set((d.pinnedInsts||[]).map(String));
         // Ищем все ring-item элементы и обновляем их стиль
         document.querySelectorAll('.avatar-ring-item.ring-nft[data-inst]').forEach(el => {
@@ -5936,7 +6124,7 @@
                 const allUsersSnap = await get(ref(db, 'users'));
                 const allUsers = allUsersSnap.val() || {};
                 const serialTaken = Object.values(allUsers).some(u =>
-                    Array.isArray(u.cloudInv) && u.cloudInv.some(x => Number(x.nftSerial) === customSerial)
+                    toArr(u.cloudInv).some(x => Number(x.nftSerial) === customSerial)
                 );
                 if (serialTaken) {
                     showToast(`❌ Номер №${customSerial} уже занят!`, '#e74c3c');
@@ -5978,6 +6166,34 @@
             giveClearPlayer();
         } catch(e) { showToast('Ошибка: ' + e.message, '#e74c3c'); }
     };
+
+    // 🛡️ Защита от флуда кликов (кнопки) - предотвращает спам-клики по кнопкам действий
+    (function() {
+        let _lastClick = 0;
+        const _ACTION_BTNS = ['btn', 'sell-btn', 'tg-action-btn', 'nav-btn'];
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('button, .btn');
+            if (!btn) return;
+            const now = Date.now();
+            // Глобальный дебаунс 200мс между кликами по кнопкам
+            if (now - _lastClick < 200) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                return;
+            }
+            _lastClick = now;
+        }, true); // capture phase - срабатывает до других обработчиков
+    })();
+
+    // 🛡️ Обработчик необработанных ошибок (скрываем стектрейсы от пользователя)
+    window.addEventListener('unhandledrejection', e => {
+        const msg = e.reason?.message || String(e.reason);
+        if (msg.includes('Слишком много') || msg.includes('PERMISSION_DENIED') || msg.includes('blocked')) {
+            showToast('🛡️ ' + msg, '#e74c3c');
+            e.preventDefault();
+        }
+        console.warn('Unhandled rejection:', msg);
+    });
 
     // ── AUTO LOAD ──────────────────────────────────────────────
     document.addEventListener('click',function(e){
