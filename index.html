@@ -1857,6 +1857,50 @@
     };
     window.clearAuthErr = (id) => { const el=document.getElementById(id); if(el) el.innerText=''; };
 
+
+    // ═══════════════════════════════════════════════════════════════
+    // 🚫 ФИЛЬТР ПЛОХИХ СЛОВ В НИКАХ
+    // ═══════════════════════════════════════════════════════════════
+    const BAD_WORDS = [
+        // Русские
+        'хуй','хуя','хуе','хую','хуев','хуйня','пизда','пизд','пиздец','пиздат',
+        'блядь','бляд','блять','сука','суки','ёбан','ебан','еба','ёба','ебать','ебал','ебла',
+        'пидор','пидар','пидр','педик','педераст','мудак','мудила','мудила',
+        'залупа','дрочить','дроч','шлюха','шлюх','проститутка','проститут',
+        'гандон','презик','сперма','влагалище','анус','жопа','жоп','очко',
+        'мразь','тварь','урод','уроды','дебил','дебилы','идиот','кретин',
+        'ублюдок','ублюд','выблядок','ублюдки','нигер','негр','чурка','чурки',
+        // English
+        'fuck','fuk','fck','fuck','shit','shyt','bitch','btch','b1tch',
+        'cunt','cnt','pussy','puss','pussy','cock','cok','dick','d1ck','dik',
+        'ass','arse','asshole','assh0le','nigger','nigga','n1gger','faggot','fag','f4g',
+        'whore','wh0re','slut','sl ut','porn','p0rn','piss','pis',
+        'retard','ret4rd','idiot','moron','bastard','b4stard','basterd',
+        'homo','h0mo','pedophile','pedo','ped0',
+        'rape','r4pe','hitler','nazi','n4zi',
+        // Замаскированные варианты (leet speak)
+        'p1dor','p1dar','p1dr','pidor','pidr','pidar',
+        'hui','huy','huey','pizda','pizd','blyad','blyat',
+        'ebat','ebal','eblan','yeban',
+    ];
+
+    function containsBadWord(str) {
+        // Normalize: remove spaces, dots, dashes, replace leet
+        const normalized = str.toLowerCase()
+            .replace(/[\s\.\-_\*@!0-9]/g, s => ({
+                '0':'o','1':'i','3':'e','4':'a','5':'s','6':'g','7':'t','8':'b','9':'g','@':'a','!':'i'
+            }[s] || ''))
+            .replace(/ph/g,'f')
+            .replace(/ck/g,'k');
+        
+        for(const word of BAD_WORDS) {
+            const norm = word.toLowerCase().replace(/[\s\.\-_]/g,'');
+            if(normalized.includes(norm)) return true;
+        }
+        return false;
+    }
+    // ═══════════════════════════════════════════════════════════════
+
     let checkUsernameTimer = null;
     window.checkUsername = (val) => {
         clearAuthErr('r-err');
@@ -1864,6 +1908,7 @@
         const v = val.trim().toLowerCase();
         if(!v) { st.innerText=''; return; }
         if(v.length < 3) { st.innerText='⚠️'; return; }
+        if(containsBadWord(v)) { st.innerText='🚫'; clearAuthErr('r-err'); document.getElementById('r-err').innerText='❌ Ник содержит запрещённые слова'; return; }
         clearTimeout(checkUsernameTimer);
         st.innerText='⏳';
         checkUsernameTimer = setTimeout(async () => {
@@ -1943,6 +1988,7 @@
             const btn=document.querySelector('#form-reg .btn');
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
             if(u.length<3){ errEl.innerText='❌ Логин минимум 3 символа'; return; }
+            if(containsBadWord(u)){ errEl.innerText='❌ Ник содержит запрещённые слова'; return; }
             if(p.length<4){ errEl.innerText='❌ Пароль минимум 4 символа'; return; }
             if(!email){ errEl.innerText='❌ Укажи email для верификации'; return; }
             if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.innerText='❌ Неверный формат email'; return; }
