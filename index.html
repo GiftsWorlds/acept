@@ -2310,6 +2310,8 @@
         renderShop(); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges();
         // Запускаем realtime listener цен — обновляет у всех мгновенно
         startShopPricesListener();
+        // Загружаем кастомный каталог для всех пользователей (картинки кастомных подарков)
+        loadCustomCatalog();
     }
 
 
@@ -6200,7 +6202,7 @@
     async function loadCustomCatalog() {
         const list = document.getElementById('custom-catalog-list');
         const countEl = document.getElementById('custom-catalog-count');
-        if (!list) return;
+        // Не выходим если нет UI — каталог нужен всем пользователям для отображения картинок
         try {
             const snap = await get(ref(db,'customCatalog'));
             const items = snap.val();
@@ -6236,6 +6238,12 @@
                 });
             } catch(e){}
             refreshBcastGiftSelect();
+            // Перерисовываем склад и магазин чтобы появились картинки кастомных подарков
+            if (document.getElementById('inv')?.classList.contains('active')) renderInv();
+            if (document.getElementById('shop')?.classList.contains('active')) { renderShop(); renderShopCards(); }
+            if (document.getElementById('profile')?.classList.contains('active')) {
+                get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); });
+            }
         } catch(e) {
             if(list) list.innerHTML='<div style="color:var(--err);text-align:center;padding:20px;font-size:13px;">Ошибка загрузки</div>';
         }
