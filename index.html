@@ -4560,12 +4560,13 @@
     // ═══════════════════════════════════════════════════════════════
     // 🖼️ AVATAR EDITOR
     // ═══════════════════════════════════════════════════════════════
-    let _avatarOrigImg = null;
-    let _avatarMirrored = false;
-    let _avatarImgB64 = null;
+    // Глобальные переменные редактора аватара
+    window._avatarOrigImg = null;
+    window._avatarMirrored = false;
+    window._avatarImgB64 = null;
 
     function avatarUpdateCanvas() {
-        if (!_avatarOrigImg) return;
+        if (!window._avatarOrigImg) return;
         const scale  = +document.getElementById('av-scale').value;
         const offX   = +document.getElementById('av-offx').value;
         const offY   = +document.getElementById('av-offy').value;
@@ -4586,15 +4587,15 @@
         ctx.clip();
 
         ctx.translate(SIZE/2 + offX*2, SIZE/2 + offY*2);
-        if (_avatarMirrored) ctx.scale(-1, 1);
+        if (window._avatarMirrored) ctx.scale(-1, 1);
         ctx.rotate(rotate * Math.PI / 180);
         const s = scale / 100;
-        const fw = _avatarOrigImg.naturalWidth * s;
-        const fh = _avatarOrigImg.naturalHeight * s;
-        ctx.drawImage(_avatarOrigImg, -fw/2, -fh/2, fw, fh);
+        const fw = window._avatarOrigImg.naturalWidth * s;
+        const fh = window._avatarOrigImg.naturalHeight * s;
+        ctx.drawImage(window._avatarOrigImg, -fw/2, -fh/2, fw, fh);
         ctx.restore();
 
-        _avatarImgB64 = canvas.toDataURL('image/png');
+        window._avatarImgB64 = canvas.toDataURL('image/png');
 
         // Show canvas, hide empty placeholder
         canvas.style.display = 'block';
@@ -4614,27 +4615,25 @@
     };
 
     window.avatarToggleMirror = function() {
-        _avatarMirrored = !_avatarMirrored;
+        window._avatarMirrored = !window._avatarMirrored;
         const btn = document.getElementById('av-mirror-btn');
         if (btn) {
-            btn.style.background = _avatarMirrored ? 'rgba(36,129,204,0.25)' : 'rgba(255,255,255,0.06)';
-            btn.style.borderColor = _avatarMirrored ? 'var(--accent)' : 'rgba(255,255,255,0.12)';
+            btn.style.background = window._avatarMirrored ? 'rgba(36,129,204,0.25)' : 'rgba(255,255,255,0.06)';
+            btn.style.borderColor = window._avatarMirrored ? 'var(--accent)' : 'rgba(255,255,255,0.12)';
         }
         avatarUpdateCanvas();
     };
 
     window.avatarRemoveBg = function() {
-        if (!_avatarOrigImg) return;
+        if (!window._avatarOrigImg) return;
         avatarUpdateCanvas();
         const canvas = document.getElementById('avatar-canvas');
-        // Apply bg removal then re-clip to circle
         const SIZE = 200;
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = SIZE; tempCanvas.height = SIZE;
         const tempCtx = tempCanvas.getContext('2d');
         tempCtx.drawImage(canvas, 0, 0);
         _removeBgFromCanvas(tempCanvas);
-        // Re-draw with circle clip
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, SIZE, SIZE);
         ctx.save();
@@ -4643,12 +4642,12 @@
         ctx.clip();
         ctx.drawImage(tempCanvas, 0, 0);
         ctx.restore();
-        _avatarImgB64 = canvas.toDataURL('image/png');
+        window._avatarImgB64 = canvas.toDataURL('image/png');
         showToast('✨ Фон удалён!', '#27ae60');
     };
 
     window.avatarReset = function() {
-        _avatarMirrored = false;
+        window._avatarMirrored = false;
         document.getElementById('av-scale').value = 100;
         document.getElementById('av-offx').value = 0;
         document.getElementById('av-offy').value = 0;
@@ -4657,7 +4656,7 @@
         document.getElementById('av-rotate-val').textContent = '0°';
         const btn = document.getElementById('av-mirror-btn');
         if (btn) { btn.style.background = 'rgba(255,255,255,0.06)'; btn.style.borderColor = 'rgba(255,255,255,0.12)'; }
-        if (_avatarOrigImg) avatarUpdateCanvas();
+        if (window._avatarOrigImg) avatarUpdateCanvas();
     };
 
     window.pickEmojiAvatar = async function(emoji) {
@@ -4702,10 +4701,10 @@
     window.saveP = async () => {
         const bio = document.getElementById('ebio').value;
         // If avatar editor was used, save that
-        if (_avatarImgB64) {
-            await update(ref(db,'users/'+user.id), {bio, pic: _avatarImgB64});
-            _avatarImgB64 = null;
-            _avatarOrigImg = null;
+        if (window._avatarImgB64) {
+            await update(ref(db,'users/'+user.id), {bio, pic: window._avatarImgB64});
+            window._avatarImgB64 = null;
+            window._avatarOrigImg = null;
             closeModal(); showToast('✅ Сохранено!');
             return;
         }
