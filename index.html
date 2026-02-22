@@ -23,12 +23,148 @@
             --secondary: #5a6a7a; --err: #e74c3c; --green: #27ae60; --orange: #e67e22;
             --glass: rgba(240, 244, 248, 0.97); --tg: #229ED9;
         }
+        /* Inputs */
         body.light-theme input, body.light-theme textarea, body.light-theme select {
-            background: #e8edf2; border-color: #c8d4e0; color: #1a1a2e;
+            background: #e8edf2 !important; border-color: #c8d4e0 !important; color: #1a1a2e !important;
         }
-        body.light-theme .nav { background: rgba(240,244,248,0.97); border-color: rgba(0,0,0,0.1); }
-        body.light-theme .card { border-color: rgba(0,0,0,0.08); }
-        body.light-theme #theme-toggle { background:rgba(0,0,0,0.08); border-color:rgba(0,0,0,0.15); }
+        /* Nav */
+        body.light-theme .nav { background: rgba(240,244,248,0.97) !important; border-color: rgba(0,0,0,0.1) !important; }
+        /* Cards */
+        body.light-theme .card { border-color: rgba(0,0,0,0.08) !important; }
+        /* Theme toggle */
+        body.light-theme #theme-toggle { background:rgba(0,0,0,0.08) !important; border-color:rgba(0,0,0,0.15) !important; color: #1a1a2e !important; }
+        /* All hardcoded dark backgrounds → light */
+        body.light-theme [style*="background:#0a1520"],
+        body.light-theme [style*="background: #0a1520"] { background: #dde4ec !important; }
+        body.light-theme [style*="background:#0d1720"],
+        body.light-theme [style*="background: #0d1720"] { background: #e2e8f0 !important; }
+        body.light-theme [style*="background:#0e1621"],
+        body.light-theme [style*="background: #0e1621"] { background: #e4eaf2 !important; }
+        body.light-theme [style*="background:#0e1824"],
+        body.light-theme [style*="background: #0e1824"] { background: #dde4ec !important; }
+        body.light-theme [style*="background:#111b21"],
+        body.light-theme [style*="background: #111b21"] { background: #f0f4f8 !important; }
+        body.light-theme [style*="background:#070d14"],
+        body.light-theme [style*="background: #070d14"] { background: #d8e0ea !important; }
+        body.light-theme [style*="background:#120d2e"],
+        body.light-theme [style*="background: #120d2e"] { background: #ede8ff !important; }
+        body.light-theme [style*="background:#1a0e3a"],
+        body.light-theme [style*="background: #1a0e3a"] { background: #e8e0ff !important; }
+        /* Dark border colors */
+        body.light-theme [style*="border:1px solid rgba(255,255,255,0.08)"],
+        body.light-theme [style*="border: 1px solid rgba(255,255,255,0.08)"] { border-color: rgba(0,0,0,0.12) !important; }
+        body.light-theme [style*="border:1px solid rgba(255,255,255,0.06)"],
+        body.light-theme [style*="border: 1px solid rgba(255,255,255,0.06)"] { border-color: rgba(0,0,0,0.10) !important; }
+        body.light-theme [style*="border:2px solid rgba(255,255,255,0.06)"],
+        body.light-theme [style*="border: 2px solid rgba(255,255,255,0.06)"] { border-color: rgba(0,0,0,0.10) !important; }
+        body.light-theme [style*="border:1px solid #2b3a4a"],
+        body.light-theme [style*="border: 1px solid #2b3a4a"] { border-color: #c8d4e0 !important; }
+        /* Text colors white hardcoded */
+        body.light-theme [style*="color:white"] { color: #1a1a2e !important; }
+        /* Dropdown */
+        body.light-theme #user-dropdown,
+        body.light-theme #give-player-dropdown { background: #f0f4f8 !important; border-color: #c8d4e0 !important; color: #1a1a2e !important; }
+        /* Admin stats and rows */
+        body.light-theme .adm-stat { background: #e2e8f0 !important; border-color: rgba(0,0,0,0.08) !important; }
+        body.light-theme .adm-user-row { background: #e8edf5 !important; border-color: rgba(0,0,0,0.08) !important; }
+        body.light-theme .adm-user-row:hover { background: #dde4ef !important; }
+        body.light-theme .adm-user-detail { background: #dde4ec !important; }
+        body.light-theme .adm-inv-item { background: #d8e0ea !important; }
+        /* Promo, tool, lb cards */
+        body.light-theme .promo-card { background: #e2e8f0 !important; }
+        body.light-theme .tool-card { background: #e2e8f0 !important; }
+        body.light-theme .lb-row { background: #e4eaf2 !important; border-color: rgba(0,0,0,0.08) !important; }
+        body.light-theme .lb-avatar { background: #dde4ec !important; }
+        body.light-theme .adm-user-row .uavatar { background: linear-gradient(135deg,#d0dae8,#c0ccd8) !important; }
+        /* Merge panel */
+        body.light-theme .merge-panel { background: linear-gradient(135deg,#ede8ff,#e8e0ff) !important; }
+        /* Cosmetics items */
+        body.light-theme .cosm-item { background: #dde4ec !important; border-color: rgba(0,0,0,0.08) !important; }
+        /* Auth tabs */
+        body.light-theme .auth-tabs { background: #dde4ec !important; }
+        /* Avatar */
+        body.light-theme .avatar { background: #dde4ec !important; }
+        /* Avatar canvas */
+        body.light-theme #avatar-canvas { background: #dde4ec !important; }
+        /* NFT banner light */
+        body.light-theme .nft-card:not([class*="nft-lvl"]) {
+            background: linear-gradient(135deg,#f5e9c0,#fffbe8) !important;
+            border-color: rgba(200,160,0,0.5) !important;
+        }
+        /* Lizard NFT */
+        body.light-theme .card.nft-card[style*="#001a08"] {
+            background: linear-gradient(135deg,#d0f5e0,#e8fff0) !important;
+        }
+        /* Profile section wrapper bg */
+        body.light-theme #profile [style*="background:rgba(255,193,7,0.05)"] { background: rgba(255,193,7,0.08) !important; }
+        body.light-theme #profile [style*="background:rgba(231,76,60,0.05)"] { background: rgba(231,76,60,0.08) !important; }
+        body.light-theme #profile [style*="background:rgba"] { /* covered by specific above */ }
+        /* Modal overlay tint already fine */
+        /* Catalog modal */
+        body.light-theme #catalog-edit-modal > div { background: #f0f4f8 !important; }
+        /* Horizontal rule */
+        body.light-theme hr { border-color: rgba(0,0,0,0.1) !important; }
+        /* Header top bar */
+        body.light-theme #app > div:first-child { background: rgba(240,244,248,0.97) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
+        /* Status dot border fix */
+        body.light-theme [style*="border:2px solid #070d14"] { border-color: #f0f4f8 !important; }
+        /* Trade/duel/accept gift cards */
+        body.light-theme .trade-gift-card,
+        body.light-theme .accept-gift-card,
+        body.light-theme .duel-my-card { background: #dde4ec !important; }
+        /* Confirm box */
+        body.light-theme #confirm-box { box-shadow: 0 30px 80px rgba(0,0,0,0.15) !important; }
+        /* General: any remaining very dark containers inside app */
+        body.light-theme #app [style*="background:#0"],
+        body.light-theme #app [style*="background: #0"] { filter: none; }
+        /* NFT Feb banner in light theme */
+        body.light-theme .nft-feb-card {
+            background: linear-gradient(135deg,#fff8dc,#fffaed,#fff3b0) !important;
+            border-color: rgba(180,140,0,0.6) !important;
+        }
+        body.light-theme .nft-feb-card * { color: #3a2d00 !important; }
+        body.light-theme .nft-feb-card [style*="color:gold"],
+        body.light-theme .nft-feb-card [style*="color: gold"] { color: #b8860b !important; }
+        body.light-theme .nft-feb-card [style*="color:#4dff91"] { color: #1a7a3a !important; }
+        body.light-theme .nft-feb-card .btn { color: #fff !important; }
+
+        /* ===== AUTH SCREEN LIGHT THEME ===== */
+        body.light-theme .auth-wrap { background: var(--bg); }
+        body.light-theme .auth-card {
+            background: #ffffff !important;
+            border-color: rgba(0,0,0,0.08) !important;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.1) !important;
+        }
+        body.light-theme .auth-tabs { background: #e2e8f0 !important; }
+        body.light-theme .auth-tab { color: var(--secondary) !important; }
+        body.light-theme .auth-tab.active { color: white !important; }
+        body.light-theme .auth-form input {
+            background: #e8edf2 !important;
+            border-color: #c8d4e0 !important;
+            color: #1a1a2e !important;
+        }
+        body.light-theme .auth-form input::placeholder { color: #7a8fa0 !important; }
+        /* "Забыл пароль" button */
+        body.light-theme .auth-form .btn[style*="transparent"] {
+            background: #e8edf2 !important;
+            border-color: rgba(0,0,0,0.12) !important;
+            color: var(--secondary) !important;
+        }
+        /* Auth links — "Поддержка" dark button */
+        body.light-theme .auth-links a[style*="#505050"] {
+            background: #6b7a8a !important;
+        }
+        /* Auth theme toggle button */
+        body.light-theme #auth-theme-toggle {
+            background: rgba(0,0,0,0.07) !important;
+            border-color: rgba(0,0,0,0.15) !important;
+            color: #1a1a2e !important;
+        }
+        /* Email verify screen */
+        body.light-theme #email-verify-screen .auth-card {
+            background: #ffffff !important;
+            border-color: rgba(0,0,0,0.08) !important;
+        }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
 
@@ -787,6 +923,8 @@
 </style>
 
 <div id="auth-screen" class="auth-wrap">
+    <!-- Theme toggle on login screen -->
+    <button id="auth-theme-toggle" onclick="toggleTheme()" title="Сменить тему" style="position:fixed;top:16px;right:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:var(--text);width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.25s;z-index:999;">🌙</button>
     <div class="auth-logo">
         <div style="font-size:52px;">🎁</div>
         <h1>Gifts World</h1>
@@ -2963,7 +3101,7 @@
         let nftHtml = '';
         if(tl!==null){
             const av=isNftAvailable();
-            nftHtml=`<div class="card nft-card" style="grid-column:1/-1;border:2px solid gold;background:linear-gradient(135deg,#1a1200,#111b21);position:relative;overflow:hidden;text-align:center;padding:20px;">
+            nftHtml=`<div class="card nft-card nft-feb-card" style="grid-column:1/-1;border:2px solid gold;background:linear-gradient(135deg,#1a1200,#111b21);position:relative;overflow:hidden;text-align:center;padding:20px;">
                 <div style="position:absolute;top:10px;right:12px;font-size:11px;background:gold;color:#000;padding:3px 10px;border-radius:20px;font-weight:bold;z-index:2;letter-spacing:1px;">NFT</div>
                 <div style="display:flex;justify-content:center;gap:16px;margin-bottom:8px;">
                     <div style="text-align:center;">
@@ -7432,19 +7570,70 @@ window.openChangePasswordModal = function() {
 };
 
 // ===== THEME TOGGLE =====
+function syncThemeButtons(isLight) {
+    const icon = isLight ? '☀️' : '🌙';
+    const bg = isLight ? 'rgba(0,0,0,0.07)' : 'rgba(255,255,255,0.08)';
+    const border = isLight ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.15)';
+    ['theme-toggle','auth-theme-toggle'].forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+            btn.textContent = icon;
+            btn.style.background = bg;
+            btn.style.borderColor = border;
+        }
+    });
+}
+
+function applyThemeToDOM(isLight) {
+    // Fix dynamically generated dark elements
+    if (isLight) {
+        document.querySelectorAll('[style]').forEach(el => {
+            const s = el.style;
+            if (s.backgroundColor) {
+                const bg = s.backgroundColor;
+                // Convert rgb dark colors to light
+                const darkMap = {
+                    'rgb(10, 21, 32)': '#dde4ec',
+                    'rgb(13, 23, 32)': '#e2e8f0',
+                    'rgb(14, 22, 33)': '#e4eaf2',
+                    'rgb(7, 13, 20)': '#d8e0ea',
+                    'rgb(17, 27, 33)': '#f0f4f8',
+                    'rgb(14, 24, 36)': '#dde4ec',
+                };
+                for (const [dark, light] of Object.entries(darkMap)) {
+                    if (bg === dark) { el.style.backgroundColor = light; break; }
+                }
+            }
+            // Fix white color text in buttons/divs
+            if (s.color === 'white' || s.color === 'rgb(255, 255, 255)') {
+                el.dataset.origColor = s.color;
+                el.style.color = '#1a1a2e';
+            }
+        });
+    } else {
+        // Restore original colors
+        document.querySelectorAll('[data-orig-color]').forEach(el => {
+            el.style.color = el.dataset.origColor;
+            delete el.dataset.origColor;
+        });
+    }
+}
+
 function toggleTheme() {
     const body = document.body;
-    const btn = document.getElementById('theme-toggle');
     const isLight = body.classList.toggle('light-theme');
-    btn.textContent = isLight ? '☀️' : '🌙';
+    syncThemeButtons(isLight);
+    applyThemeToDOM(isLight);
     try { localStorage.setItem('theme', isLight ? 'light' : 'dark'); } catch(e){}
 }
 (function() {
     try {
         if (localStorage.getItem('theme') === 'light') {
             document.body.classList.add('light-theme');
-            const btn = document.getElementById('theme-toggle');
-            if (btn) btn.textContent = '☀️';
+            // Sync after DOM ready
+            document.addEventListener('DOMContentLoaded', () => syncThemeButtons(true));
+            // Also sync immediately if already loaded
+            syncThemeButtons(true);
         }
     } catch(e){}
 })();
