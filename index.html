@@ -985,7 +985,7 @@
                     </div>
                     <select id="give-gift-select" style="margin:0 0 8px;height:42px;border-radius:12px;width:100%;box-sizing:border-box;"></select>
                     <div style="position:relative;margin:0 0 8px;">
-                        <input type="number" id="give-inst-id" placeholder="🔢 ID (пусто = следующий авто)" style="height:42px;border-radius:12px;width:100%;box-sizing:border-box;font-size:13px;padding-right:90px;" min="1">
+                        <input type="number" id="give-inst-id" placeholder="🔢 Номер № (пусто = следующий авто)" style="height:42px;border-radius:12px;width:100%;box-sizing:border-box;font-size:13px;padding-right:90px;" min="1">
                         <button onclick="admFillNextSerial()" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:rgba(36,129,204,0.25);border:1px solid rgba(36,129,204,0.4);color:var(--accent);border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;">Авто №</button>
                     </div>
                     <div id="give-inst-hint" style="font-size:11px;color:var(--secondary);margin:-4px 0 8px;text-align:right;"></div>
@@ -5904,7 +5904,7 @@
         const hint = document.getElementById('give-inst-hint');
         const val = e.target.value.trim();
         if (!val) { if (hint) hint.textContent = ''; return; }
-        if (hint) hint.textContent = `ID: ${val}`;
+        if (hint) hint.textContent = `Номер №${val}`;
     });
 
     window.giveGiftToPlayer = async () => {
@@ -5913,14 +5913,13 @@
         const itm = catalog.find(x => String(x.id) === String(giftId));
         if (!itm) { showToast('Выбери подарок!', '#e74c3c'); return; }
 
-        // Читаем ID до любых async операций
+        // Читаем номер № до любых async операций
         const instInput = document.getElementById('give-inst-id');
         const rawVal = instInput ? instInput.value.trim() : '';
-        const customInst = rawVal !== '' ? Number(rawVal) : null;
+        const customSerial = rawVal !== '' ? Number(rawVal) : null;
 
         const ok = await showConfirm('Выдать подарок',
-            `Выдать ${itm.i} ${itm.n} игроку ${_givePlayerName}?
-ID предмета: ${customInst !== null ? customInst : 'авто'}`,
+            `Выдать ${itm.i} ${itm.n} игроку ${_givePlayerName}?\nНомер №: ${customSerial !== null ? customSerial : 'авто'}`,
             '🎯', 'var(--orange)', 'Выдать');
         if (!ok) return;
 
@@ -5930,14 +5929,29 @@ ID предмета: ${customInst !== null ? customInst : 'авто'}`,
             const ud = snap.val();
             const inv = Array.isArray(ud.cloudInv) ? [...ud.cloudInv] : [];
 
-            // Проверка что customInst не занят
-            if (customInst !== null && inv.some(x => Number(x.inst) === customInst)) {
-                showToast(`❌ ID ${customInst} уже занят у этого игрока!`, '#e74c3c');
-                return;
+            // Определяем итоговый serial (номер №)
+            let serial;
+            if (customSerial !== null) {
+                // Проверяем что номер не занят глобально
+                const allUsersSnap = await get(ref(db, 'users'));
+                const allUsers = allUsersSnap.val() || {};
+                const serialTaken = Object.values(allUsers).some(u =>
+                    Array.isArray(u.cloudInv) && u.cloudInv.some(x => Number(x.nftSerial) === customSerial)
+                );
+                if (serialTaken) {
+                    showToast(`❌ Номер №${customSerial} уже занят!`, '#e74c3c');
+                    return;
+                }
+                serial = customSerial;
+                // Обновляем счётчик если введённый номер больше текущего
+                const counterSnap = await get(ref(db, 'nft_counter'));
+                if (serial > (counterSnap.val() || 1000)) {
+                    await set(ref(db, 'nft_counter'), serial);
+                }
+            } else {
+                serial = await getNextNftSerial();
             }
-
-            const serial = await getNextNftSerial();
-            const inst = customInst !== null ? customInst : serial;
+            const inst = serial;
 
             const giftEntry = {
                 id: itm.id,
