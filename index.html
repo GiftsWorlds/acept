@@ -128,7 +128,96 @@
         body.light-theme .nft-feb-card [style*="color:#4dff91"] { color: #1a7a3a !important; }
         body.light-theme .nft-feb-card .btn { color: #fff !important; }
 
-        /* ===== AUTH SCREEN LIGHT THEME ===== */
+        /* ===== FILTER BUTTONS LIGHT THEME ===== */
+        body.light-theme .filter-btn {
+            background: #e2e8f0 !important;
+            border-color: #c0cdd8 !important;
+            color: #5a6a7a !important;
+        }
+        body.light-theme .filter-btn:hover { background: #d0dae8 !important; color: #1a1a2e !important; }
+        body.light-theme .filter-btn.active { background: var(--accent) !important; border-color: var(--accent) !important; color: white !important; }
+
+        /* ===== LEADERBOARD TABS ===== */
+        body.light-theme .lb-tab { background: rgba(0,0,0,0.05) !important; border-color: rgba(0,0,0,0.1) !important; }
+        body.light-theme .lb-tab-active { background: rgba(36,129,204,0.15) !important; border-color: rgba(36,129,204,0.4) !important; }
+
+        /* ===== NFT CARDS (склад/магазин) - light golden style ===== */
+        body.light-theme .nft-card:not(.nft-feb-card):not([class*="nft-lvl1"]):not([class*="nft-lvl2"]):not([class*="nft-lvl3"]):not([class*="nft-lvl4"]):not([class*="nft-lvl5"]) {
+            background: linear-gradient(135deg,#fff8dc,#fffaed,#fff3b0) !important;
+            border-color: rgba(180,140,0,0.55) !important;
+        }
+        /* Rare cards - light blue */
+        body.light-theme .card-rare {
+            background: linear-gradient(135deg,#e8f0ff,#d8e8ff) !important;
+            border-color: rgba(36,100,220,0.4) !important;
+            box-shadow: 0 0 10px 2px rgba(77,180,255,0.12) !important;
+        }
+        /* Epic cards - light purple */
+        body.light-theme .card-epic {
+            background: linear-gradient(135deg,#f0e8ff,#e8d8ff) !important;
+            border-color: rgba(130,100,220,0.4) !important;
+            box-shadow: 0 0 10px 2px rgba(162,155,254,0.15) !important;
+        }
+        /* Legendary cards - light gold */
+        body.light-theme .card-legendary {
+            background: linear-gradient(135deg,#fff8e0,#fffbe8,#fff8e0) !important;
+            border-color: rgba(200,160,0,0.55) !important;
+            box-shadow: 0 0 14px 3px rgba(255,215,0,0.18) !important;
+        }
+        /* NFT level cards keep their dramatic look but lighter */
+        body.light-theme .nft-lvl1-fire { background: linear-gradient(145deg,#ffeedd,#fff0e0,#ffeedd) !important; border-color: rgba(255,80,0,0.5) !important; }
+        body.light-theme .nft-lvl1-ocean { background: linear-gradient(145deg,#ddf0ff,#e8f6ff,#ddf0ff) !important; border-color: rgba(0,150,255,0.5) !important; }
+        body.light-theme .nft-lvl1-forest { background: linear-gradient(145deg,#ddfff0,#e8fff6,#ddfff0) !important; border-color: rgba(0,200,80,0.5) !important; }
+        body.light-theme .nft-lvl1-galaxy { background: linear-gradient(145deg,#f0ddff,#f8e8ff,#f0ddff) !important; border-color: rgba(180,0,255,0.5) !important; }
+        body.light-theme .nft-lvl1-sunset { background: linear-gradient(145deg,#ffddf0,#ffe8f8,#ffddf0) !important; border-color: rgba(255,100,150,0.5) !important; }
+
+        /* ===== MARKET LISTINGS ===== */
+        /* NFT listing dark card (Пепе, Ящерица) */
+        body.light-theme #market [style*="background:linear-gradient(135deg,#120d2e"],
+        body.light-theme #market [style*="background: linear-gradient(135deg,#120d2e"] {
+            background: linear-gradient(135deg,#ede8ff,#e4d8ff) !important;
+            border-color: rgba(130,100,220,0.5) !important;
+        }
+        body.light-theme #market [style*="background:linear-gradient(135deg,#001a08"],
+        body.light-theme #market [style*="background: linear-gradient(135deg,#001a08"] {
+            background: linear-gradient(135deg,#d8ffed,#e0fff4) !important;
+            border-color: rgba(0,180,80,0.5) !important;
+        }
+        /* Market item text in dark NFT rows */
+        body.light-theme #market [style*="background:linear-gradient"] * { color: #1a1a2e !important; }
+        body.light-theme #market [style*="background:linear-gradient"] [style*="color:#4dff91"] { color: #0a7a3a !important; }
+        body.light-theme #market [style*="background:linear-gradient"] .btn { color: #fff !important; }
+        /* Regular market rows (белые с тенью) */
+        body.light-theme #market .card { background: #ffffff !important; }
+
+        /* ===== MODALS & OVERLAYS ===== */
+        body.light-theme [style*="background:#0e1621"][style*="border-radius:20px"],
+        body.light-theme [style*="background: #0e1621"][style*="border-radius:20px"] {
+            background: #f0f4f8 !important;
+            border-color: rgba(0,0,0,0.1) !important;
+        }
+        body.light-theme [style*="background:#111b21"][style*="border-radius:24px"],
+        body.light-theme [style*="background: #111b21"][style*="border-radius:24px"] {
+            background: #f0f4f8 !important;
+        }
+        /* Merge panel in light */
+        body.light-theme [style*="background:#0d0a1a"] { background: #eee8ff !important; }
+        /* Недоступно button in NFT banner */
+        body.light-theme .nft-feb-card .btn[disabled],
+        body.light-theme .nft-feb-card [style*="background:#2a2a2a"] {
+            background: #c8c8c8 !important; color: #666 !important;
+        }
+        body.light-theme [style*="background:#2a2a2a"] { background: #d0d0d0 !important; color: #555 !important; }
+        /* Lizard NFT banner in market light */
+        body.light-theme .card.nft-card[style*="#001a08"] {
+            background: linear-gradient(135deg,#d8ffed,#e8fff6) !important;
+        }
+        body.light-theme .card.nft-card[style*="#001a08"] * { color: #0a3a20 !important; }
+        body.light-theme .card.nft-card[style*="#001a08"] .btn { color: #000 !important; }
+        /* ===== SEARCH & FILTER BAR ===== */
+        body.light-theme .search-box { background: #e8edf2 !important; border-color: #c8d4e0 !important; }
+        body.light-theme .search-filter-bar input { background: #e8edf2 !important; border-color: #c8d4e0 !important; color: #1a1a2e !important; }
+
         body.light-theme .auth-wrap { background: var(--bg); }
         body.light-theme .auth-card {
             background: #ffffff !important;
