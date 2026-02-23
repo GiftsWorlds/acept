@@ -126,7 +126,11 @@
         body.light-theme .nft-feb-card [style*="color:gold"],
         body.light-theme .nft-feb-card [style*="color: gold"] { color: #b8860b !important; }
         body.light-theme .nft-feb-card [style*="color:#4dff91"] { color: #1a7a3a !important; }
-        body.light-theme .nft-feb-card .btn { color: #fff !important; }
+        body.light-theme .nft-feb-card [style*="color:var(--orange)"] { color: #c07000 !important; }
+        body.light-theme .nft-feb-card .btn:not([disabled]) { color: #000 !important; }
+        body.light-theme .nft-feb-card .btn[disabled] { background: #c8c8c8 !important; color: #888 !important; }
+        /* NFT banner grid wrapper in light */
+        body.light-theme [style*="grid-column:1/-1"][style*="grid-template-columns:1fr 1fr"] > [style*="color:gold"] { color: #8a6000 !important; }
 
         /* ===== FILTER BUTTONS LIGHT THEME ===== */
         body.light-theme .filter-btn {
@@ -3099,7 +3103,7 @@
         setTimeout(() => openNftUpgrade(inst), 350);
     };
     const NFT_START=new Date('2026-02-22T21:00:00Z').getTime(); // 00:00 МСК 23 февраля
-    const NFT_END=new Date('2026-02-23T21:00:00Z').getTime();
+    const NFT_END=new Date('2026-02-23T21:00:00Z').getTime();   // 00:00 МСК 24 февраля (конец 23-го)
     // Ящерица — 24 часа с 18 февраля 2026
     const LIZ_START=new Date('2026-02-18T17:00:00Z').getTime(); // 20:00 МСК
     const LIZ_END=new Date('2026-02-19T17:00:00Z').getTime();   // 20:00 МСК +24ч
@@ -3155,7 +3159,7 @@
         }).join('') || '<div style="grid-column:1/-1;text-align:center;color:var(--secondary);padding:30px;">Ничего не найдено 🔍</div>';
     }
 
-    window.renderShop = () => {
+    window.renderShop = async () => {
         // Ящерица — NFT доступна 24 часа
         const ltz = getLizardTimeLabel();
         let lizardNftHtml = '';
@@ -3180,24 +3184,45 @@
         let nftHtml = '';
         if(tl!==null){
             const av=isNftAvailable();
-            nftHtml=`<div class="card nft-card nft-feb-card" style="grid-column:1/-1;border:2px solid gold;background:linear-gradient(135deg,#1a1200,#111b21);position:relative;overflow:hidden;text-align:center;padding:20px;">
-                <div style="position:absolute;top:10px;right:12px;font-size:11px;background:gold;color:#000;padding:3px 10px;border-radius:20px;font-weight:bold;z-index:2;letter-spacing:1px;">NFT</div>
-                <div style="display:flex;justify-content:center;gap:16px;margin-bottom:8px;">
-                    <div style="text-align:center;">
-                        <img src="https://em-content.zobj.net/source/apple/391/beer-mug_1f37a.png" class="nft-emoji" style="width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(255,215,0,0.6));position:relative;z-index:2;">
-                        <div style="font-size:11px;color:gold;font-weight:bold;margin-top:4px;position:relative;z-index:2;">10 000 💰</div>
-                    </div>
-                    <div style="text-align:center;">
-                        <img src="https://em-content.zobj.net/source/apple/391/socks_1f9e6.png" class="nft-emoji" style="width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(255,215,0,0.6));position:relative;z-index:2;animation-delay:0.4s;">
-                        <div style="font-size:11px;color:gold;font-weight:bold;margin-top:4px;position:relative;z-index:2;">5 000 💰</div>
-                    </div>
-                </div>
-                <b style="font-size:17px;display:block;position:relative;z-index:2;">NFT: 23 Февраля</b>
-                <p style="color:var(--secondary);font-size:12px;margin:5px 0 4px;position:relative;z-index:2;">Эксклюзивный подарок — только 23 февраля! 🍺 Пиво + 🧦 Носок</p>
-                <div style="font-weight:bold;color:gold;font-size:16px;margin-bottom:4px;position:relative;z-index:2;">🍺 10 000 💰 + 🧦 5 000 💰</div>
-                <div style="font-size:12px;color:var(--orange);margin-bottom:8px;position:relative;z-index:2;">${tl}</div>
-                ${av?`<button class="btn" style="background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;font-weight:bold;position:relative;z-index:2;" onclick="buyNft(event)">🛒 Купить оба NFT за 15 000 💰</button>`:`<button class="btn" style="background:#2a2a2a;color:#666;cursor:default;position:relative;z-index:2;" disabled>🔒 Недоступно</button>`}
-            </div>`;
+            const d_snap = await get(ref(db,'users/'+user.id)); const d_now = d_snap.val();
+            const bal = d_now ? (d_now.balance||0) : 0;
+            const hasBeer = d_now && toArr(d_now.cloudInv).some(x=>x.id===998&&x.nft);
+            const hasSock = d_now && toArr(d_now.cloudInv).some(x=>x.id===999&&x.nft);
+
+            const mkCard = (nftObj, price, emoji, emojiUrl, accentColor, glowColor, hasBought) => {
+                let btnStyle, btnText, btnAttr;
+                if (hasBought) {
+                    btnStyle = 'background:#3a3a3a;color:#888;cursor:default;';
+                    btnText = '✅ Куплено';
+                    btnAttr = 'disabled';
+                } else if (av && (user.isAdm || bal >= price)) {
+                    btnStyle = 'background:linear-gradient(90deg,' + accentColor + ');color:#000;font-weight:bold;';
+                    btnText = emoji + ' Купить за ' + price.toLocaleString() + ' 💰';
+                    btnAttr = 'onclick="buyNftItem(' + nftObj.id + ',event)"';
+                } else {
+                    btnStyle = 'background:#2a2a2a;color:#666;cursor:default;';
+                    btnText = av ? 'Недостаточно монет' : '🔒 Недоступно';
+                    btnAttr = 'disabled';
+                }
+                const borderColor = (accentColor.split(',')[1] || 'gold').trim();
+                return '<div class="card nft-card nft-feb-card" style="grid-column:span 1;border:2px solid ' + borderColor + ';background:linear-gradient(135deg,#1a1200,#111b21);position:relative;overflow:hidden;text-align:center;padding:18px 14px;">'
+                    + '<div style="position:absolute;top:8px;right:10px;font-size:10px;background:gold;color:#000;padding:2px 8px;border-radius:20px;font-weight:bold;z-index:2;">NFT</div>'
+                    + '<div style="position:absolute;inset:0;border-radius:25px;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,215,0,0.12) 50%,transparent 70%);background-size:200% 100%;animation:shimmer 2.4s linear infinite;z-index:1;"></div>'
+                    + '<img src="' + emojiUrl + '" class="nft-emoji" style="width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 18px rgba(' + glowColor + ',0.65));position:relative;z-index:2;margin-bottom:8px;">'
+                    + '<b style="display:block;font-size:15px;position:relative;z-index:2;margin-bottom:4px;">' + nftObj.n + '</b>'
+                    + '<div style="font-weight:bold;color:gold;font-size:18px;margin-bottom:4px;position:relative;z-index:2;">' + price.toLocaleString() + ' 💰</div>'
+                    + '<div style="font-size:11px;color:var(--orange);margin-bottom:10px;position:relative;z-index:2;">' + tl + '</div>'
+                    + '<button class="btn" style="' + btnStyle + 'position:relative;z-index:2;font-size:13px;" ' + btnAttr + '>' + btnText + '</button>'
+                    + '</div>';
+            };
+
+            nftHtml = '<div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
+                + '<div style="grid-column:1/-1;text-align:center;padding:6px 0 2px;">'
+                + '<span style="font-size:13px;font-weight:bold;color:gold;">🎖️ NFT: 23 Февраля — эксклюзивные подарки</span>'
+                + '</div>'
+                + mkCard(NFT_BEER, 10000, '🍺', 'https://em-content.zobj.net/source/apple/391/beer-mug_1f37a.png', '#b8860b,#ffd700', '255,215,0', hasBeer)
+                + mkCard(NFT_SOCK, 5000,  '🧦', 'https://em-content.zobj.net/source/apple/391/socks_1f9e6.png',  '#b8860b,#ffd700', '255,215,0', hasSock)
+                + '</div>';
         }
         document.getElementById('shop').innerHTML = `
             <div class="search-filter-bar">
@@ -3227,6 +3252,26 @@
         await update(r,{balance:user.isAdm ? (d.balance||0) : d.balance-7000, cloudInv:inv});
         if(e){spawnConfetti(e.clientX,e.clientY,45);flyEmoji('🦎',e.clientX,e.clientY);}
         flashBalance(); showToast(`🦎 NFT Ящерица №${lizSerial} в коллекции!`,'#4dff91');
+    };
+
+    window.buyNftItem = async (nftId, e) => {
+        if(!isNftAvailable()) return showToast("NFT недоступен!",'var(--err)');
+        const nftMap = { 998: NFT_BEER, 999: NFT_SOCK };
+        const nftObj = nftMap[nftId];
+        if(!nftObj) return;
+        const r=ref(db,'users/'+user.id), s=await get(r), d=s.val();
+        const inv=toArr(d.cloudInv);
+        // Check if already owns this NFT
+        if(inv.some(x=>x.id===nftId&&x.nft)) return showToast(`Этот NFT уже есть в коллекции!`,'var(--orange)');
+        if(!user.isAdm && (d.balance||0)<nftObj.price) return showToast(`Нужно ${nftObj.price.toLocaleString()} 💰`,'var(--err)');
+        const serial=await getNextNftSerial();
+        inv.push({...nftObj, inst:serial, seen:true, nftSerial:serial});
+        await update(r,{balance:user.isAdm?(d.balance||0):(d.balance||0)-nftObj.price, cloudInv:inv});
+        if(e){spawnConfetti(e.clientX,e.clientY,35);flyEmoji(nftObj.i,e.clientX,e.clientY);}
+        flashBalance();
+        showToast(`${nftObj.i} NFT ${nftObj.n} №${serial} в коллекции!`,'gold');
+        // Refresh shop to update button states
+        window.renderShop();
     };
 
     window.buyNft = async (e) => {
