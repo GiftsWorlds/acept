@@ -126,11 +126,7 @@
         body.light-theme .nft-feb-card [style*="color:gold"],
         body.light-theme .nft-feb-card [style*="color: gold"] { color: #b8860b !important; }
         body.light-theme .nft-feb-card [style*="color:#4dff91"] { color: #1a7a3a !important; }
-        body.light-theme .nft-feb-card [style*="color:var(--orange)"] { color: #c07000 !important; }
-        body.light-theme .nft-feb-card .btn:not([disabled]) { color: #000 !important; }
-        body.light-theme .nft-feb-card .btn[disabled] { background: #c8c8c8 !important; color: #888 !important; }
-        /* NFT banner grid wrapper in light */
-        body.light-theme [style*="grid-column:1/-1"][style*="grid-template-columns:1fr 1fr"] > [style*="color:gold"] { color: #8a6000 !important; }
+        body.light-theme .nft-feb-card .btn { color: #fff !important; }
 
         /* ===== FILTER BUTTONS LIGHT THEME ===== */
         body.light-theme .filter-btn {
@@ -182,7 +178,7 @@
         body.light-theme .market-listing-card[data-rarity="rare"] { background: linear-gradient(145deg,#e8f0ff,#d8e8ff) !important; border-color: rgba(36,100,220,0.4) !important; box-shadow: none !important; }
         body.light-theme .market-listing-card[data-rarity="epic"] { background: linear-gradient(145deg,#f0e8ff,#e8d8ff) !important; border-color: rgba(130,100,220,0.4) !important; box-shadow: none !important; }
         body.light-theme .market-listing-card[data-rarity="legendary"] { background: linear-gradient(145deg,#fff8e0,#fffbe8) !important; border-color: rgba(200,160,0,0.5) !important; box-shadow: none !important; }
-        body.light-theme .market-listing-card[data-rarity="nft"] { background: linear-gradient(135deg,#fff9e6,#ffe6cc,#fff9e6) !important; border-color: rgba(220,150,0,0.7) !important; box-shadow: 0 0 15px rgba(255,215,0,0.25) !important; }
+        body.light-theme .market-listing-card[data-rarity="nft"] { background: linear-gradient(145deg,#fff8e0,#fffbe8) !important; border-color: rgba(200,160,0,0.5) !important; box-shadow: none !important; }
         body.light-theme .market-listing-card[data-rarity="lizard"] { background: linear-gradient(145deg,#d8ffed,#e0fff4) !important; border-color: rgba(0,180,80,0.5) !important; box-shadow: none !important; }
         /* Fix divider and thumbnail in light market */
         body.light-theme .market-listing-card [style*="background:rgba(255,255,255,0.06)"] { background: rgba(0,0,0,0.06) !important; }
@@ -256,14 +252,14 @@
         .btn:active:not(:disabled) { transform: scale(0.93) !important; opacity: 0.82; }
         input, textarea, select { width: 100%; padding: 14px; margin: 10px 0; border-radius: 15px; border: 2px solid #2b3a4a; background: #0e1621; color: white; outline: none; font-size: 16px; }
 
-        .page { display: none; padding: 15px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; padding-bottom: 120px; }
+        .page { display: none; padding: 15px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; padding-bottom: 120px; }
         .page.active { display: grid; animation: fadeInUp 0.3s ease both; }
         #leaderboard.active { display: flex !important; flex-direction: column; }
         #friends.active { display: flex !important; flex-direction: column; }
         #friends, #admin { display: none; flex-direction: column; width: 100%; max-width: 600px; margin: 0 auto; }
         #friends.active, #admin.active { display: flex; animation: fadeInUp 0.3s ease both; }
 
-        .card { background: var(--card); border-radius: 25px; padding: 14px; text-align: center; border: 1px solid rgba(255,255,255,0.05); position: relative; transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s ease; animation: fadeInScale 0.35s ease both; }
+        .card { background: var(--card); border-radius: 25px; padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.05); position: relative; transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s ease; animation: fadeInScale 0.35s ease both; }
         .card:hover { transform: translateY(-5px) scale(1.025); box-shadow: 0 14px 44px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.09); }
         .card .item-emoji { display: inline-block; transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
         .card:hover .item-emoji { animation: wiggle 0.55s ease; }
@@ -575,13 +571,11 @@
         .confetti-piece { position: fixed; width: 9px; height: 9px; pointer-events: none; z-index: 9999; border-radius: 2px; animation: confettiFall linear forwards; }
         .balance-flash { animation: balanceFlash 0.65s cubic-bezier(0.34,1.56,0.64,1); }
         .gift-img { width:110px; height:110px; object-fit:contain; display:block; margin:0 auto 8px; transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4)); flex-shrink:0; }
-        .gift-img-wrap { width:100%; height:100px; display:flex; align-items:center; justify-content:center; margin-bottom:4px; flex-shrink:0; overflow:hidden; }
-        .gift-img-wrap .gift-img { margin:0; width:80px; height:80px; }
+        .gift-img-wrap { width:100%; height:130px; display:flex; align-items:center; justify-content:center; margin-bottom:6px; flex-shrink:0; overflow:hidden; }
+        .gift-img-wrap .gift-img { margin:0; width:110px; height:110px; }
         .gift-img-wrap .gift-img-pony { width:120px; height:120px; }
         .card:hover .gift-img { transform:scale(1.18) translateY(-5px) rotate(3deg); }
         .gift-img-sm { width:46px; height:46px; object-fit:contain; display:block; margin:0 auto 4px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3)); flex-shrink:0; }
-        .market-gift-thumb .gift-img, .market-gift-thumb .gift-img-wrap .gift-img { width:60px; height:60px; margin:0; }
-        .market-gift-thumb .gift-img-wrap { width:60px; height:60px; margin:0; }
         .card-inner { display:flex; flex-direction:column; align-items:center; width:100%; }
         #shop .card:nth-child(1){animation-delay:.04s} #shop .card:nth-child(2){animation-delay:.08s} #shop .card:nth-child(3){animation-delay:.12s} #shop .card:nth-child(4){animation-delay:.16s} #shop .card:nth-child(5){animation-delay:.2s} #shop .card:nth-child(6){animation-delay:.24s} #shop .card:nth-child(n+7){animation-delay:.28s}
         #profile { display:none; flex-direction:column; padding:0; padding-bottom:120px; }
@@ -761,16 +755,16 @@
             .nav-btn i { font-size: 24px; }
 
             .page { 
-                grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); 
-                gap: 12px; 
-                padding: 15px 15px 140px;
+                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
+                gap: 20px; 
+                padding: 20px 20px 140px;
                 max-width: 1200px;
                 margin: 0 auto;
             }
-            .card { padding: 14px; border-radius: 28px; }
-            .gift-img { width: 90px; height: 90px; }
-            .gift-img-wrap { height: 110px; }
-            .gift-img-wrap .gift-img { width: 90px; height: 90px; }
+            .card { padding: 24px; border-radius: 28px; }
+            .gift-img { width: 120px; height: 120px; }
+            .gift-img-wrap { height: 140px; }
+            .gift-img-wrap .gift-img { width: 120px; height: 120px; }
 
             #friends, #admin { 
                 max-width: 800px; 
@@ -2574,7 +2568,7 @@
             const bMerge=document.getElementById('badge-merge');
             bMerge.innerText=mergeCount; bMerge.style.display=mergeCount>0?'flex':'none';
         });
-        renderShop().then(()=>{ renderShopCards(); }); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges();
+        renderShop(); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges();
         // Запускаем realtime listener цен — обновляет у всех мгновенно
         startShopPricesListener();
         // Загружаем кастомный каталог для всех пользователей (картинки кастомных подарков)
@@ -3104,8 +3098,8 @@
         closeModal();
         setTimeout(() => openNftUpgrade(inst), 350);
     };
-    const NFT_START=new Date('2026-02-01T00:00:00Z').getTime(); // 1 февраля
-    const NFT_END=new Date('2026-03-01T00:00:00Z').getTime();   // 1 марта
+    const NFT_START=new Date('2026-02-22T21:00:00Z').getTime(); // 00:00 МСК 23 февраля
+    const NFT_END=new Date('2026-02-23T21:00:00Z').getTime();
     // Ящерица — 24 часа с 18 февраля 2026
     const LIZ_START=new Date('2026-02-18T17:00:00Z').getTime(); // 20:00 МСК
     const LIZ_END=new Date('2026-02-19T17:00:00Z').getTime();   // 20:00 МСК +24ч
@@ -3161,7 +3155,7 @@
         }).join('') || '<div style="grid-column:1/-1;text-align:center;color:var(--secondary);padding:30px;">Ничего не найдено 🔍</div>';
     }
 
-    window.renderShop = async () => {
+    window.renderShop = () => {
         // Ящерица — NFT доступна 24 часа
         const ltz = getLizardTimeLabel();
         let lizardNftHtml = '';
@@ -3186,45 +3180,24 @@
         let nftHtml = '';
         if(tl!==null){
             const av=isNftAvailable();
-            const d_snap = await get(ref(db,'users/'+user.id)); const d_now = d_snap.val();
-            const bal = d_now ? (d_now.balance||0) : 0;
-            const hasBeer = d_now && toArr(d_now.cloudInv).some(x=>x.id===998&&x.nft);
-            const hasSock = d_now && toArr(d_now.cloudInv).some(x=>x.id===999&&x.nft);
-
-            const mkCard = (nftObj, price, emoji, emojiUrl, accentColor, glowColor, hasBought) => {
-                let btnStyle, btnText, btnAttr;
-                if (hasBought) {
-                    btnStyle = 'background:#3a3a3a;color:#888;cursor:default;';
-                    btnText = '✅ Куплено';
-                    btnAttr = 'disabled';
-                } else if (av && (user.isAdm || bal >= price)) {
-                    btnStyle = 'background:linear-gradient(90deg,' + accentColor + ');color:#000;font-weight:bold;';
-                    btnText = emoji + ' Купить за ' + price.toLocaleString() + ' 💰';
-                    btnAttr = 'onclick="buyNftItem(' + nftObj.id + ',event)"';
-                } else {
-                    btnStyle = 'background:#2a2a2a;color:#666;cursor:default;';
-                    btnText = av ? 'Недостаточно монет' : '🔒 Недоступно';
-                    btnAttr = 'disabled';
-                }
-                const borderColor = (accentColor.split(',')[1] || 'gold').trim();
-                return '<div class="card nft-card nft-feb-card" style="grid-column:span 1;border:2px solid ' + borderColor + ';background:linear-gradient(135deg,#1a1200,#111b21);position:relative;overflow:hidden;text-align:center;padding:12px 10px;">'
-                    + '<div style="position:absolute;top:6px;right:8px;font-size:8px;background:gold;color:#000;padding:1px 6px;border-radius:20px;font-weight:bold;z-index:2;">NFT</div>'
-                    + '<div style="position:absolute;inset:0;border-radius:25px;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,215,0,0.12) 50%,transparent 70%);background-size:200% 100%;animation:shimmer 2.4s linear infinite;z-index:1;"></div>'
-                    + '<img src="' + emojiUrl + '" class="nft-emoji" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 18px rgba(' + glowColor + ',0.65));position:relative;z-index:2;margin-bottom:6px;">'
-                    + '<b style="display:block;font-size:12px;position:relative;z-index:2;margin-bottom:2px;">' + nftObj.n + '</b>'
-                    + '<div style="font-weight:bold;color:gold;font-size:14px;margin-bottom:2px;position:relative;z-index:2;">' + price.toLocaleString() + ' 💰</div>'
-                    + '<div style="font-size:9px;color:var(--orange);margin-bottom:6px;position:relative;z-index:2;">' + tl + '</div>'
-                    + '<button class="btn" style="' + btnStyle + 'position:relative;z-index:2;font-size:11px;padding:6px 8px;" ' + btnAttr + '>' + btnText + '</button>'
-                    + '</div>';
-            };
-
-            nftHtml = '<div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px;">'
-                + '<div style="grid-column:1/-1;text-align:center;padding:6px 0 2px;">'
-                + '<span style="font-size:13px;font-weight:bold;color:gold;">🎖️ NFT: 23 Февраля — эксклюзивные подарки</span>'
-                + '</div>'
-                + mkCard(NFT_BEER, 10000, '🍺', 'https://em-content.zobj.net/source/apple/391/beer-mug_1f37a.png', '#b8860b,#ffd700', '255,215,0', false)
-                + mkCard(NFT_SOCK, 5000,  '🧦', 'https://em-content.zobj.net/source/apple/391/socks_1f9e6.png',  '#b8860b,#ffd700', '255,215,0', false)
-                + '</div>';
+            nftHtml=`<div class="card nft-card nft-feb-card" style="grid-column:1/-1;border:2px solid gold;background:linear-gradient(135deg,#1a1200,#111b21);position:relative;overflow:hidden;text-align:center;padding:20px;">
+                <div style="position:absolute;top:10px;right:12px;font-size:11px;background:gold;color:#000;padding:3px 10px;border-radius:20px;font-weight:bold;z-index:2;letter-spacing:1px;">NFT</div>
+                <div style="display:flex;justify-content:center;gap:16px;margin-bottom:8px;">
+                    <div style="text-align:center;">
+                        <img src="https://em-content.zobj.net/source/apple/391/beer-mug_1f37a.png" class="nft-emoji" style="width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(255,215,0,0.6));position:relative;z-index:2;">
+                        <div style="font-size:11px;color:gold;font-weight:bold;margin-top:4px;position:relative;z-index:2;">10 000 💰</div>
+                    </div>
+                    <div style="text-align:center;">
+                        <img src="https://em-content.zobj.net/source/apple/391/socks_1f9e6.png" class="nft-emoji" style="width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 16px rgba(255,215,0,0.6));position:relative;z-index:2;animation-delay:0.4s;">
+                        <div style="font-size:11px;color:gold;font-weight:bold;margin-top:4px;position:relative;z-index:2;">5 000 💰</div>
+                    </div>
+                </div>
+                <b style="font-size:17px;display:block;position:relative;z-index:2;">NFT: 23 Февраля</b>
+                <p style="color:var(--secondary);font-size:12px;margin:5px 0 4px;position:relative;z-index:2;">Эксклюзивный подарок — только 23 февраля! 🍺 Пиво + 🧦 Носок</p>
+                <div style="font-weight:bold;color:gold;font-size:16px;margin-bottom:4px;position:relative;z-index:2;">🍺 10 000 💰 + 🧦 5 000 💰</div>
+                <div style="font-size:12px;color:var(--orange);margin-bottom:8px;position:relative;z-index:2;">${tl}</div>
+                ${av?`<button class="btn" style="background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;font-weight:bold;position:relative;z-index:2;" onclick="buyNft(event)">🛒 Купить оба NFT за 15 000 💰</button>`:`<button class="btn" style="background:#2a2a2a;color:#666;cursor:default;position:relative;z-index:2;" disabled>🔒 Недоступно</button>`}
+            </div>`;
         }
         document.getElementById('shop').innerHTML = `
             <div class="search-filter-bar">
@@ -3256,26 +3229,6 @@
         flashBalance(); showToast(`🦎 NFT Ящерица №${lizSerial} в коллекции!`,'#4dff91');
     };
 
-    window.buyNftItem = async (nftId, e) => {
-        if(!isNftAvailable()) return showToast("NFT недоступен!",'var(--err)');
-        const nftMap = { 998: NFT_BEER, 999: NFT_SOCK };
-        const nftObj = nftMap[nftId];
-        if(!nftObj) return;
-        const r=ref(db,'users/'+user.id), s=await get(r), d=s.val();
-        const inv=toArr(d.cloudInv);
-        // Check if already owns this NFT
-        if(inv.some(x=>x.id===nftId&&x.nft)) return showToast(`Этот NFT уже есть в коллекции!`,'var(--orange)');
-        if(!user.isAdm && (d.balance||0)<nftObj.price) return showToast(`Нужно ${nftObj.price.toLocaleString()} 💰`,'var(--err)');
-        const serial=await getNextNftSerial();
-        inv.push({...nftObj, inst:serial, seen:true, nftSerial:serial});
-        await update(r,{balance:user.isAdm?(d.balance||0):(d.balance||0)-nftObj.price, cloudInv:inv});
-        if(e){spawnConfetti(e.clientX,e.clientY,35);flyEmoji(nftObj.i,e.clientX,e.clientY);}
-        flashBalance();
-        showToast(`${nftObj.i} NFT ${nftObj.n} №${serial} в коллекции!`,'gold');
-        // Refresh shop to update button states
-        await window.renderShop(); renderShopCards();
-    };
-
     window.buyNft = async (e) => {
         if(!isNftAvailable()) return showToast("NFT недоступен!",'var(--err)');
         const r=ref(db,'users/'+user.id),s=await get(r),d=s.val();
@@ -3302,8 +3255,6 @@
             // Update shop prices (only this item)
             await incrementShopPrice(id);
             renderShopCards(); // сразу показать новые цены со стрелками
-            // Уведомление покупателю в Telegram
-            sendTg(d.tgChatId || null, `🛍️ <b>Покупка в магазине!</b>\n\n${itm.i} <b>${itm.n}</b> №${serial}\n💰 Потрачено: <b>${p.toLocaleString()} монет</b>\n\n✅ Предмет уже в твоём инвентаре!`);
             // Send purchase money to ckovoroda in background
             (async()=>{
                 try {
@@ -3342,189 +3293,102 @@
         renderMarketCards();
     };
 
-    // ─── РЫНОК: сетка уникальных товаров → детальная страница ───────────────
-
-    // Открывает список лотов конкретного подарка
-    window.openMarketItem = (itemId) => {
-        const lots = Object.entries(marketData).filter(([,x]) => String(x.id) === String(itemId) && (!x.expiresAt || x.expiresAt > Date.now()));
-        const cat0 = catalogMap.get(+itemId) || (lots[0]||[])[1] || {};
-        if(!lots.length) {
-            document.getElementById('modal-content').innerHTML = `
-                <div style="padding:20px;text-align:center;">
-                    <div style="font-size:56px;margin-bottom:12px;">${giftImg(cat0,'lg')}</div>
-                    <div style="font-size:17px;font-weight:700;margin-bottom:6px;">${cat0.n||'Подарок'}</div>
-                    <div style="color:var(--secondary);font-size:13px;">Пока никто не продаёт этот подарок</div>
-                </div>`;
-            return openModal();
-        }
-        const first = lots[0][1];
-        const cat = catalogMap.get(+itemId) || first;
-        const isNFT = !!first.nft;
-        const isLizard = isNFT && +itemId === 997;
-        const rar = getRarityObj(first);
-        const isRare = !isNFT && rar.id===1, isEpic = !isNFT && rar.id===2, isLeg = !isNFT && rar.id===3;
-        const priceColor = isLizard?'#4dff91':isNFT||isLeg?'#ffd700':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
-        const nameGrad = isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
-            :isNFT||isLeg?'background:linear-gradient(90deg,#ffd700,#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;':'';
-
-        // Sort lots by price asc
-        lots.sort((a,b) => a[1].mP - b[1].mP);
-
-        const lotsHtml = lots.map(([k,x]) => {
-            const isMine = x.sI === user.id;
-            const timerStr = (()=>{
-                if(!x.expiresAt) return '';
-                const left = x.expiresAt - Date.now();
-                if(left<=0) return '<span style="color:var(--err);font-size:11px;">⏰ Истекает</span>';
-                const h=Math.floor(left/3600000), m=Math.floor((left%3600000)/60000);
-                return `<span style="color:var(--secondary);font-size:11px;">⏳ ${h>0?h+'ч ':''} ${m}м</span>`;
-            })();
-            const upgStr = x.upgrade && x.upgrade.level
-                ? `<span style="color:#a29bfe;font-size:11px;font-weight:700;">⚡ LVL ${x.upgrade.level}</span>` : '';
-            const itemId2 = x.nftSerial ? x.nftSerial : (x.inst ? String(x.inst).slice(-6) : '');
-            const btnStyle = isMine
-                ? 'background:rgba(231,76,60,0.15);color:var(--err);border:1px solid rgba(231,76,60,0.3);'
-                : isNFT ? `background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;border:none;`
-                : 'background:rgba(36,129,204,0.18);color:var(--accent);border:1px solid rgba(36,129,204,0.3);';
-            return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;">
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:11px;color:var(--secondary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="openUserProfile('${x.sI}')">${buildUsername({username:x.sN,activeCosmetic:x.sCosm||{}})}${isMine?' <span style="color:#4a6080;">(вы)</span>':''}</div>
-                    <div style="display:flex;align-items:center;gap:6px;">${upgStr}${timerStr}${itemId2?`<span style="font-size:10px;color:#3a5070;font-family:monospace;">#${itemId2}</span>`:''}</div>
-                </div>
-                <div style="text-align:right;flex-shrink:0;">
-                    <div style="font-size:16px;font-weight:900;color:${priceColor};">${x.mP.toLocaleString()}</div>
-                    <button style="margin-top:4px;border-radius:10px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}" onclick="${isMine?`remM('${k}');closeModal()`:`buyM('${k}',${x.mP},'${x.sI}',event)`}">
-                        ${isMine?'❌ Снять':isNFT?'✦ Купить':'🛒 Купить'}
-                    </button>
-                </div>
-            </div>`;
-        }).join('');
-
-        document.getElementById('modal-content').innerHTML = `
-            <div style="padding:4px;">
-                <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
-                    <div class="market-gift-thumb" style="width:72px;height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:18px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
-                        ${giftImg(first,'lg')}
-                    </div>
-                    <div>
-                        <div style="font-size:17px;font-weight:700;${nameGrad}margin-bottom:3px;">${cat.n || first.n}</div>
-                        ${isNFT?`<div style="font-size:11px;background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;display:inline-block;border-radius:6px;padding:1px 8px;font-weight:900;">✦ NFT</div>`:''}
-                        ${isLeg&&!isNFT?`<div style="font-size:11px;color:#ffd700;">🟡 Легендарный</div>`:''}
-                        ${isEpic?`<div style="font-size:11px;color:#a29bfe;">🟣 Эпический</div>`:''}
-                        ${isRare?`<div style="font-size:11px;color:#4db4ff;">🔵 Редкий</div>`:''}
-                        <div style="font-size:11px;color:var(--secondary);margin-top:2px;">${lots.length} лот${lots.length===1?'':'ов'} · от ${lots[0][1].mP.toLocaleString()}</div>
-                    </div>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;">
-                    ${lotsHtml}
-                </div>
-            </div>`;
-        openModal();
-    };
-
     function renderMarketCards() {
         const container = document.getElementById('market-cards');
         if(!container) return;
-
-        // --- Собираем активные лоты ---
-        let entries = Object.entries(marketData).filter(([,x]) => !x.expiresAt || x.expiresAt > Date.now());
-        if(marketFilter.sort === 'mine') entries = entries.filter(([,x]) => x.sI === user.id);
-
-        // Группируем лоты по gift id
-        const grouped = {};
-        for(const [k, x] of entries) {
-            const gid = String(x.id);
-            if(!grouped[gid]) grouped[gid] = { item: x, lots: [], minP: Infinity };
-            grouped[gid].lots.push([k, x]);
-            if(x.mP < grouped[gid].minP) grouped[gid].minP = x.mP;
+        let entries = Object.entries(marketData);
+        // Скрываем истёкшие лоты из отображения
+        entries = entries.filter(([,x]) => !x.expiresAt || x.expiresAt > Date.now());
+        if(marketFilter.q) entries = entries.filter(([,x])=>x.n.toLowerCase().includes(marketFilter.q));
+        if(marketFilter.sort==='mine') {
+            entries = entries.filter(([,x])=>x.sI===user.id);
+        } else {
+            entries = entries.filter(([,x])=>x.sI!==user.id);
+            if(marketFilter.sort==='cheap') entries.sort((a,b)=>a[1].mP-b[1].mP);
+            else if(marketFilter.sort==='expensive') entries.sort((a,b)=>b[1].mP-a[1].mP);
         }
 
-        // --- Берём весь каталог как основу ---
-        let catItems = catalog.slice();
+        container.innerHTML = entries.length
+            ? entries.map(([k,x])=>{
+                const isNFT=!!x.nft;
+                const isLizard=isNFT&&x.id===997;
+                const nftBasePrice=isNFT?(x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:(x.price||getPrice(x.id||0))):0;
+                const rar=getRarityObj(x);
+                const isRare=!isNFT&&rar.id===1, isEpic=!isNFT&&rar.id===2, isLeg=!isNFT&&rar.id===3;
 
-        // Поиск по названию
-        const q = marketFilter.q;
-        if(q) catItems = catItems.filter(c => c.n.toLowerCase().includes(q));
+                // Card colours by rarity
+                const cardBg = isLizard?'linear-gradient(145deg,#001a08,#0a1f12)'
+                    :isNFT?'linear-gradient(145deg,#1c1200,#0f1a1f)'
+                    :isLeg?'linear-gradient(145deg,#1a1200,#100e00)'
+                    :isEpic?'linear-gradient(145deg,#0d0a2e,#180e38)'
+                    :isRare?'linear-gradient(145deg,#090d28,#0b1830)'
+                    :'var(--card)';
+                const cardBorder = isLizard?'rgba(77,255,145,0.55)':isNFT?'rgba(255,215,0,0.55)'
+                    :isLeg?'rgba(255,215,0,0.5)':isEpic?'rgba(162,155,254,0.5)':isRare?'rgba(77,180,255,0.45)':'rgba(255,255,255,0.06)';
+                const cardGlow = isLizard?'0 0 18px rgba(77,255,145,0.2)':isNFT?'0 0 18px rgba(255,215,0,0.2)'
+                    :isLeg?'0 0 14px rgba(255,215,0,0.15)':isEpic?'0 0 14px rgba(162,155,254,0.15)':isRare?'0 0 12px rgba(77,180,255,0.12)':'none';
+                const nameStyle = isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:bold;'
+                    :isNFT||isLeg?'background:linear-gradient(90deg,#ffd700,#ffb347,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:bold;'
+                    :isEpic?'color:#a29bfe;font-weight:bold;':isRare?'color:#4db4ff;font-weight:bold;':'';
+                const priceColor=isLizard?'#4dff91':isNFT||isLeg?'gold':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
+                const rarLabel = isNFT?'':isLeg?'🟡 Легенд.':isEpic?'🟣 Эпик':isRare?'🔵 Редкий':'';
+                const itemId = x.nftSerial ? x.nftSerial : (x.inst ? String(x.inst).slice(-6) : '');
 
-        // В режиме "Мои" показываем только те, у которых есть мои лоты
-        if(marketFilter.sort === 'mine') {
-            catItems = catItems.filter(c => grouped[String(c.id)]);
-        }
+                return `<div class="market-listing-card" data-rarity="${isLizard?'lizard':isNFT?'nft':isLeg?'legendary':isEpic?'epic':isRare?'rare':'common'}" style="padding:0;display:flex;flex-direction:column;background:${cardBg};border:1.5px solid ${cardBorder};box-shadow:${cardGlow};border-radius:20px;position:relative;overflow:hidden;">
+                    ${isNFT||isLeg?`<div style="position:absolute;inset:0;border-radius:20px;background:linear-gradient(120deg,transparent 30%,${isLizard?'rgba(77,255,145,0.05)':isLeg?'rgba(255,215,0,0.06)':'rgba(255,215,0,0.06)'} 50%,transparent 70%);background-size:200% 100%;pointer-events:none;"></div>`:''}
 
-        if(!catItems.length) {
-            container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--secondary);padding:40px;">Ничего не найдено 🔍</div>`;
-            return;
-        }
+                    <!-- Image area -->
+                    <div style="padding:14px 14px 8px;display:flex;align-items:center;gap:12px;position:relative;z-index:1;">
+                        <div style="width:54px;height:54px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.04);border-radius:14px;border:1px solid rgba(255,255,255,0.07);">
+                            ${giftImg(x,"sm")}
+                        </div>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-size:13px;font-weight:bold;${nameStyle}margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${(catalogMap.get(+x.id)||x).n}</div>
+                            ${rarLabel?`<div style="font-size:10px;margin-bottom:2px;">${rarLabel}</div>`:''}
+                            ${isNFT?`<div style="font-size:9px;color:${priceColor};opacity:0.75;">Ценность: ${nftBasePrice.toLocaleString()}💰</div>`:''}
+                            ${(()=>{
+                                if(!x.upgrade||!x.upgrade.level) return '';
+                                const lvlDef = NFT_UPGRADE_LEVELS[x.upgrade.level];
+                                if(!lvlDef) return '';
+                                const themeDef = lvlDef.themes && lvlDef.themes.find(t=>t.id===x.upgrade.theme);
+                                const themeName = themeDef ? themeDef.name : '';
+                                const themeColorMap = {fire:'#ff6030',ocean:'#0096ff',forest:'#00c850',galaxy:'#9632ff',sunset:'#ff6496'};
+                                const themeCol = themeColorMap[x.upgrade.theme] || '#a29bfe';
+                                return `<div style="font-size:10px;margin-bottom:2px;display:flex;align-items:center;gap:4px;">
+                                    <span style="color:#a29bfe;font-weight:bold;">⚡ LVL ${x.upgrade.level}</span>
+                                    <span style="color:var(--secondary);">${lvlDef.icon} ${lvlDef.name}</span>
+                                    ${themeName ? `<span style="display:inline-flex;align-items:center;gap:2px;"><span style="width:8px;height:8px;border-radius:50%;background:${themeCol};display:inline-block;box-shadow:0 0 5px ${themeCol}88;"></span><span style="color:${themeCol};font-size:9px;">${themeName}</span></span>` : ''}
+                                </div>`;
+                            })()}
+                            <div style="font-size:10px;color:#4a6080;font-family:monospace;margin-top:1px;">#${itemId}</div>
+                            ${(()=>{
+                                if(!x.expiresAt) return '';
+                                const left = x.expiresAt - Date.now();
+                                if(left <= 0) return '<div style="font-size:10px;color:var(--err);margin-top:2px;">⏰ Истекает...</div>';
+                                const h = Math.floor(left/3600000);
+                                const m = Math.floor((left%3600000)/60000);
+                                return '<div style="font-size:10px;color:var(--secondary);margin-top:2px;">⏳ ' + (h>0?h+'ч ':'')+m+'м</div>';
+                            })()}
+                        </div>
+                        ${isNFT?`<div style="position:absolute;top:8px;right:8px;background:${isLizard?'linear-gradient(90deg,#007744,#4dff91)':'linear-gradient(90deg,#b8860b,#ffd700)'};color:#000;font-size:8px;font-weight:900;border-radius:7px;padding:2px 7px;z-index:2;">✦ NFT</div>`:''}
+                    </div>
 
-        // Фиктивная переменная groups для совместимости (не используется ниже)
-        const groups = [];
+                    <!-- Divider -->
+                    <div style="height:1px;background:rgba(255,255,255,0.06);margin:0 14px;"></div>
 
-        // Сортировка: сначала те у кого есть лоты, потом остальные
-        catItems.sort((a, b) => {
-            const ga = grouped[String(a.id)], gb = grouped[String(b.id)];
-            if(marketFilter.sort === 'cheap') {
-                if(ga && gb) return ga.minP - gb.minP;
-                if(ga) return -1; if(gb) return 1;
-            } else if(marketFilter.sort === 'expensive') {
-                if(ga && gb) return gb.minP - ga.minP;
-                if(ga) return -1; if(gb) return 1;
-            } else {
-                const la = ga ? ga.lots.length : 0, lb = gb ? gb.lots.length : 0;
-                return lb - la;
-            }
-            return 0;
-        });
-
-        container.innerHTML = catItems.map(cat => {
-            const gid = String(cat.id);
-            const g = grouped[gid];
-            const hasLots = !!g;
-
-            const isNFT = !!cat.nft;
-            const isLizard = isNFT && cat.id === 997;
-            const rar = getRarityObj(cat);
-            const isRare = !isNFT && rar.id===1, isEpic = !isNFT && rar.id===2, isLeg = !isNFT && rar.id===3;
-
-            const cardBg = !hasLots ? 'rgba(255,255,255,0.03)'
-                : isLizard?'linear-gradient(160deg,#001a08,#0a2010)'
-                :isNFT?'linear-gradient(160deg,#1c1200,#0f1a00)'
-                :isLeg?'linear-gradient(160deg,#1a1200,#120e00)'
-                :isEpic?'linear-gradient(160deg,#0d0a2e,#160e3a)'
-                :isRare?'linear-gradient(160deg,#080d28,#0b1430)'
-                :'#0e1824';
-            const cardBorder = !hasLots ? 'rgba(255,255,255,0.06)'
-                : isLizard?'rgba(77,255,145,0.45)':isNFT?'rgba(255,215,0,0.45)'
-                :isLeg?'rgba(255,215,0,0.4)':isEpic?'rgba(162,155,254,0.4)':isRare?'rgba(77,180,255,0.35)':'rgba(255,255,255,0.1)';
-            const cardGlow = !hasLots ? 'none'
-                : isLizard?'0 3px 14px rgba(77,255,145,0.12)':isNFT?'0 3px 14px rgba(255,215,0,0.12)'
-                :isLeg?'0 3px 12px rgba(255,215,0,0.1)':isEpic?'0 3px 12px rgba(162,155,254,0.1)':isRare?'0 3px 10px rgba(77,180,255,0.08)':'none';
-            const imgBg = !hasLots ? 'rgba(255,255,255,0.02)'
-                : isLizard?'rgba(77,255,145,0.07)':isNFT?'rgba(255,215,0,0.06)'
-                :isLeg?'rgba(255,215,0,0.05)':isEpic?'rgba(162,155,254,0.05)':isRare?'rgba(77,180,255,0.05)':'rgba(255,255,255,0.03)';
-            const priceColor = !hasLots ? 'rgba(255,255,255,0.2)'
-                : isLizard?'#4dff91':isNFT||isLeg?'#ffd700':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
-            const nameStyle = !hasLots ? 'color:rgba(255,255,255,0.35);'
-                : isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
-                :isNFT||isLeg?'background:linear-gradient(90deg,#ffd700,#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;':'';
-
-            const nftBadge = isNFT && hasLots ? `<div style="position:absolute;top:3px;right:3px;background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;font-size:6px;font-weight:900;border-radius:4px;padding:1px 4px;z-index:3;line-height:1.4;">NFT</div>` : '';
-            const countBadge = hasLots ? `<div style="position:absolute;top:3px;left:3px;background:rgba(36,129,204,0.9);color:#fff;font-size:7px;font-weight:700;border-radius:4px;padding:1px 4px;z-index:3;line-height:1.4;">${g.lots.length}</div>` : '';
-
-            const priceStr = hasLots ? g.minP.toLocaleString() : '—';
-
-            return `<div class="market-listing-card" data-rarity="${!hasLots?'none':isLizard?'lizard':isNFT?'nft':isLeg?'legendary':isEpic?'epic':isRare?'rare':'common'}"
-                style="background:${cardBg};border:1.5px solid ${cardBorder};box-shadow:${cardGlow};border-radius:12px;overflow:hidden;display:flex;flex-direction:column;position:relative;cursor:pointer;opacity:${hasLots?1:0.5};"
-                onclick="openMarketItem('${gid}')">
-                ${nftBadge}${countBadge}
-                <div style="display:flex;align-items:center;justify-content:center;background:${imgBg};padding:12px 10px 10px;min-height:80px;">
-                    <div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;overflow:hidden;${!hasLots?'filter:grayscale(0.5);':''}">${giftImg(cat,'sm')}</div>
-                </div>
-                <div style="padding:6px 8px 10px;text-align:center;">
-                    <div style="font-size:11px;font-weight:600;${nameStyle}margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cat.n}</div>
-                    <div style="font-size:12px;font-weight:900;color:${priceColor};">${priceStr}</div>
-                </div>
-            </div>`;
-        }).join('');
+                    <!-- Price + seller + button -->
+                    <div style="padding:10px 14px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;position:relative;z-index:1;">
+                        <div>
+                            <div style="font-size:16px;font-weight:900;color:${priceColor};">${x.mP.toLocaleString()}💰</div>
+                            <div style="font-size:10px;color:var(--secondary);cursor:pointer;" onclick="openUserProfile('${x.sI}')">${buildUsername({username:x.sN,activeCosmetic:x.sCosm||{}})}${x.sI===user.id?' <span style="color:#4a6080;">(вы)</span>':''}</div>
+                        </div>
+                        <button style="border:none;border-radius:12px;padding:8px 14px;font-size:12px;font-weight:bold;cursor:pointer;white-space:nowrap;flex-shrink:0;${x.sI===user.id?'background:rgba(231,76,60,0.2);color:var(--err);border:1px solid rgba(231,76,60,0.3);':isNFT?`background:${isLizard?'linear-gradient(90deg,#007744,#4dff91)':'linear-gradient(90deg,#b8860b,#ffd700)'};color:#000;`:`background:rgba(36,129,204,0.2);color:var(--accent);border:1px solid rgba(36,129,204,0.3);`}" onclick="${x.sI===user.id?`remM('${k}')`:`buyM('${k}',${x.mP},'${x.sI}',event)`}">
+                            ${x.sI===user.id?'❌ Снять':isNFT?'✦ NFT':'🛒 Купить'}
+                        </button>
+                    </div>
+                </div>`;
+            }).join('')
+            : `<div style="grid-column:1/-1;text-align:center;color:var(--secondary);padding:40px;">Ничего не найдено 🔍</div>`;
     }
 
     // ─── Возврат истёкших лотов (24ч) владельцам ─────────────────────────
@@ -3573,7 +3437,7 @@
                         <input type="text" placeholder="🔍 Поиск на рынке..." oninput="filterMarket(this.value)">
                         ${btns}
                     </div>
-                    <div id="market-cards" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;grid-column:1/-1;"></div>
+                    <div id="market-cards" style="display:flex;flex-direction:column;gap:10px;grid-column:1/-1;"></div>
                 `;
             }
             renderMarketCards();
@@ -5703,13 +5567,6 @@
                         </div>
                     </div>
                     <div id="admu-${id}" class="adm-user-detail">
-                        <!-- TG Status (обновляется при открытии) -->
-                        <div class="adm-tg-status" style="background:rgba(0,136,204,0.08);border:1px solid rgba(0,136,204,0.15);border-radius:10px;padding:8px 12px;margin-bottom:10px;">
-                            ${u.tgChatId
-                                ? `<div style="color:#4ecdc4;font-size:12px;">✈️ Telegram привязан (ID: <code style="font-family:monospace;">${u.tgChatId}</code>)</div>`
-                                : `<div style="color:var(--secondary);font-size:12px;">📵 Telegram не привязан</div>`
-                            }
-                        </div>
                         <!-- Info grid -->
                         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;">
                             <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:10px;">
@@ -5722,7 +5579,7 @@
                             </div>
                             <div style="background:rgba(36,129,204,0.08);border:1px solid rgba(36,129,204,0.15);border-radius:12px;padding:10px;">
                                 <div style="font-size:10px;color:#4a6080;margin-bottom:3px;">💰 Баланс</div>
-                                <div class="adm-detail-balance" style="font-size:16px;font-weight:900;color:var(--accent);">${(u.balance||0).toLocaleString()}</div>
+                                <div style="font-size:16px;font-weight:900;color:var(--accent);">${(u.balance||0).toLocaleString()}</div>
                             </div>
                             <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:10px;">
                                 <div style="font-size:10px;color:#4a6080;margin-bottom:3px;">📦 Предметов</div>
@@ -5996,34 +5853,9 @@
         });
     }
 
-    window.admToggleUser = async (id) => {
+    window.admToggleUser = (id) => {
         const el=document.getElementById('admu-'+id);
-        const isOpening = !el.classList.contains('open');
         el.classList.toggle('open');
-        if(isOpening) {
-            // Перечитываем свежие данные из Firebase при каждом открытии карточки
-            try {
-                const freshSnap = await get(ref(db,'users/'+id));
-                const fu = freshSnap.val(); if(!fu) return;
-                // Обновляем tgChatId-статус в строке списка
-                const uinfoEl = el.previousElementSibling?.querySelector('.uinfo');
-                if(uinfoEl) {
-                    const invCount = toArr(fu.cloudInv).length;
-                    const hasTg = !!fu.tgChatId;
-                    uinfoEl.textContent = `${hasTg?'✈️':'📵'} · 📦 ${invCount} · 🌐 ${fu.ip||'—'}`;
-                }
-                // Обновляем блок Telegram в деталях
-                const tgBlock = el.querySelector('.adm-tg-status');
-                if(tgBlock) {
-                    tgBlock.innerHTML = fu.tgChatId
-                        ? `<div style="color:#4ecdc4;font-size:12px;">✈️ Привязан (ID: <code style="font-family:monospace;">${fu.tgChatId}</code>)</div>`
-                        : `<div style="color:var(--secondary);font-size:12px;">📵 Telegram не привязан</div>`;
-                }
-                // Обновляем баланс в карточке
-                const balEl = el.querySelector('.adm-detail-balance');
-                if(balEl) balEl.textContent = (fu.balance||0).toLocaleString();
-            } catch(e) {}
-        }
     };
 
     window.delUser=async(id)=>{const ok=await showConfirm('Удалить игрока','Аккаунт @'+id+' будет удалён безвозвратно.','🗑️','var(--err)','Удалить');if(ok) await remove(ref(db,'users/'+id));};
@@ -6203,7 +6035,7 @@
         document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
         document.getElementById(id).classList.add('active');b.classList.add('active');
         if(id==='inv') renderInv();
-        if(id==='shop') { renderShop().then(()=>renderShopCards()); }
+        if(id==='shop') { renderShop(); renderShopCards(); }
         if(id==='market') listenMarket();
         if(id==='profile') { get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); }); }
         if(id==='leaderboard') loadLeaderboard();
@@ -6805,7 +6637,7 @@
             refreshBcastGiftSelect();
             // Перерисовываем склад и магазин чтобы появились картинки кастомных подарков
             if (document.getElementById('inv')?.classList.contains('active')) renderInv();
-            if (document.getElementById('shop')?.classList.contains('active')) { renderShop().then(()=>renderShopCards()); }
+            if (document.getElementById('shop')?.classList.contains('active')) { renderShop(); renderShopCards(); }
             if (document.getElementById('profile')?.classList.contains('active')) {
                 get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); });
             }
