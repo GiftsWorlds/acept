@@ -2572,7 +2572,7 @@
             const bMerge=document.getElementById('badge-merge');
             bMerge.innerText=mergeCount; bMerge.style.display=mergeCount>0?'flex':'none';
         });
-        renderShop(); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges();
+        renderShop().then(()=>{ renderShopCards(); }); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges();
         // Запускаем realtime listener цен — обновляет у всех мгновенно
         startShopPricesListener();
         // Загружаем кастомный каталог для всех пользователей (картинки кастомных подарков)
@@ -3271,7 +3271,7 @@
         flashBalance();
         showToast(`${nftObj.i} NFT ${nftObj.n} №${serial} в коллекции!`,'gold');
         // Refresh shop to update button states
-        window.renderShop();
+        await window.renderShop(); renderShopCards();
     };
 
     window.buyNft = async (e) => {
@@ -6080,7 +6080,7 @@
         document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
         document.getElementById(id).classList.add('active');b.classList.add('active');
         if(id==='inv') renderInv();
-        if(id==='shop') { renderShop(); renderShopCards(); }
+        if(id==='shop') { renderShop().then(()=>renderShopCards()); }
         if(id==='market') listenMarket();
         if(id==='profile') { get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); }); }
         if(id==='leaderboard') loadLeaderboard();
@@ -6682,7 +6682,7 @@
             refreshBcastGiftSelect();
             // Перерисовываем склад и магазин чтобы появились картинки кастомных подарков
             if (document.getElementById('inv')?.classList.contains('active')) renderInv();
-            if (document.getElementById('shop')?.classList.contains('active')) { renderShop(); renderShopCards(); }
+            if (document.getElementById('shop')?.classList.contains('active')) { renderShop().then(()=>renderShopCards()); }
             if (document.getElementById('profile')?.classList.contains('active')) {
                 get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); });
             }
