@@ -3340,85 +3340,157 @@
         renderMarketCards();
     };
 
+    // ─── РЫНОК: сетка уникальных товаров → детальная страница ───────────────
+
+    // Открывает список лотов конкретного подарка
+    window.openMarketItem = (itemId) => {
+        const lots = Object.entries(marketData).filter(([,x]) => String(x.id) === String(itemId) && (!x.expiresAt || x.expiresAt > Date.now()));
+        if(!lots.length) return showToast('Нет в продаже', 'var(--err)');
+        const first = lots[0][1];
+        const cat = catalogMap.get(+itemId) || first;
+        const isNFT = !!first.nft;
+        const isLizard = isNFT && +itemId === 997;
+        const rar = getRarityObj(first);
+        const isRare = !isNFT && rar.id===1, isEpic = !isNFT && rar.id===2, isLeg = !isNFT && rar.id===3;
+        const priceColor = isLizard?'#4dff91':isNFT||isLeg?'#ffd700':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
+        const nameGrad = isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
+            :isNFT||isLeg?'background:linear-gradient(90deg,#ffd700,#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;':'';
+
+        // Sort lots by price asc
+        lots.sort((a,b) => a[1].mP - b[1].mP);
+
+        const lotsHtml = lots.map(([k,x]) => {
+            const isMine = x.sI === user.id;
+            const timerStr = (()=>{
+                if(!x.expiresAt) return '';
+                const left = x.expiresAt - Date.now();
+                if(left<=0) return '<span style="color:var(--err);font-size:11px;">⏰ Истекает</span>';
+                const h=Math.floor(left/3600000), m=Math.floor((left%3600000)/60000);
+                return `<span style="color:var(--secondary);font-size:11px;">⏳ ${h>0?h+'ч ':''} ${m}м</span>`;
+            })();
+            const upgStr = x.upgrade && x.upgrade.level
+                ? `<span style="color:#a29bfe;font-size:11px;font-weight:700;">⚡ LVL ${x.upgrade.level}</span>` : '';
+            const itemId2 = x.nftSerial ? x.nftSerial : (x.inst ? String(x.inst).slice(-6) : '');
+            const btnStyle = isMine
+                ? 'background:rgba(231,76,60,0.15);color:var(--err);border:1px solid rgba(231,76,60,0.3);'
+                : isNFT ? `background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;border:none;`
+                : 'background:rgba(36,129,204,0.18);color:var(--accent);border:1px solid rgba(36,129,204,0.3);';
+            return `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:14px;">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:11px;color:var(--secondary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="openUserProfile('${x.sI}')">${buildUsername({username:x.sN,activeCosmetic:x.sCosm||{}})}${isMine?' <span style="color:#4a6080;">(вы)</span>':''}</div>
+                    <div style="display:flex;align-items:center;gap:6px;">${upgStr}${timerStr}${itemId2?`<span style="font-size:10px;color:#3a5070;font-family:monospace;">#${itemId2}</span>`:''}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-size:16px;font-weight:900;color:${priceColor};">★ ${x.mP.toLocaleString()}</div>
+                    <button style="margin-top:4px;border-radius:10px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}" onclick="${isMine?`remM('${k}');closeModal()`:`buyM('${k}',${x.mP},'${x.sI}',event)`}">
+                        ${isMine?'❌ Снять':isNFT?'✦ Купить':'🛒 Купить'}
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
+
+        document.getElementById('modal-content').innerHTML = `
+            <div style="padding:4px;">
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+                    <div style="width:72px;height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:18px;border:1px solid rgba(255,255,255,0.08);">
+                        ${giftImg(first,'lg')}
+                    </div>
+                    <div>
+                        <div style="font-size:17px;font-weight:700;${nameGrad}margin-bottom:3px;">${cat.n || first.n}</div>
+                        ${isNFT?`<div style="font-size:11px;background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;display:inline-block;border-radius:6px;padding:1px 8px;font-weight:900;">✦ NFT</div>`:''}
+                        ${isLeg&&!isNFT?`<div style="font-size:11px;color:#ffd700;">🟡 Легендарный</div>`:''}
+                        ${isEpic?`<div style="font-size:11px;color:#a29bfe;">🟣 Эпический</div>`:''}
+                        ${isRare?`<div style="font-size:11px;color:#4db4ff;">🔵 Редкий</div>`:''}
+                        <div style="font-size:11px;color:var(--secondary);margin-top:2px;">${lots.length} лот${lots.length===1?'':'ов'} · от ${lots[0][1].mP.toLocaleString()} ★</div>
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;">
+                    ${lotsHtml}
+                </div>
+            </div>`;
+        openModal();
+    };
+
     function renderMarketCards() {
         const container = document.getElementById('market-cards');
         if(!container) return;
         let entries = Object.entries(marketData);
+        // Фильтруем истёкшие
         entries = entries.filter(([,x]) => !x.expiresAt || x.expiresAt > Date.now());
-        if(marketFilter.q) entries = entries.filter(([,x])=>x.n.toLowerCase().includes(marketFilter.q));
-        if(marketFilter.sort==='mine') {
-            entries = entries.filter(([,x])=>x.sI===user.id);
+
+        // Фильтр мои / чужие
+        if(marketFilter.sort === 'mine') {
+            entries = entries.filter(([,x]) => x.sI === user.id);
         } else {
-            entries = entries.filter(([,x])=>x.sI!==user.id);
-            if(marketFilter.sort==='cheap') entries.sort((a,b)=>a[1].mP-b[1].mP);
-            else if(marketFilter.sort==='expensive') entries.sort((a,b)=>b[1].mP-a[1].mP);
+            entries = entries.filter(([,x]) => x.sI !== user.id);
         }
 
-        container.innerHTML = entries.length
-            ? entries.map(([k,x])=>{
-                const isNFT=!!x.nft;
-                const isLizard=isNFT&&x.id===997;
-                const rar=getRarityObj(x);
-                const isRare=!isNFT&&rar.id===1, isEpic=!isNFT&&rar.id===2, isLeg=!isNFT&&rar.id===3;
+        // Поиск
+        if(marketFilter.q) entries = entries.filter(([,x]) => x.n.toLowerCase().includes(marketFilter.q));
 
-                const cardBg = isLizard?'linear-gradient(160deg,#001a08,#0a2010)'
-                    :isNFT?'linear-gradient(160deg,#1c1200,#0f1a00)'
-                    :isLeg?'linear-gradient(160deg,#1a1200,#120e00)'
-                    :isEpic?'linear-gradient(160deg,#0d0a2e,#160e3a)'
-                    :isRare?'linear-gradient(160deg,#080d28,#0b1430)'
-                    :'#0e1824';
-                const cardBorder = isLizard?'rgba(77,255,145,0.5)':isNFT?'rgba(255,215,0,0.5)'
-                    :isLeg?'rgba(255,215,0,0.45)':isEpic?'rgba(162,155,254,0.45)':isRare?'rgba(77,180,255,0.4)':'rgba(255,255,255,0.07)';
-                const cardGlow = isLizard?'0 4px 20px rgba(77,255,145,0.15)':isNFT?'0 4px 20px rgba(255,215,0,0.15)'
-                    :isLeg?'0 4px 16px rgba(255,215,0,0.12)':isEpic?'0 4px 16px rgba(162,155,254,0.12)':isRare?'0 4px 14px rgba(77,180,255,0.1)':'none';
-                const imgBg = isLizard?'rgba(77,255,145,0.08)':isNFT?'rgba(255,215,0,0.07)'
-                    :isLeg?'rgba(255,215,0,0.06)':isEpic?'rgba(162,155,254,0.06)':isRare?'rgba(77,180,255,0.06)':'rgba(255,255,255,0.04)';
-                const priceColor=isLizard?'#4dff91':isNFT||isLeg?'#ffd700':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
-                const nameStyle = isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700;'
-                    :isNFT||isLeg?'background:linear-gradient(90deg,#ffd700,#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:700;'
-                    :isEpic?'color:#a29bfe;font-weight:700;':isRare?'color:#4db4ff;font-weight:700;':'color:#fff;font-weight:600;';
-                const itemId = x.nftSerial ? x.nftSerial : (x.inst ? String(x.inst).slice(-6) : '');
+        // Группируем по id подарка
+        const grouped = {};
+        for(const [k, x] of entries) {
+            const gid = String(x.id);
+            if(!grouped[gid]) grouped[gid] = { item: x, lots: [], minP: Infinity };
+            grouped[gid].lots.push([k, x]);
+            if(x.mP < grouped[gid].minP) grouped[gid].minP = x.mP;
+        }
 
-                const nftBadge = isNFT ? `<div style="position:absolute;top:7px;right:7px;background:${isLizard?'linear-gradient(90deg,#007744,#4dff91)':'linear-gradient(90deg,#b8860b,#ffd700)'};color:#000;font-size:7px;font-weight:900;border-radius:6px;padding:2px 6px;z-index:3;">✦ NFT</div>` : '';
-                const rarBadge = (!isNFT&&(isLeg||isEpic||isRare)) ? `<div style="position:absolute;top:7px;left:7px;font-size:7px;font-weight:700;border-radius:6px;padding:2px 5px;z-index:3;background:${isLeg?'rgba(255,215,0,0.15)':isEpic?'rgba(162,155,254,0.15)':'rgba(77,180,255,0.15)'};color:${isLeg?'#ffd700':isEpic?'#a29bfe':'#4db4ff'};border:1px solid ${isLeg?'rgba(255,215,0,0.4)':isEpic?'rgba(162,155,254,0.4)':'rgba(77,180,255,0.4)'};">${isLeg?'ЛЕГЕНД':isEpic?'ЭПИК':'РЕДКИЙ'}</div>` : '';
+        let groups = Object.entries(grouped);
 
-                const timerHtml = (()=>{
-                    if(!x.expiresAt) return '';
-                    const left = x.expiresAt - Date.now();
-                    if(left <= 0) return '<span style="font-size:9px;color:var(--err);">⏰</span>';
-                    const h = Math.floor(left/3600000), m = Math.floor((left%3600000)/60000);
-                    return `<span style="font-size:9px;color:#4a6080;">⏳${h>0?h+'ч':''} ${m}м</span>`;
-                })();
+        // Сортировка
+        if(marketFilter.sort === 'cheap') groups.sort((a,b) => a[1].minP - b[1].minP);
+        else if(marketFilter.sort === 'expensive') groups.sort((a,b) => b[1].minP - a[1].minP);
+        else groups.sort((a,b) => b[1].lots.length - a[1].lots.length); // default: по кол-ву лотов
 
-                const upgBadge = x.upgrade&&x.upgrade.level
-                    ? `<span style="font-size:9px;color:#a29bfe;font-weight:700;">⚡LVL${x.upgrade.level}</span>` : '';
+        if(!groups.length) {
+            container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--secondary);padding:40px;">Ничего не найдено 🔍</div>`;
+            return;
+        }
 
-                const isMine = x.sI===user.id;
-                const btnStyle = isMine
-                    ?'background:rgba(231,76,60,0.15);color:var(--err);border:1px solid rgba(231,76,60,0.35);'
-                    :isNFT?`background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;border:none;`
-                    :'background:rgba(36,129,204,0.18);color:var(--accent);border:1px solid rgba(36,129,204,0.35);';
+        container.innerHTML = groups.map(([gid, g]) => {
+            const x = g.item;
+            const cat = catalogMap.get(+gid) || x;
+            const isNFT = !!x.nft;
+            const isLizard = isNFT && +gid === 997;
+            const rar = getRarityObj(x);
+            const isRare = !isNFT && rar.id===1, isEpic = !isNFT && rar.id===2, isLeg = !isNFT && rar.id===3;
 
-                return `<div class="market-listing-card" data-rarity="${isLizard?'lizard':isNFT?'nft':isLeg?'legendary':isEpic?'epic':isRare?'rare':'common'}" style="background:${cardBg};border:1.5px solid ${cardBorder};box-shadow:${cardGlow};border-radius:18px;overflow:hidden;display:flex;flex-direction:column;position:relative;">
-                    ${isNFT||isLeg?`<div style="position:absolute;inset:0;background:linear-gradient(135deg,transparent 40%,${isLizard?'rgba(77,255,145,0.04)':'rgba(255,215,0,0.05)'} 60%,transparent 80%);pointer-events:none;"></div>`:''}
-                    ${nftBadge}${rarBadge}
-                    <div style="display:flex;align-items:center;justify-content:center;background:${imgBg};padding:18px 14px 12px;min-height:100px;">
-                        <div style="width:76px;height:76px;display:flex;align-items:center;justify-content:center;">${giftImg(x,"lg")}</div>
-                    </div>
-                    <div style="padding:8px 8px 4px;text-align:center;flex:1;">
-                        <div style="font-size:11.5px;${nameStyle}margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(catalogMap.get(+x.id)||x).n}</div>
-                        <div style="display:flex;align-items:center;justify-content:center;gap:4px;min-height:14px;margin-bottom:4px;">${upgBadge}${timerHtml}</div>
-                        <div style="font-size:16px;font-weight:900;color:${priceColor};letter-spacing:0.3px;">★ ${x.mP.toLocaleString()}</div>
-                        <div style="font-size:9px;color:#3a5070;margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="openUserProfile('${x.sI}')">${buildUsername({username:x.sN,activeCosmetic:x.sCosm||{}})}${isMine?' (вы)':''}</div>
-                    </div>
-                    <div style="padding:6px 8px 10px;">
-                        <button style="width:100%;border-radius:12px;padding:8px 4px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}" onclick="${isMine?`remM('${k}')`:`buyM('${k}',${x.mP},'${x.sI}',event)`}">
-                            ${isMine?'❌ Снять':isNFT?'✦ NFT купить':'🛒 Купить'}
-                        </button>
-                    </div>
-                </div>`;
-            }).join('')
-            : `<div style="grid-column:1/-1;text-align:center;color:var(--secondary);padding:40px;">Ничего не найдено 🔍</div>`;
+            const cardBg = isLizard?'linear-gradient(160deg,#001a08,#0a2010)'
+                :isNFT?'linear-gradient(160deg,#1c1200,#0f1a00)'
+                :isLeg?'linear-gradient(160deg,#1a1200,#120e00)'
+                :isEpic?'linear-gradient(160deg,#0d0a2e,#160e3a)'
+                :isRare?'linear-gradient(160deg,#080d28,#0b1430)'
+                :'#0e1824';
+            const cardBorder = isLizard?'rgba(77,255,145,0.45)':isNFT?'rgba(255,215,0,0.45)'
+                :isLeg?'rgba(255,215,0,0.4)':isEpic?'rgba(162,155,254,0.4)':isRare?'rgba(77,180,255,0.35)':'rgba(255,255,255,0.07)';
+            const cardGlow = isLizard?'0 3px 14px rgba(77,255,145,0.12)':isNFT?'0 3px 14px rgba(255,215,0,0.12)'
+                :isLeg?'0 3px 12px rgba(255,215,0,0.1)':isEpic?'0 3px 12px rgba(162,155,254,0.1)':isRare?'0 3px 10px rgba(77,180,255,0.08)':'none';
+            const imgBg = isLizard?'rgba(77,255,145,0.07)':isNFT?'rgba(255,215,0,0.06)'
+                :isLeg?'rgba(255,215,0,0.05)':isEpic?'rgba(162,155,254,0.05)':isRare?'rgba(77,180,255,0.05)':'rgba(255,255,255,0.03)';
+            const priceColor = isLizard?'#4dff91':isNFT||isLeg?'#ffd700':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
+            const nameStyle = isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
+                :isNFT||isLeg?'background:linear-gradient(90deg,#ffd700,#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;':'';
+
+            const nftBadge = isNFT ? `<div style="position:absolute;top:3px;right:3px;background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;font-size:6px;font-weight:900;border-radius:4px;padding:1px 4px;z-index:3;line-height:1.4;">NFT</div>` : '';
+            const countBadge = g.lots.length > 1 ? `<div style="position:absolute;top:3px;left:3px;background:rgba(0,0,0,0.75);color:#fff;font-size:7px;font-weight:700;border-radius:4px;padding:1px 4px;z-index:3;line-height:1.4;">${g.lots.length}</div>` : '';
+
+            return `<div class="market-listing-card" data-rarity="${isLizard?'lizard':isNFT?'nft':isLeg?'legendary':isEpic?'epic':isRare?'rare':'common'}"
+                style="background:${cardBg};border:1.5px solid ${cardBorder};box-shadow:${cardGlow};border-radius:12px;overflow:hidden;display:flex;flex-direction:column;position:relative;cursor:pointer;"
+                onclick="openMarketItem('${gid}')">
+                ${nftBadge}${countBadge}
+                <!-- Изображение -->
+                <div style="display:flex;align-items:center;justify-content:center;background:${imgBg};padding:8px 5px 6px;min-height:62px;">
+                    <div style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;">${giftImg(x,'sm')}</div>
+                </div>
+                <!-- Название + цена -->
+                <div style="padding:3px 4px 6px;text-align:center;">
+                    <div style="font-size:9px;font-weight:600;${nameStyle}margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cat.n || x.n}</div>
+                    <div style="font-size:11px;font-weight:900;color:${priceColor};">★ ${g.minP.toLocaleString()}</div>
+                </div>
+            </div>`;
+        }).join('');
     }
 
     // ─── Возврат истёкших лотов (24ч) владельцам ─────────────────────────
@@ -3467,7 +3539,7 @@
                         <input type="text" placeholder="🔍 Поиск на рынке..." oninput="filterMarket(this.value)">
                         ${btns}
                     </div>
-                    <div id="market-cards" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;grid-column:1/-1;"></div>
+                    <div id="market-cards" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;grid-column:1/-1;"></div>
                 `;
             }
             renderMarketCards();
