@@ -1581,10 +1581,19 @@
                                 <option value="3">🟡 Легендарный</option>
                             </select>
                         </div>
-                        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px 14px;margin-bottom:14px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px 14px;margin-bottom:10px;">
                             <div style="font-size:13px;font-weight:bold;">🛍️ В магазине</div>
                             <div onclick="toggleEditShop()" id="edit-shop-toggle" style="width:44px;height:24px;border-radius:12px;background:#2ecc71;cursor:pointer;position:relative;transition:background 0.2s;">
                                 <div style="position:absolute;width:20px;height:20px;background:white;border-radius:50%;top:2px;right:2px;transition:right 0.2s;"></div>
+                            </div>
+                        </div>
+                        <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,100,100,0.06);border-radius:12px;padding:10px 14px;margin-bottom:14px;border:1px solid rgba(231,76,60,0.15);">
+                            <div>
+                                <div style="font-size:13px;font-weight:bold;">🚫 Скрыть с рынка</div>
+                                <div style="font-size:11px;color:var(--secondary);">Не отображать на рынке</div>
+                            </div>
+                            <div onclick="toggleEditHideMarket()" id="edit-hide-market-toggle" style="width:44px;height:24px;border-radius:12px;background:#555;cursor:pointer;position:relative;transition:background 0.2s;">
+                                <div style="position:absolute;width:20px;height:20px;background:white;border-radius:50%;top:2px;left:2px;transition:all 0.2s;"></div>
                             </div>
                         </div>
                         <div style="display:flex;gap:8px;">
@@ -6845,6 +6854,7 @@
     // ═══════════════════════════════════════════════════════
     let _editType = 'common';
     let _editShop = true;
+    let _editHideMarket = false;
     let _editImgB64 = null;
     let _currentGiftListTab = 'custom';
     let _allCustomItems = [];
@@ -7097,10 +7107,19 @@
                     <option value="3" ${(item.rarity||0)==3?'selected':''}>🟡 Легендарный</option>
                 </select>
             </div>
-            <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px 14px;margin-bottom:14px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,255,255,0.04);border-radius:12px;padding:10px 14px;margin-bottom:10px;">
                 <div style="font-size:13px;font-weight:bold;">🛍️ В магазине</div>
                 <div onclick="window._editToggleShop2()" id="edit2-shop-toggle" style="width:44px;height:24px;border-radius:12px;background:${shopOn?'#2ecc71':'rgba(255,255,255,0.15)'};cursor:pointer;position:relative;transition:background 0.2s;">
                     <div style="position:absolute;width:20px;height:20px;background:white;border-radius:50%;top:2px;${shopOn?'right:2px':'left:2px'};transition:all 0.2s;"></div>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,100,100,0.06);border-radius:12px;padding:10px 14px;margin-bottom:14px;border:1px solid rgba(231,76,60,0.15);">
+                <div>
+                    <div style="font-size:13px;font-weight:bold;">🚫 Скрыть с рынка</div>
+                    <div style="font-size:11px;color:var(--secondary);">Не отображать на рынке</div>
+                </div>
+                <div onclick="window._editToggleHideMarket2()" id="edit2-hide-market-toggle" style="width:44px;height:24px;border-radius:12px;background:${item.hideFromMarket?'#e74c3c':'#555'};cursor:pointer;position:relative;transition:background 0.2s;">
+                    <div style="position:absolute;width:20px;height:20px;background:white;border-radius:50%;top:2px;${item.hideFromMarket?'right:2px':'left:2px'};transition:all 0.2s;"></div>
                 </div>
             </div>
             <input type="hidden" id="edit2-builtin-id" value="${builtinId||''}">
@@ -7134,6 +7153,14 @@
         if(k){ k.style.right=window._editShop2?'2px':''; k.style.left=window._editShop2?'':'2px'; }
     };
 
+    window._editToggleHideMarket2 = () => {
+        window._editHideMarket2 = !window._editHideMarket2;
+        const t = document.getElementById('edit2-hide-market-toggle'); if(!t) return;
+        t.style.background = window._editHideMarket2?'#e74c3c':'#555';
+        const k = t.querySelector('div');
+        if(k){ k.style.right=window._editHideMarket2?'2px':''; k.style.left=window._editHideMarket2?'':'2px'; }
+    };
+
     window._editImg2Selected = (input) => {
         const file = input.files[0]; if(!file) return;
         if(file.size>2*1024*1024){showToast('Файл > 2MB!','#e74c3c');return;}
@@ -7157,8 +7184,9 @@
         const isNft = type==='nft';
         const rarity = isNft ? 3 : parseInt(document.getElementById('edit2-rarity').value||0);
         const inShop = window._editShop2!==undefined ? window._editShop2 : true;
+        const hideFromMarket = !!window._editHideMarket2;
         const img = window._editImgB642||null;
-        const updates = {n:name, i:emoji, price, rarity, nft:isNft, inShop};
+        const updates = {n:name, i:emoji, price, rarity, nft:isNft, inShop, hideFromMarket};
         if(img) updates.img = img;
         if(isNft){
             const rel = document.getElementById('edit2-nft-release').value;
@@ -7169,11 +7197,11 @@
             if(builtinId){
                 await update(ref(db,'builtinOverrides/'+builtinId), updates);
                 const c = catalog.find(x=>String(x.id)===String(builtinId));
-                if(c){Object.assign(c,{n:name,i:emoji,price,rarity,nft:isNft,inShop});if(img)c.img=img;}
+                if(c){Object.assign(c,{n:name,i:emoji,price,rarity,nft:isNft,inShop,hideFromMarket});if(img)c.img=img;}
             } else if(fbId){
                 await update(ref(db,'customGifts/'+fbId), updates);
                 const ci = _allCustomItems.find(i=>i.fbId===fbId);
-                if(ci){Object.assign(ci,{name,emoji:emoji,price,rarity,nft:isNft,inShop});if(img)ci.img=img;}
+                if(ci){Object.assign(ci,{name,emoji:emoji,price,rarity,nft:isNft,inShop,hideFromMarket});if(img)ci.img=img;}
             }
             showToast('✅ Сохранено!','#27ae60');
             closeModal();
@@ -7185,14 +7213,15 @@
         let item = null;
         if (builtinId) {
             const c = catalog.find(x=>x.id==builtinId);
-            if (c) item={name:c.n, emoji:c.i, img:c.img||'', rarity:c.rarity||0, nft:c.nft||false, price:c.price||0, inShop:c.inShop!==false, releaseAt:c.releaseAt||null, description:''};
+            if (c) item={name:c.n, emoji:c.i, img:c.img||'', rarity:c.rarity||0, nft:c.nft||false, price:c.price||0, inShop:c.inShop!==false, hideFromMarket:!!c.hideFromMarket, releaseAt:c.releaseAt||null, description:''};
         } else if (fbId) {
             const ci = _allCustomItems.find(i=>i.fbId===fbId);
-            if (ci) item={name:ci.name||ci.n||'', emoji:ci.emoji||ci.i||'', img:ci.img||'', rarity:ci.rarity||0, nft:ci.nft||false, price:ci.price||0, inShop:ci.inShop!==false, releaseAt:ci.releaseAt||null, description:ci.description||''};
+            if (ci) item={name:ci.name||ci.n||'', emoji:ci.emoji||ci.i||'', img:ci.img||'', rarity:ci.rarity||0, nft:ci.nft||false, price:ci.price||0, inShop:ci.inShop!==false, hideFromMarket:!!ci.hideFromMarket, releaseAt:ci.releaseAt||null, description:ci.description||''};
         }
         if (!item) return;
         window._editType2 = item.nft?'nft':item.rarity===2?'epic':item.rarity===1?'rare':'common';
         window._editShop2 = item.inShop!==false;
+        window._editHideMarket2 = !!item.hideFromMarket;
         window._editImgB642 = null;
         document.getElementById('modal-content').innerHTML = _buildEditModalHTML(item, builtinId, fbId);
         openModal();
@@ -7287,6 +7316,16 @@
         if(t){t.style.background=_editShop?'#2ecc71':'rgba(255,255,255,0.15)';const k=t.querySelector('div');if(k)k.style.right=_editShop?'2px':'20px';}
     }
 
+    function toggleEditHideMarket(){
+        _editHideMarket=!_editHideMarket;
+        const t=document.getElementById('edit-hide-market-toggle');
+        if(t){
+            t.style.background=_editHideMarket?'#e74c3c':'#555';
+            const k=t.querySelector('div');
+            if(k){k.style.right=_editHideMarket?'2px':'';k.style.left=_editHideMarket?'':'2px';}
+        }
+    }
+
     async function saveEditedGift(){
         const name=(document.getElementById('edit-name').value||'').trim();
         const emoji=(document.getElementById('edit-emoji').value||'').trim();
@@ -7297,7 +7336,7 @@
 
         const isNft=_editType==='nft';
         const rarity=isNft?3:parseInt(document.getElementById('edit-rarity').value||0);
-        const updates={name,emoji:emoji||'\uD83C\uDF81',price,rarity,nft:isNft,inShop:!!_editShop};
+        const updates={name,emoji:emoji||'\uD83C\uDF81',price,rarity,nft:isNft,inShop:!!_editShop,hideFromMarket:!!_editHideMarket};
         if(_editImgB64) updates.img=_editImgB64;
         if(isNft){
             const rel=document.getElementById('edit-nft-release').value;
@@ -7311,12 +7350,12 @@
             if(builtinId){
                 await update(ref(db,'builtinOverrides/'+builtinId),updates);
                 const c=catalog.find(x=>String(x.id)===String(builtinId));
-                if(c) Object.assign(c,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:!!_editShop,releaseAt:updates.releaseAt||null});
+                if(c) Object.assign(c,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:!!_editShop,hideFromMarket:!!_editHideMarket,releaseAt:updates.releaseAt||null});
                 if(_editImgB64&&c) c.img=_editImgB64;
             } else if(fbId){
                 await update(ref(db,'customCatalog/'+fbId),updates);
                 const ci=_allCustomItems.find(i=>i.fbId===fbId); if(ci) Object.assign(ci,updates);
-                const cc=catalog.find(c=>c.fbId===fbId); if(cc) Object.assign(cc,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:!!_editShop});
+                const cc=catalog.find(c=>c.fbId===fbId); if(cc) Object.assign(cc,{n:name,i:emoji||'\uD83C\uDF81',rarity,nft:isNft,price,inShop:!!_editShop,hideFromMarket:!!_editHideMarket});
                 if(_editImgB64&&cc) cc.img=_editImgB64;
             }
             refreshBcastGiftSelect();
@@ -7665,7 +7704,7 @@
     Object.assign(window, {
         switchGiftListTab, filterGiftList, setCatalogType, toggleCatalogShop, toggleCatalogHideMarket,
         catalogImgSelected, saveCatalogItem, closeEditModal, editImgSelected,
-        setEditType, toggleEditShop, saveEditedGift, deleteCustomGift, openEditModal,
+        setEditType, toggleEditShop, toggleEditHideMarket, saveEditedGift, deleteCustomGift, openEditModal,
         
         catalogUpdateCanvas, catalogRemoveBg, catalogResetImg,
         editUpdateCanvas, editRemoveBg, editResetImg
