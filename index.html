@@ -3345,7 +3345,16 @@
     // Открывает список лотов конкретного подарка
     window.openMarketItem = (itemId) => {
         const lots = Object.entries(marketData).filter(([,x]) => String(x.id) === String(itemId) && (!x.expiresAt || x.expiresAt > Date.now()));
-        if(!lots.length) return showToast('Нет в продаже', 'var(--err)');
+        const cat0 = catalogMap.get(+itemId) || (lots[0]||[])[1] || {};
+        if(!lots.length) {
+            document.getElementById('modal-content').innerHTML = `
+                <div style="padding:20px;text-align:center;">
+                    <div style="font-size:56px;margin-bottom:12px;">${giftImg(cat0,'lg')}</div>
+                    <div style="font-size:17px;font-weight:700;margin-bottom:6px;">${cat0.n||'Подарок'}</div>
+                    <div style="color:var(--secondary);font-size:13px;">Пока никто не продаёт этот подарок</div>
+                </div>`;
+            return openModal();
+        }
         const first = lots[0][1];
         const cat = catalogMap.get(+itemId) || first;
         const isNFT = !!first.nft;
@@ -3381,7 +3390,7 @@
                     <div style="display:flex;align-items:center;gap:6px;">${upgStr}${timerStr}${itemId2?`<span style="font-size:10px;color:#3a5070;font-family:monospace;">#${itemId2}</span>`:''}</div>
                 </div>
                 <div style="text-align:right;flex-shrink:0;">
-                    <div style="font-size:16px;font-weight:900;color:${priceColor};">★ ${x.mP.toLocaleString()}</div>
+                    <div style="font-size:16px;font-weight:900;color:${priceColor};">${x.mP.toLocaleString()}</div>
                     <button style="margin-top:4px;border-radius:10px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}" onclick="${isMine?`remM('${k}');closeModal()`:`buyM('${k}',${x.mP},'${x.sI}',event)`}">
                         ${isMine?'❌ Снять':isNFT?'✦ Купить':'🛒 Купить'}
                     </button>
@@ -3401,7 +3410,7 @@
                         ${isLeg&&!isNFT?`<div style="font-size:11px;color:#ffd700;">🟡 Легендарный</div>`:''}
                         ${isEpic?`<div style="font-size:11px;color:#a29bfe;">🟣 Эпический</div>`:''}
                         ${isRare?`<div style="font-size:11px;color:#4db4ff;">🔵 Редкий</div>`:''}
-                        <div style="font-size:11px;color:var(--secondary);margin-top:2px;">${lots.length} лот${lots.length===1?'':'ов'} · от ${lots[0][1].mP.toLocaleString()} ★</div>
+                        <div style="font-size:11px;color:var(--secondary);margin-top:2px;">${lots.length} лот${lots.length===1?'':'ов'} · от ${lots[0][1].mP.toLocaleString()}</div>
                     </div>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;">
@@ -3414,21 +3423,12 @@
     function renderMarketCards() {
         const container = document.getElementById('market-cards');
         if(!container) return;
-        let entries = Object.entries(marketData);
-        // Фильтруем истёкшие
-        entries = entries.filter(([,x]) => !x.expiresAt || x.expiresAt > Date.now());
 
-        // Фильтр мои / чужие
-        if(marketFilter.sort === 'mine') {
-            entries = entries.filter(([,x]) => x.sI === user.id);
-        } else {
-            entries = entries.filter(([,x]) => x.sI !== user.id);
-        }
+        // --- Собираем активные лоты ---
+        let entries = Object.entries(marketData).filter(([,x]) => !x.expiresAt || x.expiresAt > Date.now());
+        if(marketFilter.sort === 'mine') entries = entries.filter(([,x]) => x.sI === user.id);
 
-        // Поиск
-        if(marketFilter.q) entries = entries.filter(([,x]) => x.n.toLowerCase().includes(marketFilter.q));
-
-        // Группируем по id подарка
+        // Группируем лоты по gift id
         const grouped = {};
         for(const [k, x] of entries) {
             const gid = String(x.id);
@@ -3437,57 +3437,89 @@
             if(x.mP < grouped[gid].minP) grouped[gid].minP = x.mP;
         }
 
-        let groups = Object.entries(grouped);
+        // --- Берём весь каталог как основу ---
+        let catItems = catalog.slice();
 
-        // Сортировка
-        if(marketFilter.sort === 'cheap') groups.sort((a,b) => a[1].minP - b[1].minP);
-        else if(marketFilter.sort === 'expensive') groups.sort((a,b) => b[1].minP - a[1].minP);
-        else groups.sort((a,b) => b[1].lots.length - a[1].lots.length); // default: по кол-ву лотов
+        // Поиск по названию
+        const q = marketFilter.q;
+        if(q) catItems = catItems.filter(c => c.n.toLowerCase().includes(q));
 
-        if(!groups.length) {
+        // В режиме "Мои" показываем только те, у которых есть мои лоты
+        if(marketFilter.sort === 'mine') {
+            catItems = catItems.filter(c => grouped[String(c.id)]);
+        }
+
+        if(!catItems.length) {
             container.innerHTML = `<div style="grid-column:1/-1;text-align:center;color:var(--secondary);padding:40px;">Ничего не найдено 🔍</div>`;
             return;
         }
 
-        container.innerHTML = groups.map(([gid, g]) => {
-            const x = g.item;
-            const cat = catalogMap.get(+gid) || x;
-            const isNFT = !!x.nft;
-            const isLizard = isNFT && +gid === 997;
-            const rar = getRarityObj(x);
+        // Фиктивная переменная groups для совместимости (не используется ниже)
+        const groups = [];
+
+        // Сортировка: сначала те у кого есть лоты, потом остальные
+        catItems.sort((a, b) => {
+            const ga = grouped[String(a.id)], gb = grouped[String(b.id)];
+            if(marketFilter.sort === 'cheap') {
+                if(ga && gb) return ga.minP - gb.minP;
+                if(ga) return -1; if(gb) return 1;
+            } else if(marketFilter.sort === 'expensive') {
+                if(ga && gb) return gb.minP - ga.minP;
+                if(ga) return -1; if(gb) return 1;
+            } else {
+                const la = ga ? ga.lots.length : 0, lb = gb ? gb.lots.length : 0;
+                return lb - la;
+            }
+            return 0;
+        });
+
+        container.innerHTML = catItems.map(cat => {
+            const gid = String(cat.id);
+            const g = grouped[gid];
+            const hasLots = !!g;
+
+            const isNFT = !!cat.nft;
+            const isLizard = isNFT && cat.id === 997;
+            const rar = getRarityObj(cat);
             const isRare = !isNFT && rar.id===1, isEpic = !isNFT && rar.id===2, isLeg = !isNFT && rar.id===3;
 
-            const cardBg = isLizard?'linear-gradient(160deg,#001a08,#0a2010)'
+            const cardBg = !hasLots ? 'rgba(255,255,255,0.03)'
+                : isLizard?'linear-gradient(160deg,#001a08,#0a2010)'
                 :isNFT?'linear-gradient(160deg,#1c1200,#0f1a00)'
                 :isLeg?'linear-gradient(160deg,#1a1200,#120e00)'
                 :isEpic?'linear-gradient(160deg,#0d0a2e,#160e3a)'
                 :isRare?'linear-gradient(160deg,#080d28,#0b1430)'
                 :'#0e1824';
-            const cardBorder = isLizard?'rgba(77,255,145,0.45)':isNFT?'rgba(255,215,0,0.45)'
-                :isLeg?'rgba(255,215,0,0.4)':isEpic?'rgba(162,155,254,0.4)':isRare?'rgba(77,180,255,0.35)':'rgba(255,255,255,0.07)';
-            const cardGlow = isLizard?'0 3px 14px rgba(77,255,145,0.12)':isNFT?'0 3px 14px rgba(255,215,0,0.12)'
+            const cardBorder = !hasLots ? 'rgba(255,255,255,0.06)'
+                : isLizard?'rgba(77,255,145,0.45)':isNFT?'rgba(255,215,0,0.45)'
+                :isLeg?'rgba(255,215,0,0.4)':isEpic?'rgba(162,155,254,0.4)':isRare?'rgba(77,180,255,0.35)':'rgba(255,255,255,0.1)';
+            const cardGlow = !hasLots ? 'none'
+                : isLizard?'0 3px 14px rgba(77,255,145,0.12)':isNFT?'0 3px 14px rgba(255,215,0,0.12)'
                 :isLeg?'0 3px 12px rgba(255,215,0,0.1)':isEpic?'0 3px 12px rgba(162,155,254,0.1)':isRare?'0 3px 10px rgba(77,180,255,0.08)':'none';
-            const imgBg = isLizard?'rgba(77,255,145,0.07)':isNFT?'rgba(255,215,0,0.06)'
+            const imgBg = !hasLots ? 'rgba(255,255,255,0.02)'
+                : isLizard?'rgba(77,255,145,0.07)':isNFT?'rgba(255,215,0,0.06)'
                 :isLeg?'rgba(255,215,0,0.05)':isEpic?'rgba(162,155,254,0.05)':isRare?'rgba(77,180,255,0.05)':'rgba(255,255,255,0.03)';
-            const priceColor = isLizard?'#4dff91':isNFT||isLeg?'#ffd700':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
-            const nameStyle = isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
+            const priceColor = !hasLots ? 'rgba(255,255,255,0.2)'
+                : isLizard?'#4dff91':isNFT||isLeg?'#ffd700':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
+            const nameStyle = !hasLots ? 'color:rgba(255,255,255,0.35);'
+                : isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
                 :isNFT||isLeg?'background:linear-gradient(90deg,#ffd700,#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;':'';
 
-            const nftBadge = isNFT ? `<div style="position:absolute;top:3px;right:3px;background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;font-size:6px;font-weight:900;border-radius:4px;padding:1px 4px;z-index:3;line-height:1.4;">NFT</div>` : '';
-            const countBadge = g.lots.length > 1 ? `<div style="position:absolute;top:3px;left:3px;background:rgba(0,0,0,0.75);color:#fff;font-size:7px;font-weight:700;border-radius:4px;padding:1px 4px;z-index:3;line-height:1.4;">${g.lots.length}</div>` : '';
+            const nftBadge = isNFT && hasLots ? `<div style="position:absolute;top:3px;right:3px;background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;font-size:6px;font-weight:900;border-radius:4px;padding:1px 4px;z-index:3;line-height:1.4;">NFT</div>` : '';
+            const countBadge = hasLots ? `<div style="position:absolute;top:3px;left:3px;background:rgba(36,129,204,0.9);color:#fff;font-size:7px;font-weight:700;border-radius:4px;padding:1px 4px;z-index:3;line-height:1.4;">${g.lots.length}</div>` : '';
 
-            return `<div class="market-listing-card" data-rarity="${isLizard?'lizard':isNFT?'nft':isLeg?'legendary':isEpic?'epic':isRare?'rare':'common'}"
-                style="background:${cardBg};border:1.5px solid ${cardBorder};box-shadow:${cardGlow};border-radius:12px;overflow:hidden;display:flex;flex-direction:column;position:relative;cursor:pointer;"
+            const priceStr = hasLots ? g.minP.toLocaleString() : '—';
+
+            return `<div class="market-listing-card" data-rarity="${!hasLots?'none':isLizard?'lizard':isNFT?'nft':isLeg?'legendary':isEpic?'epic':isRare?'rare':'common'}"
+                style="background:${cardBg};border:1.5px solid ${cardBorder};box-shadow:${cardGlow};border-radius:12px;overflow:hidden;display:flex;flex-direction:column;position:relative;cursor:pointer;opacity:${hasLots?1:0.5};"
                 onclick="openMarketItem('${gid}')">
                 ${nftBadge}${countBadge}
-                <!-- Изображение -->
-                <div style="display:flex;align-items:center;justify-content:center;background:${imgBg};padding:8px 5px 6px;min-height:62px;">
-                    <div style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;">${giftImg(x,'sm')}</div>
+                <div style="display:flex;align-items:center;justify-content:center;background:${imgBg};padding:6px 5px 5px;min-height:52px;">
+                    <div style="width:38px;height:38px;display:flex;align-items:center;justify-content:center;overflow:hidden;${!hasLots?'filter:grayscale(0.5);':''}">${giftImg(cat,'sm')}</div>
                 </div>
-                <!-- Название + цена -->
                 <div style="padding:3px 4px 6px;text-align:center;">
-                    <div style="font-size:9px;font-weight:600;${nameStyle}margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cat.n || x.n}</div>
-                    <div style="font-size:11px;font-weight:900;color:${priceColor};">★ ${g.minP.toLocaleString()}</div>
+                    <div style="font-size:9px;font-weight:600;${nameStyle}margin-bottom:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${cat.n}</div>
+                    <div style="font-size:11px;font-weight:900;color:${priceColor};">${priceStr}</div>
                 </div>
             </div>`;
         }).join('');
