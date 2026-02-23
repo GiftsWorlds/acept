@@ -1485,6 +1485,17 @@
                         </div>
                     </div>
 
+                    <!-- Hide from market toggle -->
+                    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(255,100,100,0.06);border-radius:12px;padding:12px;margin-bottom:12px;border:1px solid rgba(231,76,60,0.15);">
+                        <div>
+                            <div style="font-size:13px;font-weight:bold;">🚫 Скрыть с рынка</div>
+                            <div style="font-size:11px;color:var(--secondary);">Подарок не будет отображаться на рынке</div>
+                        </div>
+                        <div onclick="toggleCatalogHideMarket()" id="catalog-hide-market-toggle" style="width:44px;height:24px;border-radius:12px;background:#555;cursor:pointer;position:relative;transition:background 0.2s;">
+                            <div style="position:absolute;width:20px;height:20px;background:white;border-radius:50%;top:2px;left:2px;transition:left 0.2s;"></div>
+                        </div>
+                    </div>
+
                     <button class="btn" onclick="saveCatalogItem()" style="background:linear-gradient(135deg,var(--accent),#1a6aad);">✅ Добавить в каталог</button>
                 </div>
 
@@ -3509,6 +3520,9 @@
 
         // --- Берём весь каталог как основу ---
         let catItems = [...catalog]; // Показываем все, включая NFT
+
+        // Фильтр: скрытые с рынка (если не «Мои»)
+        if(marketFilter.sort !== 'mine') catItems = catItems.filter(c => !c.hideFromMarket);
 
         // Поиск по названию
         const q = marketFilter.q;
@@ -6470,6 +6484,7 @@
     let catalogType = 'common';
     let catalogImgBase64 = null;
     let catalogShopEnabled = true;
+    let catalogHideFromMarket = false;
 
     function setCatalogType(type) {
         catalogType = type;
@@ -6520,6 +6535,19 @@
             tog.style.background = catalogShopEnabled ? '#2ecc71' : 'rgba(255,255,255,0.15)';
             const knob = tog.querySelector('div');
             if (knob) knob.style.right = catalogShopEnabled ? '2px' : '20px';
+        }
+    }
+
+    function toggleCatalogHideMarket() {
+        catalogHideFromMarket = !catalogHideFromMarket;
+        const tog = document.getElementById('catalog-hide-market-toggle');
+        if (tog) {
+            tog.style.background = catalogHideFromMarket ? '#e74c3c' : '#555';
+            const knob = tog.querySelector('div');
+            if (knob) {
+                knob.style.left = catalogHideFromMarket ? 'auto' : '2px';
+                knob.style.right = catalogHideFromMarket ? '2px' : 'auto';
+            }
         }
     }
 
@@ -6741,6 +6769,7 @@
             rarity: rarity,
             nft: isNft,
             inShop: !!catalogShopEnabled,
+            hideFromMarket: !!catalogHideFromMarket,
             price: price,
             createdAt: Date.now()
         };
@@ -6767,7 +6796,7 @@
 
             // Add to local catalog with generated id
             const maxId = Math.max(...catalog.map(c => c.id), 100);
-            const localItem = { id: maxId + 1, n: name, i: emoji || '🎁', img: catalogImgBase64, rarity: rarity, fbId: fbId, inShop: catalogShopEnabled, price: price };
+            const localItem = { id: maxId + 1, n: name, i: emoji || '🎁', img: catalogImgBase64, rarity: rarity, fbId: fbId, inShop: catalogShopEnabled, hideFromMarket: catalogHideFromMarket, price: price };
             if (isNft) { localItem.nft = true; if (newItem.releaseAt) localItem.releaseAt = newItem.releaseAt; }
             catalog.push(localItem);
             // Update bcast-gift select
@@ -6798,8 +6827,11 @@
         if (placeholder) placeholder.style.display = 'flex';
         setCatalogType('common');
         catalogShopEnabled = true;
+        catalogHideFromMarket = false;
         const tog = document.getElementById('catalog-shop-toggle');
         if (tog) { tog.style.background = '#2ecc71'; const k = tog.querySelector('div'); if(k) k.style.right='2px'; }
+        const togHide = document.getElementById('catalog-hide-market-toggle');
+        if (togHide) { togHide.style.background = '#555'; const kh = togHide.querySelector('div'); if(kh) { kh.style.left='2px'; kh.style.right='auto'; } }
     }
 
     function refreshBcastGiftSelect() {
@@ -7631,7 +7663,7 @@
 
     // ── EXPOSE ALL FUNCTIONS TO GLOBAL SCOPE (required for type="module") ──
     Object.assign(window, {
-        switchGiftListTab, filterGiftList, setCatalogType, toggleCatalogShop,
+        switchGiftListTab, filterGiftList, setCatalogType, toggleCatalogShop, toggleCatalogHideMarket,
         catalogImgSelected, saveCatalogItem, closeEditModal, editImgSelected,
         setEditType, toggleEditShop, saveEditedGift, deleteCustomGift, openEditModal,
         
