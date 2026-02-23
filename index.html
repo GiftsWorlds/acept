@@ -3104,8 +3104,8 @@
         closeModal();
         setTimeout(() => openNftUpgrade(inst), 350);
     };
-    const NFT_START=new Date('2026-02-22T21:00:00Z').getTime(); // 00:00 МСК 23 февраля
-    const NFT_END=new Date('2026-02-23T21:00:00Z').getTime();   // 00:00 МСК 24 февраля (конец 23-го)
+    const NFT_START=new Date('2026-02-01T00:00:00Z').getTime(); // 1 февраля
+    const NFT_END=new Date('2026-03-01T00:00:00Z').getTime();   // 1 марта
     // Ящерица — 24 часа с 18 февраля 2026
     const LIZ_START=new Date('2026-02-18T17:00:00Z').getTime(); // 20:00 МСК
     const LIZ_END=new Date('2026-02-19T17:00:00Z').getTime();   // 20:00 МСК +24ч
@@ -3207,14 +3207,14 @@
                     btnAttr = 'disabled';
                 }
                 const borderColor = (accentColor.split(',')[1] || 'gold').trim();
-                return '<div class="card nft-card nft-feb-card" style="grid-column:span 1;border:2px solid ' + borderColor + ';background:linear-gradient(135deg,#1a1200,#111b21);position:relative;overflow:hidden;text-align:center;padding:18px 14px;">'
-                    + '<div style="position:absolute;top:8px;right:10px;font-size:10px;background:gold;color:#000;padding:2px 8px;border-radius:20px;font-weight:bold;z-index:2;">NFT</div>'
+                return '<div class="card nft-card nft-feb-card" style="grid-column:span 1;border:2px solid ' + borderColor + ';background:linear-gradient(135deg,#1a1200,#111b21);position:relative;overflow:hidden;text-align:center;padding:12px 10px;">'
+                    + '<div style="position:absolute;top:6px;right:8px;font-size:8px;background:gold;color:#000;padding:1px 6px;border-radius:20px;font-weight:bold;z-index:2;">NFT</div>'
                     + '<div style="position:absolute;inset:0;border-radius:25px;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,215,0,0.12) 50%,transparent 70%);background-size:200% 100%;animation:shimmer 2.4s linear infinite;z-index:1;"></div>'
-                    + '<img src="' + emojiUrl + '" class="nft-emoji" style="width:64px;height:64px;object-fit:contain;filter:drop-shadow(0 4px 18px rgba(' + glowColor + ',0.65));position:relative;z-index:2;margin-bottom:8px;">'
-                    + '<b style="display:block;font-size:15px;position:relative;z-index:2;margin-bottom:4px;">' + nftObj.n + '</b>'
-                    + '<div style="font-weight:bold;color:gold;font-size:18px;margin-bottom:4px;position:relative;z-index:2;">' + price.toLocaleString() + ' 💰</div>'
-                    + '<div style="font-size:11px;color:var(--orange);margin-bottom:10px;position:relative;z-index:2;">' + tl + '</div>'
-                    + '<button class="btn" style="' + btnStyle + 'position:relative;z-index:2;font-size:13px;" ' + btnAttr + '>' + btnText + '</button>'
+                    + '<img src="' + emojiUrl + '" class="nft-emoji" style="width:48px;height:48px;object-fit:contain;filter:drop-shadow(0 4px 18px rgba(' + glowColor + ',0.65));position:relative;z-index:2;margin-bottom:6px;">'
+                    + '<b style="display:block;font-size:12px;position:relative;z-index:2;margin-bottom:2px;">' + nftObj.n + '</b>'
+                    + '<div style="font-weight:bold;color:gold;font-size:14px;margin-bottom:2px;position:relative;z-index:2;">' + price.toLocaleString() + ' 💰</div>'
+                    + '<div style="font-size:9px;color:var(--orange);margin-bottom:6px;position:relative;z-index:2;">' + tl + '</div>'
+                    + '<button class="btn" style="' + btnStyle + 'position:relative;z-index:2;font-size:11px;padding:6px 8px;" ' + btnAttr + '>' + btnText + '</button>'
                     + '</div>';
             };
 
