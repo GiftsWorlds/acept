@@ -256,14 +256,14 @@
         .btn:active:not(:disabled) { transform: scale(0.93) !important; opacity: 0.82; }
         input, textarea, select { width: 100%; padding: 14px; margin: 10px 0; border-radius: 15px; border: 2px solid #2b3a4a; background: #0e1621; color: white; outline: none; font-size: 16px; }
 
-        .page { display: none; padding: 15px; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 15px; padding-bottom: 120px; }
+        .page { display: none; padding: 15px; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; padding-bottom: 120px; }
         .page.active { display: grid; animation: fadeInUp 0.3s ease both; }
         #leaderboard.active { display: flex !important; flex-direction: column; }
         #friends.active { display: flex !important; flex-direction: column; }
         #friends, #admin { display: none; flex-direction: column; width: 100%; max-width: 600px; margin: 0 auto; }
         #friends.active, #admin.active { display: flex; animation: fadeInUp 0.3s ease both; }
 
-        .card { background: var(--card); border-radius: 25px; padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.05); position: relative; transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s ease; animation: fadeInScale 0.35s ease both; }
+        .card { background: var(--card); border-radius: 25px; padding: 14px; text-align: center; border: 1px solid rgba(255,255,255,0.05); position: relative; transition: transform 0.22s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.22s ease; animation: fadeInScale 0.35s ease both; }
         .card:hover { transform: translateY(-5px) scale(1.025); box-shadow: 0 14px 44px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.09); }
         .card .item-emoji { display: inline-block; transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
         .card:hover .item-emoji { animation: wiggle 0.55s ease; }
@@ -575,8 +575,8 @@
         .confetti-piece { position: fixed; width: 9px; height: 9px; pointer-events: none; z-index: 9999; border-radius: 2px; animation: confettiFall linear forwards; }
         .balance-flash { animation: balanceFlash 0.65s cubic-bezier(0.34,1.56,0.64,1); }
         .gift-img { width:110px; height:110px; object-fit:contain; display:block; margin:0 auto 8px; transition:transform 0.3s cubic-bezier(0.34,1.56,0.64,1); filter:drop-shadow(0 4px 12px rgba(0,0,0,0.4)); flex-shrink:0; }
-        .gift-img-wrap { width:100%; height:130px; display:flex; align-items:center; justify-content:center; margin-bottom:6px; flex-shrink:0; overflow:hidden; }
-        .gift-img-wrap .gift-img { margin:0; width:110px; height:110px; }
+        .gift-img-wrap { width:100%; height:100px; display:flex; align-items:center; justify-content:center; margin-bottom:4px; flex-shrink:0; overflow:hidden; }
+        .gift-img-wrap .gift-img { margin:0; width:80px; height:80px; }
         .gift-img-wrap .gift-img-pony { width:120px; height:120px; }
         .card:hover .gift-img { transform:scale(1.18) translateY(-5px) rotate(3deg); }
         .gift-img-sm { width:46px; height:46px; object-fit:contain; display:block; margin:0 auto 4px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3)); flex-shrink:0; }
@@ -761,16 +761,16 @@
             .nav-btn i { font-size: 24px; }
 
             .page { 
-                grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); 
-                gap: 20px; 
-                padding: 20px 20px 140px;
+                grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); 
+                gap: 12px; 
+                padding: 15px 15px 140px;
                 max-width: 1200px;
                 margin: 0 auto;
             }
-            .card { padding: 24px; border-radius: 28px; }
-            .gift-img { width: 120px; height: 120px; }
-            .gift-img-wrap { height: 140px; }
-            .gift-img-wrap .gift-img { width: 120px; height: 120px; }
+            .card { padding: 14px; border-radius: 28px; }
+            .gift-img { width: 90px; height: 90px; }
+            .gift-img-wrap { height: 110px; }
+            .gift-img-wrap .gift-img { width: 90px; height: 90px; }
 
             #friends, #admin { 
                 max-width: 800px; 
@@ -3222,8 +3222,8 @@
                 + '<div style="grid-column:1/-1;text-align:center;padding:6px 0 2px;">'
                 + '<span style="font-size:13px;font-weight:bold;color:gold;">🎖️ NFT: 23 Февраля — эксклюзивные подарки</span>'
                 + '</div>'
-                + mkCard(NFT_BEER, 10000, '🍺', 'https://em-content.zobj.net/source/apple/391/beer-mug_1f37a.png', '#b8860b,#ffd700', '255,215,0', hasBeer)
-                + mkCard(NFT_SOCK, 5000,  '🧦', 'https://em-content.zobj.net/source/apple/391/socks_1f9e6.png',  '#b8860b,#ffd700', '255,215,0', hasSock)
+                + mkCard(NFT_BEER, 10000, '🍺', 'https://em-content.zobj.net/source/apple/391/beer-mug_1f37a.png', '#b8860b,#ffd700', '255,215,0', false)
+                + mkCard(NFT_SOCK, 5000,  '🧦', 'https://em-content.zobj.net/source/apple/391/socks_1f9e6.png',  '#b8860b,#ffd700', '255,215,0', false)
                 + '</div>';
         }
         document.getElementById('shop').innerHTML = `
