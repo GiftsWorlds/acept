@@ -580,6 +580,8 @@
         .gift-img-wrap .gift-img-pony { width:120px; height:120px; }
         .card:hover .gift-img { transform:scale(1.18) translateY(-5px) rotate(3deg); }
         .gift-img-sm { width:46px; height:46px; object-fit:contain; display:block; margin:0 auto 4px; filter:drop-shadow(0 2px 6px rgba(0,0,0,0.3)); flex-shrink:0; }
+        .market-gift-thumb .gift-img, .market-gift-thumb .gift-img-wrap .gift-img { width:60px; height:60px; margin:0; }
+        .market-gift-thumb .gift-img-wrap { width:60px; height:60px; margin:0; }
         .card-inner { display:flex; flex-direction:column; align-items:center; width:100%; }
         #shop .card:nth-child(1){animation-delay:.04s} #shop .card:nth-child(2){animation-delay:.08s} #shop .card:nth-child(3){animation-delay:.12s} #shop .card:nth-child(4){animation-delay:.16s} #shop .card:nth-child(5){animation-delay:.2s} #shop .card:nth-child(6){animation-delay:.24s} #shop .card:nth-child(n+7){animation-delay:.28s}
         #profile { display:none; flex-direction:column; padding:0; padding-bottom:120px; }
@@ -3401,7 +3403,7 @@
         document.getElementById('modal-content').innerHTML = `
             <div style="padding:4px;">
                 <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
-                    <div style="width:72px;height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:18px;border:1px solid rgba(255,255,255,0.08);">
+                    <div class="market-gift-thumb" style="width:72px;height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:18px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
                         ${giftImg(first,'lg')}
                     </div>
                     <div>
