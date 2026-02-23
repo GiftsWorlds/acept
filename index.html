@@ -6952,7 +6952,11 @@
                 const exists = catalog.find(c=>c.fbId===item.fbId);
                 if (!exists) {
                     const maxId = Math.max(...catalog.map(c=>c.id),100);
-                    catalog.push({id:maxId+1,n:item.name,i:item.emoji||'\uD83C\uDF81',img:item.img,rarity:item.rarity||0,nft:item.nft||false,fbId:item.fbId,inShop:item.inShop,price:item.price||0,releaseAt:item.releaseAt||null});
+                    catalog.push({id:maxId+1,n:item.name,i:item.emoji||'\uD83C\uDF81',img:item.img,rarity:item.rarity||0,nft:item.nft||false,fbId:item.fbId,inShop:item.inShop,hideFromMarket:!!item.hideFromMarket,price:item.price||0,releaseAt:item.releaseAt||null});
+                } else {
+                    // Обновляем hideFromMarket для уже существующего подарка
+                    exists.hideFromMarket = !!item.hideFromMarket;
+                    exists.inShop = item.inShop;
                 }
             });
             // Apply saved overrides for built-in gifts
@@ -6961,7 +6965,7 @@
                 const ov = ovSnap.val()||{};
                 Object.entries(ov).forEach(([id,d])=>{
                     const c=catalog.find(x=>String(x.id)===String(id));
-                    if(c) Object.assign(c,{n:d.name||c.n,i:d.emoji||c.i,img:d.img||c.img,rarity:d.rarity!==undefined?d.rarity:c.rarity,nft:d.nft||false,price:d.price||0,inShop:'inShop' in d ? !!d.inShop : c.inShop!==false,releaseAt:d.releaseAt||null});
+                    if(c) Object.assign(c,{n:d.name||c.n,i:d.emoji||c.i,img:d.img||c.img,rarity:d.rarity!==undefined?d.rarity:c.rarity,nft:d.nft||false,price:d.price||0,inShop:'inShop' in d ? !!d.inShop : c.inShop!==false,hideFromMarket:'hideFromMarket' in d ? !!d.hideFromMarket : !!c.hideFromMarket,releaseAt:d.releaseAt||null});
                 });
             } catch(e){}
             // Remove deleted built-in gifts
