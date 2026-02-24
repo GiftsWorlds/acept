@@ -1805,8 +1805,26 @@
                     </div>
                     <!-- Status indicator -->
                     <div style="margin-top:10px;position:relative;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.2);border-radius:12px;padding:8px 12px;border:1px solid rgba(124,58,237,0.25);">
-                        <div style="width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px rgba(34,197,94,0.6);flex-shrink:0;"></div>
-                        <div style="font-size:11px;color:#a78bfa;font-weight:600;">Безлимитный режим · запросы не ограничены</div>
+                        <div id="ai-key-dot" style="width:7px;height:7px;border-radius:50%;background:#ef4444;flex-shrink:0;"></div>
+                        <div id="ai-key-status" style="font-size:11px;color:#a78bfa;font-weight:600;flex:1;">API-ключ не указан</div>
+                        <button onclick="aiShowKeyModal()" style="background:rgba(124,58,237,0.3);border:1px solid rgba(124,58,237,0.5);color:#e9d5ff;border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;font-weight:700;">🔑 Ключ</button>
+                    </div>
+                </div>
+
+                <!-- API Key Modal -->
+                <div id="ai-key-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:99999;align-items:center;justify-content:center;padding:20px;">
+                    <div style="background:#1a0a2e;border:1.5px solid rgba(124,58,237,0.5);border-radius:24px;padding:24px;width:100%;max-width:420px;">
+                        <div style="font-size:17px;font-weight:900;color:#e9d5ff;margin-bottom:6px;">🔑 API-ключ Anthropic</div>
+                        <div style="font-size:12px;color:#a78bfa;margin-bottom:16px;line-height:1.6;">
+                            Ключ хранится только в браузере (localStorage) и никуда не отправляется кроме openrouter.ai.<br>
+                            Получить бесплатно: <span style="color:#c4b5fd;font-family:monospace;">openrouter.ai/settings/keys</span>
+                        </div>
+                        <input id="ai-key-input" type="password" placeholder="sk-or-v1-..." style="width:100%;box-sizing:border-box;margin:0 0 12px;background:#0a0515;border:1.5px solid rgba(124,58,237,0.4);border-radius:14px;padding:12px 14px;color:#e9d5ff;font-family:monospace;font-size:13px;">
+                        <div style="display:flex;gap:8px;">
+                            <button onclick="aiSaveKey()" style="flex:1;background:linear-gradient(135deg,#7c3aed,#ec4899);border:none;border-radius:12px;color:white;font-weight:700;font-size:14px;padding:12px;cursor:pointer;">✅ Сохранить</button>
+                            <button onclick="document.getElementById('ai-key-modal').style.display='none'" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:#a78bfa;font-size:14px;padding:12px 16px;cursor:pointer;">Отмена</button>
+                        </div>
+                        <button onclick="aiClearKey()" style="width:100%;margin-top:8px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);border-radius:12px;color:#f87171;font-size:12px;padding:8px;cursor:pointer;">🗑️ Удалить ключ</button>
                     </div>
                 </div>
 
@@ -8563,93 +8581,77 @@ window.openChangeEmailModal = function() {
 //  🤖 AI EDITOR — Claude-powered site editor with rollback
 // =========================================================
 (function() {
-    const AI_HISTORY_KEY  = 'ai_editor_history';
-    const AI_CURRENT_KEY  = 'ai_editor_current_html';
+    const AI_HISTORY_KEY   = 'ai_editor_history';
+    const AI_CURRENT_KEY   = 'ai_editor_current_html';
     const AI_RATELIMIT_KEY = 'ai_editor_ratelimit';
-    const AI_DAILY_LIMIT  = 20;
+    const AI_KEY_STORAGE   = 'ai_editor_api_key';
 
-    // ── Rate limit (DISABLED — unlimited) ────────────────
+    // ── API Key management ────────────────────────────────
+    function getApiKey() { return localStorage.getItem(AI_KEY_STORAGE) || ''; }
+    function updateKeyUI() {
+        const key = getApiKey();
+        const dot = document.getElementById('ai-key-dot');
+        const status = document.getElementById('ai-key-status');
+        const btn = document.getElementById('ai-send-btn');
+        const hasKey = key && key.startsWith('sk-or-');
+        if (dot) { dot.style.background = hasKey ? '#22c55e' : '#ef4444'; dot.style.boxShadow = hasKey ? '0 0 6px rgba(34,197,94,0.6)' : 'none'; }
+        if (status) status.textContent = hasKey ? '✅ OpenRouter ключ установлен · Безлимитный режим' : '⚠️ Укажи API-ключ OpenRouter (бесплатно)';
+        if (btn) { btn.disabled = !hasKey; btn.style.opacity = hasKey ? '1' : '0.4'; }
+    }
+
+    window.aiShowKeyModal = function() {
+        const modal = document.getElementById('ai-key-modal');
+        const input = document.getElementById('ai-key-input');
+        if (input) input.value = getApiKey();
+        if (modal) modal.style.display = 'flex';
+    };
+    window.aiSaveKey = function() {
+        const input = document.getElementById('ai-key-input');
+        const key = (input?.value || '').trim();
+        if (!key) { alert('Введи API-ключ'); return; }
+        if (!key.startsWith('sk-or-')) { alert('Ключ OpenRouter должен начинаться с sk-or-'); return; }
+        localStorage.setItem(AI_KEY_STORAGE, key);
+        document.getElementById('ai-key-modal').style.display = 'none';
+        updateKeyUI();
+        addChatMessage('✅ Ключ OpenRouter сохранён! Теперь можешь отправлять запросы.', 'bot');
+    };
+    window.aiClearKey = function() {
+        localStorage.removeItem(AI_KEY_STORAGE);
+        document.getElementById('ai-key-input').value = '';
+        document.getElementById('ai-key-modal').style.display = 'none';
+        updateKeyUI();
+    };
+
+    // ── Rate limit (tracking only) ────────────────────────
     function getRateData() {
-        try {
-            const d = JSON.parse(localStorage.getItem(AI_RATELIMIT_KEY) || '{}');
-            const today = new Date().toDateString();
-            if (d.date !== today) return { date: today, count: 0 };
-            return d;
-        } catch(e) { return { date: new Date().toDateString(), count: 0 }; }
+        try { const d = JSON.parse(localStorage.getItem(AI_RATELIMIT_KEY) || '{}'); const today = new Date().toDateString(); if (d.date !== today) return { date: today, count: 0 }; return d; } catch(e) { return { date: new Date().toDateString(), count: 0 }; }
     }
-    function incRate() {
-        // tracking only, no enforcement
-        const d = getRateData();
-        d.count++;
-        localStorage.setItem(AI_RATELIMIT_KEY, JSON.stringify(d));
-        updateRateUI();
-    }
-    function canSend() { return true; } // unlimited
-    function updateRateUI() {
-        const d = getRateData();
-        const cnt = d.count;
-        const ctr = document.getElementById('ai-req-counter');
-        const bar = document.getElementById('ai-req-bar');
-        const warn = document.getElementById('ai-limit-warn');
-        if (ctr) ctr.textContent = `${cnt} запросов`;
-        if (bar) { bar.style.width = '0%'; }
-        if (warn) warn.style.display = 'none';
-        // Hide the request counter row entirely — unlimited mode
-        const barWrap = document.getElementById('ai-req-bar-wrap');
-        if (barWrap) {
-            const row = barWrap.closest('[style*="background:rgba(0,0,0,0.25)"]');
-            if (row) row.style.display = 'none';
-        }
-    }
+    function incRate() { const d = getRateData(); d.count++; localStorage.setItem(AI_RATELIMIT_KEY, JSON.stringify(d)); }
+    function canSend() { return !!getApiKey(); }
 
     // ── History ───────────────────────────────────────────
-    function loadHistory() {
-        try { return JSON.parse(localStorage.getItem(AI_HISTORY_KEY) || '[]'); } catch(e) { return []; }
-    }
-    function saveHistory(h) {
-        if (h.length > 20) h = h.slice(-20);
-        localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(h));
-    }
-    function getCurrentHtml() {
-        return localStorage.getItem(AI_CURRENT_KEY) || document.documentElement.outerHTML;
-    }
-    function saveCurrentHtml(html) {
-        localStorage.setItem(AI_CURRENT_KEY, html);
-    }
+    function loadHistory() { try { return JSON.parse(localStorage.getItem(AI_HISTORY_KEY) || '[]'); } catch(e) { return []; } }
+    function saveHistory(h) { if (h.length > 20) h = h.slice(-20); localStorage.setItem(AI_HISTORY_KEY, JSON.stringify(h)); }
+    function getCurrentHtml() { return localStorage.getItem(AI_CURRENT_KEY) || document.documentElement.outerHTML; }
+    function saveCurrentHtml(html) { localStorage.setItem(AI_CURRENT_KEY, html); }
 
-    // ── Render history list ───────────────────────────────
+    // ── Render history ────────────────────────────────────
     function renderHistory() {
         const list = document.getElementById('ai-history-list');
         const hist = loadHistory();
         if (!list) return;
-        if (!hist.length) {
-            list.innerHTML = '<div style="font-size:12px;color:#6b7280;text-align:center;padding:20px 0;">Пока нет изменений</div>';
-            return;
-        }
+        if (!hist.length) { list.innerHTML = '<div style="font-size:12px;color:#6b7280;text-align:center;padding:20px 0;">Пока нет изменений</div>'; return; }
         list.innerHTML = '';
         [...hist].reverse().forEach((item, i) => {
             const realIdx = hist.length - 1 - i;
             const isLatest = i === 0;
             const div = document.createElement('div');
             div.style.cssText = 'background:#111827;border:1.5px solid rgba(255,255,255,0.08);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:10px;';
-            div.innerHTML = `
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:12px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-                        ${isLatest ? '<span style="color:#a78bfa;">⭐ </span>' : ''}v${realIdx+2} — ${escHtml(item.label)}
-                    </div>
-                    <div style="font-size:10px;color:#6b7280;margin-top:2px;">${item.time}</div>
-                </div>
-                <div style="display:flex;gap:5px;flex-shrink:0;">
-                    <button onclick="aiRollback(${realIdx})" style="background:rgba(245,158,11,0.18);border:1.5px solid rgba(245,158,11,0.35);color:#fbbf24;border-radius:9px;padding:6px 10px;font-size:11px;cursor:pointer;font-weight:700;white-space:nowrap;">↩️ Откат</button>
-                    <button onclick="aiPreviewVersion(${realIdx})" style="background:rgba(96,165,250,0.12);border:1.5px solid rgba(96,165,250,0.25);color:#93c5fd;border-radius:9px;padding:6px 10px;font-size:11px;cursor:pointer;">👁️</button>
-                </div>`;
+            div.innerHTML = `<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${isLatest?'<span style="color:#a78bfa;">⭐ </span>':''}v${realIdx+2} — ${escHtml(item.label)}</div><div style="font-size:10px;color:#6b7280;margin-top:2px;">${item.time}</div></div><div style="display:flex;gap:5px;flex-shrink:0;"><button onclick="aiRollback(${realIdx})" style="background:rgba(245,158,11,0.18);border:1.5px solid rgba(245,158,11,0.35);color:#fbbf24;border-radius:9px;padding:6px 10px;font-size:11px;cursor:pointer;font-weight:700;white-space:nowrap;">↩️ Откат</button><button onclick="aiPreviewVersion(${realIdx})" style="background:rgba(96,165,250,0.12);border:1.5px solid rgba(96,165,250,0.25);color:#93c5fd;border-radius:9px;padding:6px 10px;font-size:11px;cursor:pointer;">👁️</button></div>`;
             list.appendChild(div);
         });
     }
-
-    function escHtml(s) {
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
+    function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
     // ── Chat messages ─────────────────────────────────────
     function addChatMessage(text, role) {
@@ -8657,48 +8659,34 @@ window.openChangeEmailModal = function() {
         if (!win) return;
         const isBot = role === 'bot';
         const div = document.createElement('div');
-        div.style.cssText = `
-            background:${isBot ? 'rgba(124,58,237,0.2)' : 'rgba(36,129,204,0.18)'};
-            border:1.5px solid ${isBot ? 'rgba(124,58,237,0.4)' : 'rgba(36,129,204,0.35)'};
-            border-radius:${isBot ? '14px 14px 14px 4px' : '14px 14px 4px 14px'};
-            padding:12px 14px;font-size:13px;line-height:1.65;
-            color:${isBot ? '#e9d5ff' : '#bfdbfe'};
-            max-width:88%;align-self:${isBot ? 'flex-start' : 'flex-end'};
-            white-space:pre-wrap;word-break:break-word;
-        `;
+        div.style.cssText = `background:${isBot?'rgba(124,58,237,0.2)':'rgba(36,129,204,0.18)'};border:1.5px solid ${isBot?'rgba(124,58,237,0.4)':'rgba(36,129,204,0.35)'};border-radius:${isBot?'14px 14px 14px 4px':'14px 14px 4px 14px'};padding:12px 14px;font-size:13px;line-height:1.65;color:${isBot?'#e9d5ff':'#bfdbfe'};max-width:88%;align-self:${isBot?'flex-start':'flex-end'};white-space:pre-wrap;word-break:break-word;`;
         div.textContent = text;
         win.appendChild(div);
         win.scrollTop = win.scrollHeight;
-        return div;
     }
 
     function setAiLoading(loading) {
-        const btn   = document.getElementById('ai-send-btn');
+        const btn = document.getElementById('ai-send-btn');
         const label = document.getElementById('ai-send-label');
-        const dot   = document.getElementById('ai-status-dot');
-        if (btn) { btn.disabled = loading || !canSend(); btn.style.opacity = (loading || !canSend()) ? '0.5' : '1'; }
+        const dot = document.getElementById('ai-status-dot');
+        const hasKey = !!getApiKey();
+        if (btn) { btn.disabled = loading || !hasKey; btn.style.opacity = (loading || !hasKey) ? '0.5' : '1'; }
         if (label) label.textContent = loading ? '⏳ Думаю...' : '✨ Применить';
-        if (dot) {
-            dot.style.background      = loading ? '#f59e0b' : canSend() ? '#22c55e' : '#ef4444';
-            dot.style.boxShadow       = loading ? '0 0 0 3px rgba(245,158,11,0.3)' : canSend() ? '0 0 0 3px rgba(34,197,94,0.25)' : '0 0 0 3px rgba(239,68,68,0.25)';
-        }
+        if (dot) { dot.style.background = loading ? '#f59e0b' : '#22c55e'; dot.style.boxShadow = loading ? '0 0 0 3px rgba(245,158,11,0.3)' : '0 0 0 3px rgba(34,197,94,0.25)'; }
     }
 
     function updateVersionLabel() {
         const el = document.getElementById('ai-current-version');
         if (!el) return;
         const hist = loadHistory();
-        el.textContent = hist.length > 0
-            ? `v${hist.length + 1} — ${hist[hist.length-1].label.substring(0,30)}`
-            : 'v1 — Оригинал';
+        el.textContent = hist.length > 0 ? `v${hist.length+1} — ${hist[hist.length-1].label.substring(0,30)}` : 'v1 — Оригинал';
     }
 
     // ── Main send ─────────────────────────────────────────
     window.aiSendMessage = async function() {
-        if (!canSend()) {
-            addChatMessage('⛔ Лимит 20 запросов в день исчерпан. Попробуй завтра.', 'bot');
-            return;
-        }
+        const apiKey = getApiKey();
+        if (!apiKey) { aiShowKeyModal(); return; }
+
         const input = document.getElementById('ai-prompt-input');
         if (!input) return;
         const prompt = input.value.trim();
@@ -8714,36 +8702,38 @@ window.openChangeEmailModal = function() {
             ? currentHtml.substring(0, 60000) + '\n... [truncated] ...'
             : currentHtml;
 
-        const systemPrompt = `Ты — ИИ-ассистент для редактирования HTML-сайта. Тебе будет дан текущий HTML-код сайта и задача на изменение.
-
-ВАЖНЫЕ ПРАВИЛА:
-1. Возвращай ТОЛЬКО исправленный HTML-код целиком, без объяснений и без markdown блоков.
-2. Вноси ТОЛЬКО запрошенные изменения, не трогай остальное.
-3. Если изменение невозможно — верни исходный HTML и объясни в комментарии в начале: <!-- AI: причина -->
-4. Не добавляй \`\`\`html или \`\`\` обёртки.`;
+        const systemPrompt = `Ты — ИИ-ассистент для редактирования HTML-сайта. Тебе будет дан текущий HTML-код сайта и задача на изменение.\n\nВАЖНЫЕ ПРАВИЛА:\n1. Возвращай ТОЛЬКО исправленный HTML-код целиком, без объяснений и без markdown блоков.\n2. Вноси ТОЛЬКО запрошенные изменения, не трогай остальное.\n3. Если изменение невозможно — верни исходный HTML и объясни в комментарии в начале: <!-- AI: причина -->\n4. Не добавляй \`\`\`html или \`\`\` обёртки.`;
 
         const userPrompt = `Текущий HTML:\n${htmlSnippet}\n\n---\nЗадача: ${prompt}\n\nВерни полный исправленный HTML.`;
 
         try {
-            const resp = await fetch('https://api.anthropic.com/v1/messages', {
+            const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + apiKey,
+                    'HTTP-Referer': window.location.href,
+                    'X-Title': 'Gift World Admin AI Editor'
+                },
                 body: JSON.stringify({
-                    model: 'claude-sonnet-4-20250514',
+                    model: 'anthropic/claude-sonnet-4-5',
                     max_tokens: 8192,
-                    system: systemPrompt,
-                    messages: [{ role: 'user', content: userPrompt }]
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ]
                 })
             });
             const data = await resp.json();
 
             if (!resp.ok) {
-                addChatMessage('❌ Ошибка API: ' + (data.error?.message || 'неизвестная ошибка'), 'bot');
+                const msg = data.error?.message || JSON.stringify(data.error) || 'неизвестная ошибка';
+                addChatMessage('❌ Ошибка API: ' + msg, 'bot');
                 setAiLoading(false);
                 return;
             }
 
-            const newHtml = data.content?.find(b => b.type === 'text')?.text || '';
+            const newHtml = data.choices?.[0]?.message?.content || '';
             if (!newHtml || newHtml.length < 500) {
                 addChatMessage('⚠️ ИИ вернул пустой ответ. Попробуй переформулировать.', 'bot');
                 setAiLoading(false);
@@ -8756,32 +8746,20 @@ window.openChangeEmailModal = function() {
                 addChatMessage('ℹ️ ' + comment, 'bot');
             }
 
-            // Save to history
             const hist = loadHistory();
-            hist.push({
-                label: prompt.length > 50 ? prompt.substring(0, 50) + '...' : prompt,
-                time: new Date().toLocaleString('ru-RU'),
-                html: currentHtml
-            });
+            hist.push({ label: prompt.length > 50 ? prompt.substring(0,50)+'...' : prompt, time: new Date().toLocaleString('ru-RU'), html: currentHtml });
             saveHistory(hist);
             saveCurrentHtml(newHtml);
 
-            addChatMessage(hasComment
-                ? '✅ Применено (с оговоркой выше). Перезагрузка через 2 сек...'
-                : '✅ Готово! Изменения применены. Перезагрузка через 2 сек...', 'bot');
-
+            addChatMessage(hasComment ? '✅ Применено (с оговоркой). Перезагрузка через 2 сек...' : '✅ Готово! Изменения применены. Перезагрузка через 2 сек...', 'bot');
             setAiLoading(false);
             renderHistory();
             updateVersionLabel();
 
-            setTimeout(() => {
-                document.open();
-                document.write(newHtml);
-                document.close();
-            }, 2000);
+            setTimeout(() => { document.open(); document.write(newHtml); document.close(); }, 2000);
 
         } catch(err) {
-            addChatMessage('❌ Ошибка сети: ' + err.message, 'bot');
+            addChatMessage('❌ Ошибка: ' + err.message, 'bot');
             setAiLoading(false);
         }
     };
@@ -8790,35 +8768,22 @@ window.openChangeEmailModal = function() {
     window.aiRollback = function(histIdx) {
         const hist = loadHistory();
         if (!hist[histIdx]) return;
-        if (!confirm(`Откатить до версии ${histIdx + 1}? Текущее состояние будет сохранено.`)) return;
-
+        if (!confirm(`Откатить до версии ${histIdx+1}?`)) return;
         const rollbackHtml = hist[histIdx].html;
-        const currentHtml  = getCurrentHtml();
-        hist.push({
-            label: `Откат к v${histIdx + 1}`,
-            time: new Date().toLocaleString('ru-RU'),
-            html: currentHtml
-        });
+        const currentHtml = getCurrentHtml();
+        hist.push({ label: `Откат к v${histIdx+1}`, time: new Date().toLocaleString('ru-RU'), html: currentHtml });
         saveHistory(hist);
         saveCurrentHtml(rollbackHtml);
-
-        addChatMessage(`↩️ Откат к v${histIdx + 1} выполнен. Перезагрузка через 2 сек...`, 'bot');
+        addChatMessage(`↩️ Откат к v${histIdx+1}. Перезагрузка через 2 сек...`, 'bot');
         updateVersionLabel();
-
-        setTimeout(() => {
-            document.open();
-            document.write(rollbackHtml);
-            document.close();
-        }, 2000);
+        setTimeout(() => { document.open(); document.write(rollbackHtml); document.close(); }, 2000);
     };
 
     window.aiPreviewVersion = function(histIdx) {
         const hist = loadHistory();
         if (!hist[histIdx]) return;
         const w = window.open('', '_blank');
-        w.document.open();
-        w.document.write(hist[histIdx].html);
-        w.document.close();
+        w.document.open(); w.document.write(hist[histIdx].html); w.document.close();
     };
 
     window.aiDownloadCurrent = function() {
@@ -8826,7 +8791,7 @@ window.openChangeEmailModal = function() {
         const blob = new Blob([html], { type: 'text/html' });
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'site_v' + (loadHistory().length + 1) + '.html';
+        a.download = 'site_v' + (loadHistory().length+1) + '.html';
         a.click();
     };
 
@@ -8838,15 +8803,12 @@ window.openChangeEmailModal = function() {
             if (id === 'ai') {
                 renderHistory();
                 updateVersionLabel();
-                updateRateUI();
+                updateKeyUI();
                 const input = document.getElementById('ai-prompt-input');
                 if (input && !input._aiListenerAdded) {
                     input._aiListenerAdded = true;
                     input.addEventListener('keydown', e => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault();
-                            window.aiSendMessage();
-                        }
+                        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.aiSendMessage(); }
                     });
                 }
             }
