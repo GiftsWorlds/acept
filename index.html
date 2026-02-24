@@ -1916,6 +1916,47 @@
             duel() {
                 return check('duel', 10, 60_000, 120_000);
             },
+            // Выставление на рынок: 5 за 60с
+            listMarket() {
+                return check('listM', 5, 60_000, 120_000);
+            },
+            // Продажа предмета: 20 за 60с
+            sellItem() {
+                return check('sellItm', 20, 60_000, 60_000);
+            },
+            // Выставление на рынок / подтверждение: 5 за 60с
+            confirmMarket() {
+                return check('confirmM', 5, 60_000, 120_000);
+            },
+            // Быстрые действия с инвентарём: 30 за 60с
+            invAction() {
+                return check('invAct', 30, 60_000, 120_000);
+            },
+        };
+    })();
+
+    // 🛡️ Глобальный монитор подозрительной активности
+    (function suspiciousActivityMonitor() {
+        let _actionCount = 0;
+        let _windowStart = Date.now();
+        const MAX_ACTIONS_PER_WINDOW = 60; // макс 60 действий в минуту
+        const WINDOW_MS = 60_000;
+
+        window._trackAction = function(action) {
+            const now = Date.now();
+            if(now - _windowStart > WINDOW_MS) {
+                _actionCount = 0;
+                _windowStart = now;
+            }
+            _actionCount++;
+            if(_actionCount > MAX_ACTIONS_PER_WINDOW) {
+                console.warn('🚨 Suspicious activity:', action, _actionCount);
+                // Блокируем все действия на 2 минуты
+                const blocks = JSON.parse(localStorage.getItem('gw_sec')||'{}');
+                const blockKey = 'suspicious_global';
+                blocks[blockKey] = now + 120_000;
+                localStorage.setItem('gw_sec', JSON.stringify(blocks));
+            }
         };
     })();
 
@@ -1949,6 +1990,12 @@
         }
     })();
     // ═══════════════════════════════════════════════════════════════
+
+    // 🛡️ XSS-защита: экранируем HTML-символы в пользовательских данных
+    function escHtml(str) {
+        if(!str) return '';
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
 
     function buildUsername(d, uid) {
         const resolvedId = uid || (typeof d.username === 'string' ? d.username.toLowerCase() : '');
@@ -2358,7 +2405,10 @@
             const btn=document.querySelector('#form-reg .btn');
             if(!u||!p){ errEl.innerText='Заполни все поля'; return; }
             if(u.length<3){ errEl.innerText='❌ Логин минимум 3 символа'; return; }
+            if(u.length>24){ errEl.innerText='❌ Логин максимум 24 символа'; return; }
+            if(!/^[a-z0-9_]+$/.test(u)){ errEl.innerText='❌ Логин: только латиница, цифры и _'; return; }
             if(p.length<4){ errEl.innerText='❌ Пароль минимум 4 символа'; return; }
+            if(p.length>64){ errEl.innerText='❌ Пароль максимум 64 символа'; return; }
             if(!email){ errEl.innerText='❌ Укажи email для верификации'; return; }
             if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ errEl.innerText='❌ Неверный формат email'; return; }
             // 🛡️ Rate limit
@@ -2784,24 +2834,29 @@
     };
 
     window.sellItem = async (inst, reward) => {
+        // 🛡️ Rate limit
+        const _rlSI = _protection.sellItem(); if(!_rlSI.ok) return showToast(_rlSI.msg, '#e74c3c');
         const r = ref(db, 'users/' + user.id);
         const s = await get(r), d = s.val();
         const inv = toArr(d.cloudInv);
         const item = inv.find(x => String(x.inst) === String(inst));
         if (!item) return showToast('Предмет не найден!', 'var(--err)');
         if (item.nft && !user.isAdm) return showToast('❌ NFT нельзя удалять!', 'var(--err)');
+        // 🛡️ Валидируем reward на сервере — не доверяем параметру с клиента
+        const serverPrice = getPrice(item.id || 0) || 500;
+        const safeReward = item.nft ? 0 : Math.floor(serverPrice * 0.5);
         const isNftDelete = item.nft && user.isAdm;
         const ok = await showConfirm(
             isNftDelete ? '🗑️ Удалить NFT' : 'Продать предмет',
-            isNftDelete ? `NFT "${item.n}" будет безвозвратно удалён из инвентаря. Монеты не начисляются.` : `"${item.n}" будет удалён из инвентаря. Ты получишь ${reward.toLocaleString()} монет (50% рыночной цены).`,
+            isNftDelete ? `NFT "${item.n}" будет безвозвратно удалён из инвентаря. Монеты не начисляются.` : `"${item.n}" будет удалён из инвентаря. Ты получишь ${safeReward.toLocaleString()} монет (50% рыночной цены).`,
             '🗑️', 'var(--err)', isNftDelete ? 'Удалить' : 'Продать'
         );
         if (!ok) return;
         const newInv = inv.filter(x => String(x.inst) !== String(inst));
-        const newBalance = (d.balance || 0) + reward;
+        const newBalance = (d.balance || 0) + safeReward;
         await update(r, { cloudInv: newInv, balance: newBalance });
-        showToast(`🗑️ Продано! +${reward.toLocaleString()} 💰`, 'var(--green)');
-        logActivity('sell_item', {user: user.name, userId: user.id, item: item.n, emoji: item.i||'🎁', reward}, newBalance);
+        showToast(`🗑️ Продано! +${safeReward.toLocaleString()} 💰`, 'var(--green)');
+        logActivity('sell_item', {user: user.name, userId: user.id, item: item.n, emoji: item.i||'🎁', reward: safeReward}, newBalance);
         renderInv();
     };
 
@@ -2955,21 +3010,35 @@
     window.doMerge = async (itemId, currentRarity) => {
         // 🛡️ Rate limit
         const _rlM = _protection.merge(); if(!_rlM.ok) return showToast(_rlM.msg, '#e74c3c');
-        const r=ref(db,"users/"+user.id),s=await get(r),d=s.val();
-        let inv=toArr(d.cloudInv);
-        const matching=inv.filter(x=>x.id==itemId&&getRarityLevel(x)===currentRarity);
-        if(matching.length<3) return showToast("Нужно минимум 3 одинаковых!","var(--err)");
-        const toRemove=matching.slice(0,3).map(x=>x.inst);
-        inv=inv.filter(x=>!toRemove.includes(x.inst));
-        const baseItem={...matching[0]},newRarity=Math.min(currentRarity+1,4);
-        const rarObj=RARITY_LEVELS[newRarity],newSerial=await getNextNftSerial();
-        const isNewNft=newRarity>=4;
-        const upgradedItem={...baseItem,rarity:newRarity,nftSerial:newSerial,inst:newSerial,seen:true};delete upgradedItem.from;
-        if(isNewNft){upgradedItem.nft=true;delete upgradedItem.rarity;upgradedItem.price=getPrice(baseItem.id||0);}
-        inv.push(upgradedItem);
-        await update(r,{cloudInv:inv, totalMerges:(d.totalMerges||0)+1});
-        const newRarObj2=RARITY_LEVELS[newRarity]||RARITY_LEVELS[0];
-        getTgId(user.id).then(cid=>sendTg(cid,`⚗️ <b>Слияние завершено!</b>\n\n${newRarObj2.icon} <b>${baseItem.n}</b>\n⬆️ Редкость: <b>${newRarObj2.label}</b>\n\n🎉 Поздравляем с улучшением!`));
+        // 🛡️ Атомарная транзакция: проверяем и списываем предметы одновременно — нельзя слить больше чем есть
+        const r = ref(db,"users/"+user.id);
+        const newSerial = await getNextNftSerial();
+        let baseItem = null, rarObj = null, newRarObj2 = null, upgradedItem = null;
+        const mergeTx = await runTransaction(r, (current) => {
+            if(!current) return;
+            const inv = toArr(current.cloudInv);
+            const matching = inv.filter(x=>x.id==itemId && getRarityLevel(x)===currentRarity);
+            if(matching.length < 3) return; // недостаточно предметов — abort
+            const toRemove = matching.slice(0,3).map(x=>x.inst);
+            const newInv = inv.filter(x=>!toRemove.includes(x.inst));
+            baseItem = {...matching[0]};
+            const newRarity = Math.min(currentRarity+1, 4);
+            rarObj = RARITY_LEVELS[newRarity];
+            newRarObj2 = RARITY_LEVELS[newRarity] || RARITY_LEVELS[0];
+            const isNewNft = newRarity >= 4;
+            upgradedItem = {...baseItem, rarity:newRarity, nftSerial:newSerial, inst:newSerial, seen:true};
+            delete upgradedItem.from;
+            if(isNewNft){ upgradedItem.nft=true; delete upgradedItem.rarity; upgradedItem.price=getPrice(baseItem.id||0); }
+            newInv.push(upgradedItem);
+            return { ...current, cloudInv: newInv, totalMerges: (current.totalMerges||0)+1 };
+        });
+        if(!mergeTx.committed) return showToast("Нужно минимум 3 одинаковых!", "var(--err)");
+        getTgId(user.id).then(cid=>sendTg(cid,`⚗️ <b>Слияние завершено!</b>
+
+${newRarObj2.icon} <b>${baseItem.n}</b>
+⬆️ Редкость: <b>${newRarObj2.label}</b>
+
+🎉 Поздравляем с улучшением!`));
         spawnConfetti(window.innerWidth/2,window.innerHeight/2,60);
         flyEmoji(rarObj.icon,window.innerWidth/2,window.innerHeight/2);
         showToast(`${rarObj.icon} Слияние успешно! Получен ${rarObj.label}!`,"#a29bfe");
@@ -3731,9 +3800,18 @@
                 }
                 if(!lot.expiresAt) continue;
                 if(now < lot.expiresAt) continue;
+                // Уже обрабатывается другим клиентом — пропускаем
+                if(lot.returning) continue;
                 try {
-                    // Сначала удаляем лот с рынка — защита от дублирования при одновременном запуске
-                    await remove(ref(db,'market/'+k));
+                    // Атомарная транзакция: только один клиент сможет поставить флаг returning
+                    const txResult = await runTransaction(ref(db,'market/'+k), (current) => {
+                        if(!current) return; // лот уже удалён — отменяем (undefined = abort)
+                        if(current.returning) return; // уже обрабатывается — отменяем
+                        return { ...current, returning: true, returningAt: now };
+                    });
+                    if(!txResult.committed) continue; // другой клиент уже захватил лот
+
+                    // Только один клиент дошёл сюда — возвращаем предмет владельцу
                     if(lot.sI) {
                         const ownerSnap = await get(ref(db,'users/'+lot.sI));
                         if(ownerSnap.exists()) {
@@ -3742,12 +3820,14 @@
                             const returned = {...lot};
                             delete returned.mP; delete returned.sI; delete returned.sN;
                             delete returned.sCosm; delete returned.expiresAt;
+                            delete returned.returning; delete returned.returningAt;
                             returned.seen = false;
                             returned.from = '⏰ Возврат с рынка';
                             ownerInv.push(returned);
                             await update(ref(db,'users/'+lot.sI), {cloudInv: ownerInv});
                         }
                     }
+                    await remove(ref(db,'market/'+k));
                 } catch(e) { console.warn('expiry return error', k, e); }
             }
         } catch(e) { console.warn('checkMarketExpiry error', e); }
@@ -3838,53 +3918,102 @@
         openModal();
     };
     window.confirmMarket = async (inst) => {
-        const price=parseInt(document.getElementById('mkt-price').value);
-        if(!price||price<=0) return showToast("Введи цену!",'var(--err)');
-        const r=ref(db,'users/'+user.id),s=await get(r),d=s.val();
-        const _cinv=toArr(d.cloudInv);
-        const itm=_cinv.find(x=>x.inst==inst);
-        if(!itm) return showToast("Не найден!",'var(--err)');
-        const cat=catalog.find(c=>c.id==itm.id);
+        // 🛡️ Rate limit
+        const _rlCM = _protection.confirmMarket(); if(!_rlCM.ok) return showToast(_rlCM.msg, '#e74c3c');
+        const rawPrice = parseInt(document.getElementById('mkt-price').value);
+        // 🛡️ Валидация цены
+        const MIN_MKT = 500, MAX_MKT = 10_000_000;
+        if(!rawPrice || rawPrice < MIN_MKT) return showToast(`Минимальная цена: ${MIN_MKT.toLocaleString()} 💰`,'var(--err)');
+        if(rawPrice > MAX_MKT) return showToast(`Максимальная цена: ${MAX_MKT.toLocaleString()} 💰`,'var(--err)');
+        const price = rawPrice;
+        // 🛡️ Атомарно извлекаем предмет из инвентаря — нельзя выставить один предмет дважды
+        let capturedItem = null;
+        const r = ref(db,'users/'+user.id);
+        const listTx = await runTransaction(r, (current) => {
+            if(!current) return;
+            const inv = toArr(current.cloudInv);
+            const itm = inv.find(x=>String(x.inst)==String(inst));
+            if(!itm) return; // предмет не найден — abort
+            capturedItem = itm;
+            const newInv = inv.filter(x=>String(x.inst)!=String(inst));
+            const newPinned = (current.pinnedInsts||[]).filter(id=>String(id)!=String(inst));
+            return { ...current, cloudInv: newInv, pinnedInsts: newPinned };
+        });
+        if(!listTx.committed || !capturedItem) return showToast("Предмет не найден или уже выставлен!",'var(--err)');
+        const itm = capturedItem;
+        const cat = catalog.find(c=>c.id==itm.id);
         // Картинка: приоритет каталога, затем сохранённая (не data:), не сохраняем base64
         const _catImg = (cat&&cat.img&&!cat.img.startsWith('data:')) ? cat.img : null;
         const _itmImg = (itm.img&&!itm.img.startsWith('data:')) ? itm.img : null;
-        const enriched={...itm, img:_catImg||_itmImg||null, i:(itm.i)||(cat&&cat.i)||'🎁'};
-        await update(r,{cloudInv:_cinv.filter(x=>x.inst!=inst),pinnedInsts:(d.pinnedInsts||[]).filter(id=>String(id)!=String(inst))});
-        const uc=await get(ref(db,'users/'+user.id));
-        const sCosm=(uc.exists()&&uc.val().activeCosmetic)||{};
+        const enriched = {...itm, img:_catImg||_itmImg||null, i:(itm.i)||(cat&&cat.i)||'🎁'};
+        const sCosm = (listTx.snapshot.val().activeCosmetic) || {};
         const expiresAt = ADMIN_IDS.has(user.id) ? null : (Date.now() + 24*60*60*1000);
-        push(ref(db,'market/'),{...enriched,mP:price,sI:user.id,sN:user.name,sCosm,expiresAt});
+        push(ref(db,'market/'), {...enriched, mP:price, sI:user.id, sN:user.name, sCosm, expiresAt});
         closeModal(); showToast("Выставлено на рынок! ⚖️",'var(--green)'); renderInv();
         logActivity('market_list', {user: user.name, userId: user.id, item: itm.n, emoji: enriched.i||'🎁', price});
     };
     window.buyM = async (k,p,si,e) => {
         // 🛡️ Rate limit
         const _rlBM = _protection.buyMarket(); if(!_rlBM.ok) return showToast(_rlBM.msg, '#e74c3c');
-        const bR=ref(db,'users/'+user.id),bS=await get(bR);
-        if(!user.isAdm && bS.val().balance<p) return showToast("Нет монет!",'var(--err)');
-        const mS=await get(ref(db,'market/'+k));if(!mS.exists()) return showToast("Уже купили!",'var(--err)');
-        const itm=mS.val();
-        // Защита от двойной покупки
-        if(itm.sold) return showToast("Уже купили!",'var(--err)');
-        // Берём продавца из данных Firebase, а не из параметра (защита от устаревших данных)
+        // 🛡️ АТОМАРНАЯ пометка лота как проданного — защита от race condition между клиентами
+        let capturedLot = null;
+        const lotTx = await runTransaction(ref(db,'market/'+k), (current) => {
+            if(!current) return;             // лот уже удалён — abort
+            if(current.sold || current.returning) return; // уже куплен/обрабатывается — abort
+            capturedLot = current;
+            return { ...current, sold: true, soldAt: Date.now(), soldBy: user.id };
+        });
+        if(!lotTx.committed || !capturedLot) return showToast("Уже купили!", 'var(--err)');
+        const itm = capturedLot;
+        // 🛡️ Цена берётся из Firebase (захваченного лота), а не из параметра
+        const realPrice = itm.mP;
+        if(!realPrice || realPrice <= 0) {
+            await update(ref(db,'market/'+k), {sold: false}).catch(()=>{});
+            return showToast("Ошибка: некорректная цена!", 'var(--err)');
+        }
+        // 🛡️ Нельзя купить у самого себя
         const sellerId = itm.sI;
-        if(!sellerId) return showToast("Ошибка: продавец не найден!",'var(--err)');
-        // Помечаем лот как купленный (остаётся видимым) — мгновенно обновится у всех через onValue
-        await update(ref(db,'market/'+k), {sold: true, soldAt: Date.now()});
-        // Preserve original inst so item ID stays the same after purchase
-        const inv=toArr(bS.val().cloudInv);const itmClean={...itm,seen:false};delete itmClean.from;delete itmClean.sN;inv.push(itmClean);
-        await update(bR,{balance:user.isAdm ? (bS.val().balance||0) : bS.val().balance-p,cloudInv:inv});
-        // Деньги идут продавцу (не ckovoroda!)
-        const sS=await get(ref(db,'users/'+sellerId));
-        if(sS.exists()) await update(ref(db,'users/'+sellerId),{balance:sS.val().balance+parseInt(p)});
-        // Удаляем лот через 3 секунды (покупатель уже видит "Продано", потом карточка исчезает)
+        if(sellerId === user.id) {
+            await update(ref(db,'market/'+k), {sold: false}).catch(()=>{});
+            return showToast("Нельзя купить свой лот!", 'var(--err)');
+        }
+        if(!sellerId) {
+            await update(ref(db,'market/'+k), {sold: false}).catch(()=>{});
+            return showToast("Ошибка: продавец не найден!", 'var(--err)');
+        }
+        // 🛡️ Списываем баланс покупателя атомарно через транзакцию
+        const bR = ref(db,'users/'+user.id);
+        const itmClean = {...itm, seen:false};
+        delete itmClean.from; delete itmClean.sN; delete itmClean.sold; delete itmClean.soldAt; delete itmClean.soldBy;
+        const balTx = await runTransaction(bR, (current) => {
+            if(!current) return;
+            if(!user.isAdm && (current.balance||0) < realPrice) return; // недостаточно средств — abort
+            return { ...current, balance: user.isAdm ? (current.balance||0) : (current.balance||0) - realPrice, cloudInv: [...toArr(current.cloudInv), itmClean] };
+        });
+        if(!balTx.committed) {
+            // Откатываем пометку — убираем sold
+            await update(ref(db,'market/'+k), {sold: false, soldAt: null, soldBy: null}).catch(()=>{});
+            return showToast("Нет монет!", 'var(--err)');
+        }
+        // 🛡️ Зачисляем деньги продавцу атомарно
+        await runTransaction(ref(db,'users/'+sellerId), (current) => {
+            if(!current) return;
+            return { ...current, balance: (current.balance||0) + realPrice };
+        });
+        // Удаляем лот через 3 секунды
         setTimeout(()=>remove(ref(db,'market/'+k)).catch(()=>{}), 3000);
-        // Notify seller via Telegram
-        const rarObj=getRarityObj(itm);
-        getTgId(sellerId).then(cid=>sendTg(cid,`🛒 <b>Продажа на рынке!</b>\n\n<b>${user.name}</b> купил твой товар:\n${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}\n\n💰 Ты получил: <b>${p.toLocaleString()} монет</b>\n🏷 Редкость: <b>${rarObj.label||'—'}</b>`));
-        if(e) flyEmoji(itm.i,e.clientX,e.clientY);
-        flashBalance(); showToast("Куплено! "+itm.i);
-        logActivity('market_buy', {user: user.name, userId: user.id, item: itm.n, emoji: itm.i||'🎁', price: p, seller: itm.sN||sellerId}, user.isAdm ? (bS.val().balance||0) : bS.val().balance-p);
+        // Уведомляем продавца
+        const rarObj = getRarityObj(itm);
+        getTgId(sellerId).then(cid=>sendTg(cid,`🛒 <b>Продажа на рынке!</b>
+
+<b>${user.name}</b> купил твой товар:
+${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
+
+💰 Ты получил: <b>${realPrice.toLocaleString()} монет</b>
+🏷 Редкость: <b>${rarObj.label||'—'}</b>`));
+        if(e) flyEmoji(itm.i, e.clientX, e.clientY);
+        flashBalance(); showToast("Куплено! " + itm.i);
+        logActivity('market_buy', {user: user.name, userId: user.id, item: itm.n, emoji: itm.i||'🎁', price: realPrice, seller: itm.sN||sellerId}, balTx.snapshot.val().balance);
         // Если NFT с апгрейдом — предлагаем сменить тему
         if(itm.nft && itm.upgrade && itm.upgrade.level >= 1) {
             setTimeout(()=>showThemePickerAfterBuy(itm), 600);
@@ -4232,16 +4361,29 @@
 
     window.confirmTrade = async (offerKey, fromId, theirInst) => {
         if(!selectedAcceptInst) return showToast('Выбери подарок!','var(--err)');
+        // 🛡️ Нельзя обменяться с самим собой
+        if(fromId === user.id) return showToast('Нельзя обмениваться с самим собой!','var(--err)');
         // 🛡️ Rate limit
         const _rlT = _protection.trade(); if(!_rlT.ok) return showToast(_rlT.msg, '#e74c3c');
+        // 🛡️ Транзакция — помечаем оффер как "в процессе" атомарно
+        const offerRef = ref(db,`tradeOffers/${user.id}/${offerKey}`);
+        const txTrade = await runTransaction(offerRef, (current) => {
+            if(!current) return; // оффер уже принят/удалён
+            if(current.processing) return; // уже обрабатывается
+            return { ...current, processing: true };
+        });
+        if(!txTrade.committed) return showToast('Обмен уже был принят или отменён!','var(--err)');
         // Fetch both inventories
         const [mySnap, theirSnap] = await Promise.all([get(ref(db,'users/'+user.id)), get(ref(db,'users/'+fromId))]);
         const myD = mySnap.val(), theirD = theirSnap.val();
         let myInv = toArr(myD.cloudInv), theirInv = toArr(theirD.cloudInv);
         const myItem = myInv.find(x=>String(x.inst)==String(selectedAcceptInst));
         const theirItem = theirInv.find(x=>String(x.inst)==String(theirInst));
-        if(!myItem) return showToast('Твой подарок не найден!','var(--err)');
-        if(!theirItem) return showToast('Подарок партнёра уже не доступен!','var(--err)');
+        if(!myItem || !theirItem) {
+            // Откат — убираем флаг processing
+            await remove(offerRef).catch(()=>{});
+            return showToast(!myItem ? 'Твой подарок не найден!' : 'Подарок партнёра уже не доступен!','var(--err)');
+        }
         // Swap items
         myInv = myInv.filter(x=>String(x.inst)!=String(selectedAcceptInst));
         theirInv = theirInv.filter(x=>String(x.inst)!=String(theirInst));
@@ -4250,7 +4392,7 @@
         await Promise.all([
             update(ref(db,'users/'+user.id),{cloudInv:myInv}),
             update(ref(db,'users/'+fromId),{cloudInv:theirInv}),
-            remove(ref(db,`tradeOffers/${user.id}/${offerKey}`))
+            remove(offerRef)
         ]);
         getTgId(fromId).then(cid=>sendTg(cid,`🔄 <b>Обмен завершён!</b>\n\n<b>${user.name}</b> принял твоё предложение.\n\n📥 Ты получил: <b>${myItem.n} ${myItem.i||''}</b>\n📤 Ты отдал: <b>${theirItem&&theirItem.n||'подарок'}</b>`));
         closeModal();
@@ -4655,17 +4797,27 @@
         openModal();
     };
     window.sendG = async (inst,fid) => {
+        // 🛡️ Нельзя подарить самому себе
+        if(fid === user.id) return showToast('Нельзя подарить самому себе!','var(--err)');
         // 🛡️ Rate limit
         const _rlSG = _protection.sendGift(); if(!_rlSG.ok) return showToast(_rlSG.msg, '#e74c3c');
         const r=ref(db,'users/'+user.id),s=await get(r),d=s.val();
-        const inv=toArr(d.cloudInv),itm=inv.find(x=>x.inst==inst);
+        const inv=toArr(d.cloudInv),itm=inv.find(x=>String(x.inst)==String(inst));
         if(!itm) return showToast("Не найден!",'var(--err)');
+        // 🛡️ Атомарно убираем предмет из инвентаря перед отправкой
+        const newInvForGift = inv.filter(x=>String(x.inst)!=String(inst));
+        const txGift = await runTransaction(r, (current) => {
+            if(!current) return;
+            const curInv = toArr(current.cloudInv);
+            const hasItem = curInv.some(x=>String(x.inst)==String(inst));
+            if(!hasItem) return; // предмет уже не в инвентаре
+            return {...current, cloudInv: curInv.filter(x=>String(x.inst)!=String(inst)), pinnedInsts:(current.pinnedInsts||[]).filter(id=>String(id)!=String(inst)), giftsGiven:(current.giftsGiven||0)+1};
+        });
+        if(!txGift.committed) return showToast("Предмет уже был отправлен или не найден!",'var(--err)');
         // Проверка конфиденциальности получателя
         const frSnap2=await get(ref(db,'users/'+fid));
         const frPrivacy=(frSnap2.val()&&frSnap2.val().privacy)||{};
         if(frPrivacy.allowGifts===false) return showToast("❌ Вы не можете отправить подарок этому пользователю из-за его настроек конфиденциальности",'var(--err)');
-        const newGiven=(d.giftsGiven||0)+1;
-        await update(r,{cloudInv:inv.filter(x=>x.inst!=inst),pinnedInsts:(d.pinnedInsts||[]).filter(id=>String(id)!=String(inst)),giftsGiven:newGiven});
         const frS=await get(ref(db,'users/'+fid)),frInv=toArr(frS.val().cloudInv);
         frInv.push({...itm,from:user.name,seen:false,inst:Date.now()});
         await update(ref(db,'users/'+fid),{cloudInv:frInv,giftsReceived:(frS.val().giftsReceived||0)+1});
@@ -4708,7 +4860,7 @@
                 ${isPin ? `<div style="position:absolute;top:5px;left:5px;font-size:12px;z-index:3;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));">📌</div>` : ''}
                 <div class="tg-gift-inner">
                     ${img ? `<img src="${img}" alt="${(catalogMap.get(+x.id)||x).n}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:34px;">${emoji}</span>` : `<span style="font-size:34px;">${emoji}</span>`}
-                    ${x.from ? `<div class="tg-gift-from">${x.from}</div>` : ''}
+                    ${x.from ? `<div class="tg-gift-from">${escHtml(x.from)}</div>` : ''}
                 </div>
                 ${isNFT && x.nftSerial ? `<div class="tg-gift-nft-serial">#${x.nftSerial}</div>` : ''}
                 <div class="tg-gift-name">${(catalogMap.get(+x.id)||x).n}</div>
