@@ -274,6 +274,94 @@
             background: #ffffff !important;
             border-color: rgba(0,0,0,0.08) !important;
         }
+
+        /* ===== LIGHT THEME: все пропущенные цвета ===== */
+
+        /* color:#ffd700 (золотой NFT) → тёмно-золотой */
+        body.light-theme [style*="color:#ffd700"] { color: #8a5e00 !important; }
+        body.light-theme [style*="color: #ffd700"] { color: #8a5e00 !important; }
+
+        /* color:rgba(200,220,240...) — почти белый голубоватый → тёмный */
+        body.light-theme [style*="color:rgba(200,220,240"] { color: #3a5070 !important; }
+        body.light-theme [style*="color: rgba(200,220,240"] { color: #3a5070 !important; }
+
+        /* color:#4a6080, #3a5070, #7f91a4, #131f2c — тёмные сине-серые, норм на светлом */
+        /* (уже хорошо видны на светлом фоне — не нужны) */
+
+        /* CSS классы: adm-stat значения */
+        body.light-theme .adm-stat .val { color: #1a1a2e !important; }
+        body.light-theme .adm-stat * { color: #1a1a2e !important; }
+
+        /* promo-code-text — золотой цвет кода */
+        body.light-theme .promo-code-text { color: #8a5e00 !important; }
+
+        /* rarity badges */
+        body.light-theme .rarity-rare { color: #1a4d99 !important; }
+        body.light-theme .rarity-epic { color: #5a30cc !important; }
+        body.light-theme .rarity-nft { color: #8a5e00 !important; }
+
+        /* NFT id badge */
+        body.light-theme .nft-id-badge { color: rgba(0,0,0,0.5) !important; background: rgba(0,0,0,0.08) !important; }
+        body.light-theme .nft-id-badge.common-id { color: rgba(0,0,0,0.35) !important; }
+
+        /* merge count badge */
+        body.light-theme .merge-count-badge { color: #ffffff !important; }
+
+        /* adm-tab активный */
+        body.light-theme .adm-tab.active { color: #ffffff !important; }
+        body.light-theme .adm-tab { color: #3a5070 !important; }
+
+        /* Глобальный catch-all: любой inline color:#fff или color:white внутри app */
+        body.light-theme [style*="color:#fff"]:not(.btn):not([class*="btn"]) { color: #1a1a2e !important; }
+
+        /* Любые светлые rgba цвета текста */
+        body.light-theme [style*="color:rgba(255,255,255,0.3)"],
+        body.light-theme [style*="color:rgba(255,255,255,0.35)"],
+        body.light-theme [style*="color:rgba(255,255,255,0.4)"],
+        body.light-theme [style*="color:rgba(255,255,255,0.5)"],
+        body.light-theme [style*="color:rgba(255,255,255,0.6)"],
+        body.light-theme [style*="color:rgba(255,255,255,0.7)"],
+        body.light-theme [style*="color:rgba(255,255,255,0.8)"] { color: rgba(0,0,0,0.55) !important; }
+
+        /* gold цвет везде кроме кнопок */
+        body.light-theme [style*="color:gold"]:not(.btn) { color: #8a5e00 !important; }
+        body.light-theme [style*="color: gold"]:not(.btn) { color: #8a5e00 !important; }
+
+        /* Светло-зелёный #4dff91 → тёмно-зелёный */
+        body.light-theme [style*="color:#4dff91"] { color: #1a7a3a !important; }
+
+        /* Светло-голубой #4db4ff → тёмно-голубой */
+        body.light-theme [style*="color:#4db4ff"] { color: #1a5a99 !important; }
+
+        /* Светло-фиолетовый #a29bfe → тёмно-фиолетовый */
+        body.light-theme [style*="color:#a29bfe"] { color: #5a30cc !important; }
+
+        /* rgba золотые */
+        body.light-theme [style*="color:rgba(255,215,0"] { color: #8a5e00 !important; }
+        body.light-theme [style*="color:rgba(255,217,61"] { color: #8a5e00 !important; }
+
+        /* rgba светло-зелёные */
+        body.light-theme [style*="color:rgba(77,255,145"] { color: #1a7a3a !important; }
+        body.light-theme [style*="color:rgba(107,203,119"] { color: #1a6a30 !important; }
+
+        /* rgba светло-фиолетовые */
+        body.light-theme [style*="color:rgba(162,155,254"] { color: #5a30cc !important; }
+        body.light-theme [style*="color:rgba(199,125,255"] { color: #6a10aa !important; }
+
+        /* rgba светло-розовые */
+        body.light-theme [style*="color:rgba(255,107,205"] { color: #aa1066 !important; }
+
+        /* Исключение: кнопки (.btn) всегда белый текст */
+        body.light-theme .btn { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+        body.light-theme .btn:not([disabled]) { color: #ffffff !important; }
+
+        /* Исключение: тосты всегда белый текст */
+        body.light-theme #toast-container .toast-item { color: #ffffff !important; }
+
+        /* Исключение: активные nav tab */
+        body.light-theme .filter-btn.active,
+        body.light-theme .auth-tab.active { color: #ffffff !important; }
+
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; margin: 0; padding: 0; overflow-x: hidden; }
 
@@ -7203,7 +7291,7 @@
                 const c = catalog.find(x=>String(x.id)===String(builtinId));
                 if(c){Object.assign(c,{n:name,i:emoji,price,rarity,nft:isNft,inShop,hideFromMarket});if(img)c.img=img;}
             } else if(fbId){
-                await update(ref(db,'customCatalog/'+fbId), updates);
+                await update(ref(db,'customGifts/'+fbId), updates);
                 const ci = _allCustomItems.find(i=>i.fbId===fbId);
                 if(ci){Object.assign(ci,{name,emoji:emoji,price,rarity,nft:isNft,inShop,hideFromMarket});if(img)ci.img=img;}
             }
