@@ -1816,10 +1816,10 @@
                     <div style="background:#1a0a2e;border:1.5px solid rgba(124,58,237,0.5);border-radius:24px;padding:24px;width:100%;max-width:420px;">
                         <div style="font-size:17px;font-weight:900;color:#e9d5ff;margin-bottom:6px;">🔑 API-ключ Anthropic</div>
                         <div style="font-size:12px;color:#a78bfa;margin-bottom:16px;line-height:1.6;">
-                            Ключ хранится только в браузере (localStorage) и никуда не отправляется кроме googleapis.com.<br>
-                            Получить бесплатно: <span style="color:#c4b5fd;font-family:monospace;">aistudio.google.com</span>
+                            Ключ хранится только в браузере (localStorage) и никуда не отправляется кроме api.cloudflare.com.<br>
+                            Получить бесплатно: <span style="color:#c4b5fd;font-family:monospace;">dash.cloudflare.com/profile/api-tokens</span>
                         </div>
-                        <input id="ai-key-input" type="password" placeholder="AIza..." style="width:100%;box-sizing:border-box;margin:0 0 12px;background:#0a0515;border:1.5px solid rgba(124,58,237,0.4);border-radius:14px;padding:12px 14px;color:#e9d5ff;font-family:monospace;font-size:13px;">
+                        <input id="ai-key-input" type="password" placeholder="Cloudflare API Token..." style="width:100%;box-sizing:border-box;margin:0 0 12px;background:#0a0515;border:1.5px solid rgba(124,58,237,0.4);border-radius:14px;padding:12px 14px;color:#e9d5ff;font-family:monospace;font-size:13px;">
                         <div style="display:flex;gap:8px;">
                             <button onclick="aiSaveKey()" style="flex:1;background:linear-gradient(135deg,#7c3aed,#ec4899);border:none;border-radius:12px;color:white;font-weight:700;font-size:14px;padding:12px;cursor:pointer;">✅ Сохранить</button>
                             <button onclick="document.getElementById('ai-key-modal').style.display='none'" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:12px;color:#a78bfa;font-size:14px;padding:12px 16px;cursor:pointer;">Отмена</button>
@@ -8593,9 +8593,9 @@ window.openChangeEmailModal = function() {
         const dot = document.getElementById('ai-key-dot');
         const status = document.getElementById('ai-key-status');
         const btn = document.getElementById('ai-send-btn');
-        const hasKey = key && key.startsWith('AIza');
+        const hasKey = key && key.length > 20;
         if (dot) { dot.style.background = hasKey ? '#22c55e' : '#ef4444'; dot.style.boxShadow = hasKey ? '0 0 6px rgba(34,197,94,0.6)' : 'none'; }
-        if (status) status.textContent = hasKey ? '✅ Gemini ключ установлен · Безлимитный режим' : '⚠️ Укажи API-ключ Google AI Studio (бесплатно)';
+        if (status) status.textContent = hasKey ? '✅ Cloudflare AI ключ установлен · Безлимитный режим' : '⚠️ Укажи API-токен Cloudflare (бесплатно)';
         if (btn) { btn.disabled = !hasKey; btn.style.opacity = hasKey ? '1' : '0.4'; }
     }
 
@@ -8609,11 +8609,11 @@ window.openChangeEmailModal = function() {
         const input = document.getElementById('ai-key-input');
         const key = (input?.value || '').trim();
         if (!key) { alert('Введи API-ключ'); return; }
-        if (!key.startsWith('AIza')) { alert('Ключ Google должен начинаться с AIza'); return; }
+        if (key.length < 20) { alert('Введи корректный Cloudflare API токен'); return; }
         localStorage.setItem(AI_KEY_STORAGE, key);
         document.getElementById('ai-key-modal').style.display = 'none';
         updateKeyUI();
-        addChatMessage('✅ Ключ Gemini сохранён! Теперь можешь отправлять запросы.', 'bot');
+        addChatMessage('✅ Cloudflare токен сохранён! Теперь можешь отправлять запросы.', 'bot');
     };
     window.aiClearKey = function() {
         localStorage.removeItem(AI_KEY_STORAGE);
@@ -8725,25 +8725,32 @@ window.openChangeEmailModal = function() {
 
         const userPrompt = `Фрагмент HTML (строки ${start+1}–${end} из ${lines.length}):\n${chunk}\n\n---\nЗадача: ${prompt}\n\nВерни исправленный фрагмент.`;
 
+        const CF_ACCOUNT_ID = '00936053190e124cafe65e1c2275c155';
         try {
-            const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+            const resp = await fetch(`https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/ai/run/@cf/meta/llama-3.3-70b-instruct-fp8-fast`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + apiKey,
+                },
                 body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: systemPrompt + '\n\n' + userPrompt }] }],
-                    generationConfig: { maxOutputTokens: 8192, temperature: 0.2 }
+                    messages: [
+                        { role: 'system', content: systemPrompt },
+                        { role: 'user', content: userPrompt }
+                    ],
+                    max_tokens: 4096
                 })
             });
             const data = await resp.json();
 
-            if (!resp.ok) {
-                const msg = data.error?.message || JSON.stringify(data.error) || 'неизвестная ошибка';
+            if (!resp.ok || !data.success) {
+                const msg = data.errors?.[0]?.message || JSON.stringify(data.errors) || 'неизвестная ошибка';
                 addChatMessage('❌ Ошибка API: ' + msg, 'bot');
                 setAiLoading(false);
                 return;
             }
 
-            const newChunk = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const newChunk = data.result?.response || '';
             if (!newChunk || newChunk.length < 50) {
                 addChatMessage('⚠️ ИИ вернул пустой ответ. Попробуй переформулировать.', 'bot');
                 setAiLoading(false);
