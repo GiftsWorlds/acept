@@ -8698,13 +8698,32 @@ window.openChangeEmailModal = function() {
         incRate();
 
         const currentHtml = getCurrentHtml();
-        const htmlSnippet = currentHtml.length > 60000
-            ? currentHtml.substring(0, 60000) + '\n... [truncated] ...'
-            : currentHtml;
 
-        const systemPrompt = `Ты — ИИ-ассистент для редактирования HTML-сайта. Тебе будет дан текущий HTML-код сайта и задача на изменение.\n\nВАЖНЫЕ ПРАВИЛА:\n1. Возвращай ТОЛЬКО исправленный HTML-код целиком, без объяснений и без markdown блоков.\n2. Вноси ТОЛЬКО запрошенные изменения, не трогай остальное.\n3. Если изменение невозможно — верни исходный HTML и объясни в комментарии в начале: <!-- AI: причина -->\n4. Не добавляй \`\`\`html или \`\`\` обёртки.`;
+        // Умная нарезка: ищем нужный фрагмент по ключевым словам задачи
+        function extractRelevantChunk(html, task) {
+            const lines = html.split('\n');
+            const total = lines.length;
+            const keywords = task.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+            let bestLine = -1;
+            for (let i = 0; i < total; i++) {
+                const line = lines[i].toLowerCase();
+                for (const kw of keywords) {
+                    if (line.includes(kw)) { bestLine = i; break; }
+                }
+                if (bestLine !== -1) break;
+            }
+            if (bestLine === -1) bestLine = Math.floor(total / 2);
+            const WINDOW = 250;
+            const start = Math.max(0, bestLine - WINDOW);
+            const end = Math.min(total, bestLine + WINDOW);
+            return { chunk: lines.slice(start, end).join('\n'), start, end, lines };
+        }
 
-        const userPrompt = `Текущий HTML:\n${htmlSnippet}\n\n---\nЗадача: ${prompt}\n\nВерни полный исправленный HTML.`;
+        const { chunk, start, end, lines } = extractRelevantChunk(currentHtml, prompt);
+
+        const systemPrompt = `Ты — ИИ-ассистент для редактирования фрагмента HTML.\n\nПРАВИЛА:\n1. Возвращай ТОЛЬКО исправленный фрагмент, без объяснений, без markdown блоков.\n2. Вноси ТОЛЬКО запрошенные изменения.\n3. Если невозможно — верни фрагмент как есть с комментарием: <!-- AI: причина -->\n4. Не сокращай и не расширяй фрагмент лишним кодом.`;
+
+        const userPrompt = `Фрагмент HTML (строки ${start+1}–${end} из ${lines.length}):\n${chunk}\n\n---\nЗадача: ${prompt}\n\nВерни исправленный фрагмент.`;
 
         try {
             const resp = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -8714,7 +8733,7 @@ window.openChangeEmailModal = function() {
                     'Authorization': 'Bearer ' + apiKey,
                 },
                 body: JSON.stringify({
-                    model: 'llama-3.1-8b-instant',
+                    model: 'llama-3.3-70b-versatile',
                     max_tokens: 8192,
                     messages: [
                         { role: 'system', content: systemPrompt },
@@ -8731,16 +8750,22 @@ window.openChangeEmailModal = function() {
                 return;
             }
 
-            const newHtml = data.choices?.[0]?.message?.content || '';
-            if (!newHtml || newHtml.length < 500) {
+            const newChunk = data.choices?.[0]?.message?.content || '';
+            if (!newChunk || newChunk.length < 50) {
                 addChatMessage('⚠️ ИИ вернул пустой ответ. Попробуй переформулировать.', 'bot');
                 setAiLoading(false);
                 return;
             }
 
-            const hasComment = newHtml.startsWith('<!-- AI:');
+            // Очищаем от markdown обёрток если ИИ всё же добавил
+            const cleanChunk = newChunk.replace(/^```html?\n?/i, '').replace(/```$/,'').trim();
+
+            // Собираем полный HTML: до фрагмента + новый фрагмент + после фрагмента
+            const newHtml = lines.slice(0, start).join('\n') + '\n' + cleanChunk + '\n' + lines.slice(end).join('\n');
+
+            const hasComment = cleanChunk.includes('<!-- AI:');
             if (hasComment) {
-                const comment = newHtml.match(/<!--\s*AI:\s*(.*?)\s*-->/)?.[1] || '';
+                const comment = cleanChunk.match(/<!--\s*AI:\s*(.*?)\s*-->/)?.[1] || '';
                 addChatMessage('ℹ️ ' + comment, 'bot');
             }
 
