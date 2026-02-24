@@ -8713,7 +8713,7 @@ window.openChangeEmailModal = function() {
                 if (bestLine !== -1) break;
             }
             if (bestLine === -1) bestLine = Math.floor(total / 2);
-            const WINDOW = 250;
+            const WINDOW = 150;
             const start = Math.max(0, bestLine - WINDOW);
             const end = Math.min(total, bestLine + WINDOW);
             return { chunk: lines.slice(start, end).join('\n'), start, end, lines };
@@ -8734,7 +8734,7 @@ window.openChangeEmailModal = function() {
                 },
                 body: JSON.stringify({
                     model: 'llama-3.3-70b-versatile',
-                    max_tokens: 8192,
+                    max_tokens: 4096,
                     messages: [
                         { role: 'system', content: systemPrompt },
                         { role: 'user', content: userPrompt }
