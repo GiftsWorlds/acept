@@ -7203,7 +7203,7 @@
                 const c = catalog.find(x=>String(x.id)===String(builtinId));
                 if(c){Object.assign(c,{n:name,i:emoji,price,rarity,nft:isNft,inShop,hideFromMarket});if(img)c.img=img;}
             } else if(fbId){
-                await update(ref(db,'customGifts/'+fbId), updates);
+                await update(ref(db,'customCatalog/'+fbId), updates);
                 const ci = _allCustomItems.find(i=>i.fbId===fbId);
                 if(ci){Object.assign(ci,{name,emoji:emoji,price,rarity,nft:isNft,inShop,hideFromMarket});if(img)ci.img=img;}
             }
