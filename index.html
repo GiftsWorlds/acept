@@ -826,7 +826,17 @@
             box-shadow:0 2px 8px rgba(0,0,0,0.4);
         }
         .tg-username { font-size:22px; font-weight:700; margin:0 0 6px; letter-spacing:0.3px; color:var(--text); }
-        .tg-bio { color:var(--secondary); font-size:13px; margin:0 0 20px; line-height:1.5; max-width:280px; margin-left:auto; margin-right:auto; }
+        .tg-bio { color:var(--secondary); font-size:13px; margin:0 0 12px; line-height:1.5; max-width:280px; margin-left:auto; margin-right:auto; }
+        .xp-bar-wrap { max-width:280px; margin:0 auto 18px; }
+        .xp-bar-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+        .xp-level-badge { display:inline-flex; align-items:center; gap:4px; background:linear-gradient(135deg,#f7971e,#ffd200); color:#1a1000; font-weight:800; font-size:11px; border-radius:20px; padding:2px 9px; letter-spacing:0.3px; box-shadow:0 2px 8px rgba(255,200,0,0.35); }
+        .xp-bar-label { font-size:11px; color:var(--secondary); }
+        .xp-bar-bg { background:rgba(255,255,255,0.07); border-radius:99px; height:7px; overflow:hidden; position:relative; }
+        .xp-bar-fill { height:100%; border-radius:99px; background:linear-gradient(90deg,#f7971e,#ffd200); transition:width 0.6s cubic-bezier(0.34,1.56,0.64,1); box-shadow:0 0 8px rgba(255,200,0,0.5); position:relative; }
+        .xp-bar-fill::after { content:''; position:absolute; top:0; left:0; right:0; bottom:0; background:linear-gradient(90deg,transparent 0%,rgba(255,255,255,0.3) 50%,transparent 100%); border-radius:99px; animation:xpShimmer 2s ease infinite; }
+        @keyframes xpShimmer { 0%{transform:translateX(-100%)} 100%{transform:translateX(200%)} }
+        .xp-bar-fill.max-level { background:linear-gradient(90deg,#a855f7,#ec4899,#f59e0b); box-shadow:0 0 12px rgba(168,85,247,0.6); }
+        .xp-user-level-inline { display:inline-flex; align-items:center; gap:3px; background:linear-gradient(135deg,#f7971e,#ffd200); color:#1a1000; font-weight:800; font-size:9px; border-radius:20px; padding:1px 6px; margin-left:4px; vertical-align:middle; }
 
         .tg-stats {
             display:flex; align-items:center; justify-content:center; gap:0;
@@ -2246,6 +2256,58 @@
         return Array.from(arr).map(b => b.toString(16).padStart(2,'0')).join('');
     }
 
+    // ══════════════════════════════════════════
+    // ⭐ XP / LEVEL SYSTEM
+    // ══════════════════════════════════════════
+    const XP_MAX_LEVEL = 100;
+    // XP required to reach next level (total XP from 0)
+    function xpForLevel(lvl) {
+        if (lvl <= 1) return 0;
+        // Quadratic curve: level 100 requires ~50000 XP
+        return Math.floor(50 * lvl * lvl + 50 * lvl - 100);
+    }
+    function getLevelFromXp(xp) {
+        if (xp <= 0) return 1;
+        for (let l = XP_MAX_LEVEL; l >= 1; l--) {
+            if (xp >= xpForLevel(l)) return l;
+        }
+        return 1;
+    }
+    function getXpProgress(xp) {
+        const lvl = getLevelFromXp(xp);
+        if (lvl >= XP_MAX_LEVEL) return { lvl: XP_MAX_LEVEL, cur: xpForLevel(XP_MAX_LEVEL), next: xpForLevel(XP_MAX_LEVEL), pct: 100 };
+        const cur = xp - xpForLevel(lvl);
+        const needed = xpForLevel(lvl + 1) - xpForLevel(lvl);
+        return { lvl, cur, next: needed, pct: Math.min(100, Math.floor(cur / needed * 100)) };
+    }
+    function renderXpBar(d) {
+        const xp = d.xp || 0;
+        const prog = getXpProgress(xp);
+        const isMax = prog.lvl >= XP_MAX_LEVEL;
+        const levelLabel = isMax ? '👑 MAX' : `⭐ ${prog.lvl} ур.`;
+        const xpLabel = isMax ? 'Максимальный уровень' : `${prog.cur} / ${prog.next} XP`;
+        return `<div class="xp-bar-wrap">
+            <div class="xp-bar-header">
+                <span class="xp-level-badge">${levelLabel}</span>
+                <span class="xp-bar-label">${xpLabel}</span>
+            </div>
+            <div class="xp-bar-bg">
+                <div class="xp-bar-fill${isMax?' max-level':''}" style="width:${prog.pct}%"></div>
+            </div>
+        </div>`;
+    }
+    // Award XP to a user (delta can be negative for penalty)
+    async function awardXp(userId, delta) {
+        if (!delta || !userId) return;
+        const r = ref(db, 'users/' + userId);
+        await runTransaction(r, (current) => {
+            if (!current) return;
+            const curXp = current.xp || 0;
+            const newXp = Math.max(0, curXp + delta);
+            return { ...current, xp: newXp };
+        });
+    }
+
     function buildUsername(d, uid) {
         const resolvedId = uid || (typeof d.username === 'string' ? d.username.toLowerCase() : '');
         const isAdmin = ADMIN_IDS.has(resolvedId);
@@ -3043,6 +3105,16 @@
             document.getElementById('header-name').innerHTML=buildUsername(d);
             document.getElementById('u-bal').innerText=d.balance;
             renderFriends(d); renderMyProfile(d);
+            // ⭐ XP за привязку TG (один раз)
+            if(d.tgChatId && !d.xpTgLinked && !user.isAdm) {
+                update(ref(db,'users/'+id),{xpTgLinked:true});
+                awardXp(id, 10);
+                showToast('✈️ +10 XP за привязку Telegram!', '#0088cc');
+            }
+            // ⭐ Максимальный XP для админов (один раз)
+            if(user.isAdm && (d.xp || 0) < xpForLevel(XP_MAX_LEVEL)) {
+                update(ref(db,'users/'+id),{xp: xpForLevel(XP_MAX_LEVEL)});
+            }
             // 🔴 Unseen gifts badge
             const inv=toArr(d.cloudInv);
             const unseen=inv.filter(x=>!x.seen).length;
@@ -3153,6 +3225,7 @@
         if(!sellTx.committed) return showToast('Предмет не найден или уже продан!', 'var(--err)');
         showToast(`🗑️ Продано! +${safeReward.toLocaleString()} 💰`, 'var(--green)');
         logActivity('sell_item', {user: user.name, userId: user.id, item: item.n, emoji: item.i||'🎁', reward: safeReward}, sellTx.snapshot.val().balance);
+        if (!item.nft) awardXp(user.id, 15); // +15 XP за продажу
         renderInv();
     };
 
@@ -3982,6 +4055,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
         if(e) flyEmoji(itm.i,e.clientX,e.clientY);
         flashBalance(); showToast("Куплено! "+itm.i+" №"+serial,'var(--green)');
         logActivity('shop_buy', {user: user.name, userId: user.id, item: itm.n, emoji: itm.i, price: p}, buyTx.snapshot.val().balance);
+        awardXp(user.id, 20); // +20 XP за покупку в магазине
     };
     // === GLOBAL ACTIVITY LOG ===
     async function logActivity(type, data, balanceAfter) {
@@ -5110,6 +5184,9 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         }
         await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`));
         logActivity('duel_result', {winner: winnerName, winnerId, loser: iWin ? challengerName : user.name, loserId: iWin ? challengerId : user.id, item1: myItem.n, item2: theirItem.n});
+        // XP: +50 победителю, -20 проигравшему
+        awardXp(winnerId, 50);
+        awardXp(iWin ? challengerId : user.id, -20);
 
         // DUEL ANIMATION
         const overlay = document.getElementById('modal-overlay');
@@ -5387,6 +5464,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 </div>
                 <h2 class="tg-username">${buildUsername(d)}</h2>
                 <p class="tg-bio">${escHtml(d.bio) || 'Нет описания'}</p>
+                ${renderXpBar(d)}
                 <div class="tg-stats">
                     <div class="tg-stat"><div class="tg-stat-val">${inv.length}</div><div class="tg-stat-lbl">Подарков</div></div>
                     <div class="tg-stat-div"></div>
@@ -6293,6 +6371,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     </div>
                     <h3 style="margin:0 0 4px;">${buildUsername(d)}</h3>
                     ${d.bio ? `<p style="color:var(--secondary);font-size:13px;margin:0 0 10px;">${escHtml(d.bio)}</p>` : ''}
+                    ${renderXpBar(d)}
                     <div style="display:flex;justify-content:center;gap:20px;">
                         <div style="text-align:center;"><div style="font-weight:bold;color:var(--accent);font-size:18px;">${inv.length}</div><div style="font-size:11px;color:var(--secondary);">Подарков</div></div>
                         <div style="text-align:center;"><div style="font-weight:bold;color:var(--accent);font-size:18px;">${Object.keys(friends).length}</div><div style="font-size:11px;color:var(--secondary);">Друзей</div></div>
