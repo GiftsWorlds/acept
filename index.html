@@ -3143,7 +3143,7 @@
             const serialBadge = serialNum ? `<div class="nft-id-badge${isNFT?' nft':''}${x.nftSerial?'':' common-id'}">${serialNum}</div>` : '';
             const mergeBadge = isMergeReady ? `<div class="merge-count-badge ready" title="Можно объединить!">⚗️</div>` : '';
 
-            const baseMarketPrice = isNFT ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?500:x.id==='snoop_dogg'?10000:(x.price||getPrice(x.id||0))) : getPrice(x.id||0);
+            const baseMarketPrice = isNFT ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?6999:x.id==='snoop_dogg'?10000:(x.price||getPrice(x.id||0))) : getPrice(x.id||0);
             const rarMultiplier = isNFT ? 1 : ([1, 2, 5, 15][rarLevel] || 1);
             const sellPrice = Math.round(baseMarketPrice * rarMultiplier);
             const sellReward = Math.floor(sellPrice / 2);
@@ -4055,12 +4055,16 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
         // В режиме "Мои" показываем только те, у которых есть мои лоты
         if(marketFilter.sort === 'mine') {
             catItems = catItems.filter(c => grouped[String(c.id)]);
-            // Добавляем лоты, которых нет в каталоге (например, bear8mar)
+        }
+        // Добавляем лоты, которых нет в каталоге (например, bear8mar, snoop_dogg)
+        {
             const catIds = new Set(catItems.map(c => String(c.id)));
             for(const gid of Object.keys(grouped)) {
                 if(!catIds.has(gid)) {
                     const g = grouped[gid];
-                    catItems.push({ id: gid, n: g.item.n || gid, i: g.item.i || '🎁', nft: g.item.nft, rarity: g.item.rarity, special: g.item.special });
+                    if(marketFilter.sort !== 'mine' || g.mine > 0) {
+                        catItems.push({ id: gid, n: g.item.n || gid, i: g.item.i || '🎁', nft: g.item.nft, rarity: g.item.rarity, special: g.item.special, img: g.item.img });
+                    }
                 }
             }
         }
@@ -5214,7 +5218,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const isNFT = !!x.nft;
             const isLizard = isNFT && x.id === 997;
             const nftClass = isNFT ? (isLizard ? ' tg-gift-nft-lizard' : ' tg-gift-nft') : '';
-            const nftPrice = isNFT ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?500:x.id==='snoop_dogg'?10000:(x.price||getPrice(x.id||0))) : 0;
+            const nftPrice = isNFT ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?6999:x.id==='snoop_dogg'?10000:(x.price||getPrice(x.id||0))) : 0;
             // NFT upgrade
             const upgClasses = isNFT ? getNftUpgradeClasses(x) : '';
             const upgBadge = isNFT ? getNftUpgradeBadge(x) : '';
@@ -5338,7 +5342,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
         const price = x.nft ? 5000 : getPrice(x.id||0);
         const rarMultiplier = x.nft ? 1 : [1, 2, 5, 15][rarLevel2] || 1;
-        const marketPrice = x.nft ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?500:x.id==='snoop_dogg'?10000:(x.price||getPrice(x.id||0))) : Math.round(price * rarMultiplier);
+        const marketPrice = x.nft ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?6999:x.id==='snoop_dogg'?10000:(x.price||getPrice(x.id||0))) : Math.round(price * rarMultiplier);
         const origin = x.from ? (x.from === 'PROMO' ? '🎟️ Промокод' : x.from === 'ADMIN' ? '🛠️ Выдан админом' : x.from === 'RESET' ? '🔄 Сброс' : x.from === '⚗️ Слияние' ? '⚗️ Получен слиянием' : '🎁 Подарено: ' + x.from) : '🛒 Куплено в магазине';
 
         const rarLabel = x.nft
@@ -6126,7 +6130,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const emoji = x.i || (cat && cat.i) || '🎁';
             const isNFT = !!x.nft;
             const isLizard = isNFT && x.id === 997;
-            const nftPrice = isNFT ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?500:x.id==='snoop_dogg'?10000:(x.price||0)) : 0;
+            const nftPrice = isNFT ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?6999:x.id==='snoop_dogg'?10000:(x.price||0)) : 0;
             const bg = isLizard ? 'linear-gradient(145deg,#001a08,#0a1f12,#001208)'
                       : isNFT   ? 'linear-gradient(145deg,#1c1200,#0f1a1f,#1a1100)'
                       : '#0a1520';
