@@ -3196,7 +3196,7 @@
         {id:3, label:"Легендарный", cls:"rarity-legendary", cardCls:"card-legendary",icon:"🟡"},
         {id:4, label:"NFT",         cls:"rarity-nft",       cardCls:"nft-card",      icon:"✦"},
     ];
-    function getRarityLevel(item) { if(item.nft) return 4; return item.rarity||0; }
+    function getRarityLevel(item) { if(item.nft || item.rarity==='nft') return 4; return (typeof item.rarity==='number' ? item.rarity : 0); }
     function getRarityObj(item) { return RARITY_LEVELS[getRarityLevel(item)]||RARITY_LEVELS[0]; }
 
     async function getNextNftSerial() {
