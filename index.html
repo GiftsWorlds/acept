@@ -4062,7 +4062,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
             for(const gid of Object.keys(grouped)) {
                 if(!catIds.has(gid)) {
                     const g = grouped[gid];
-                    if(marketFilter.sort !== 'mine' || g.mine > 0) {
+                    if(marketFilter.sort !== 'mine' || g) {
                         catItems.push({ id: gid, n: g.item.n || gid, i: g.item.i || '🎁', nft: g.item.nft, rarity: g.item.rarity, special: g.item.special, img: g.item.img });
                     }
                 }
