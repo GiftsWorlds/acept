@@ -685,6 +685,42 @@
         @keyframes popIn { 0% { transform: scale(0) rotate(-10deg); opacity: 0; } 70% { transform: scale(1.12) rotate(3deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); opacity: 1; } }
         @keyframes floatUp { 0% { transform: translateY(0) scale(1); opacity: 1; } 100% { transform: translateY(-130px) scale(1.8); opacity: 0; } }
         @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+        /* 🌸 Bear Love — 8 марта */
+        @keyframes bearFloat { 0%,100%{transform:translateY(0px) rotate(-2deg) scale(1);} 50%{transform:translateY(-12px) rotate(2deg) scale(1.05);} }
+        @keyframes bearTextShine { 0%{background-position:0% center;} 100%{background-position:300% center;} }
+        @keyframes bearPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,105,180,0.6),0 8px 32px rgba(255,20,147,0.3);} 50%{box-shadow:0 0 0 14px rgba(255,105,180,0),0 8px 32px rgba(255,20,147,0.5);} }
+        @keyframes petalFall { 0%{transform:translateY(-20px) rotate(0deg) translateX(0);opacity:1;} 100%{transform:translateY(220px) rotate(360deg) translateX(30px);opacity:0;} }
+        @keyframes heartOrbit { 0%{transform:rotate(0deg) translateX(52px) rotate(0deg);} 100%{transform:rotate(360deg) translateX(52px) rotate(-360deg);} }
+        .bear8mar-card { animation: bearPulse 2.5s ease-in-out infinite, fadeInScale 0.5s ease both; }
+        .bear-badge-8mar { position:absolute;top:12px;right:14px;font-size:11px;background:linear-gradient(90deg,#ff1493,#ff69b4,#ffb3de);color:#fff;padding:4px 12px;border-radius:20px;font-weight:bold;z-index:3;letter-spacing:1px;box-shadow:0 2px 8px rgba(255,20,147,0.5); }
+        .bear-img-wrap { position:relative;display:inline-block;margin:10px auto 14px;width:120px;height:120px; }
+        .bear-img-8mar { position:relative;z-index:2; }
+        .bear-hearts-ring { position:absolute;inset:0;z-index:1; }
+        .bear-hearts-ring span { position:absolute;top:50%;left:50%;font-size:14px;animation:heartOrbit 3s linear infinite; }
+        .bear-hearts-ring span:nth-child(1){animation-delay:0s;}
+        .bear-hearts-ring span:nth-child(2){animation-delay:-0.75s;}
+        .bear-hearts-ring span:nth-child(3){animation-delay:-1.5s;}
+        .bear-hearts-ring span:nth-child(4){animation-delay:-2.25s;}
+        .bear-buy-btn { background:linear-gradient(90deg,#ff1493,#ff69b4,#ff1493)!important;background-size:200% 100%!important;animation:bearTextShine 2s linear infinite;color:#fff!important;font-weight:bold;font-size:16px;box-shadow:0 4px 18px rgba(255,20,147,0.5); }
+        .bear-petals { position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0; }
+        .bear-petals::before,.bear-petals::after { content:'🌸 🌸 🌸 🌸 🌸';position:absolute;top:-30px;left:0;width:100%;font-size:16px;letter-spacing:30px;animation:petalFall 4s linear infinite;opacity:0.5; }
+        .bear-petals::after { animation-delay:-2s;letter-spacing:50px;font-size:12px; }
+        /* 🐶 Snoop Dogg */
+        @keyframes snoopBounce { 0%,100%{transform:translateY(0) rotate(-3deg) scale(1);} 40%{transform:translateY(-10px) rotate(3deg) scale(1.08);} 70%{transform:translateY(-5px) rotate(-1deg) scale(1.04);} }
+        @keyframes smokeDrift { 0%{transform:translateY(0) translateX(0) scale(1);opacity:0.4;} 100%{transform:translateY(-60px) translateX(20px) scale(2.5);opacity:0;} }
+        .snoop-card { animation: snoopPulse 2.5s ease-in-out infinite, fadeInScale 0.5s ease both; }
+        @keyframes snoopPulse { 0%,100%{box-shadow:0 0 0 0 rgba(245,197,24,0.55),0 8px 32px rgba(180,140,0,0.3);} 50%{box-shadow:0 0 0 14px rgba(245,197,24,0),0 8px 32px rgba(245,197,24,0.5);} }
+        .snoop-badge { position:absolute;top:12px;right:14px;font-size:11px;background:linear-gradient(90deg,#b8860b,#f5c518,#ffe066);color:#000;padding:4px 12px;border-radius:20px;font-weight:bold;z-index:3;letter-spacing:1px;box-shadow:0 2px 8px rgba(245,197,24,0.5); }
+        .snoop-notes-ring { position:absolute;inset:0;z-index:1; }
+        .snoop-notes-ring span { position:absolute;top:50%;left:50%;font-size:13px;animation:heartOrbit 2.4s linear infinite; }
+        .snoop-notes-ring span:nth-child(1){animation-delay:0s;}
+        .snoop-notes-ring span:nth-child(2){animation-delay:-0.6s;}
+        .snoop-notes-ring span:nth-child(3){animation-delay:-1.2s;}
+        .snoop-notes-ring span:nth-child(4){animation-delay:-1.8s;}
+        .snoop-buy-btn { background:linear-gradient(90deg,#b8860b,#f5c518,#b8860b)!important;background-size:200% 100%!important;animation:bearTextShine 2s linear infinite;color:#000!important;font-weight:bold;font-size:15px;box-shadow:0 4px 18px rgba(245,197,24,0.5); }
+        .snoop-smoke { position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0; }
+        .snoop-smoke::before,.snoop-smoke::after { content:'💨 💨 💨';position:absolute;bottom:10px;left:0;width:100%;font-size:18px;letter-spacing:40px;animation:smokeDrift 3.5s linear infinite;opacity:0; }
+        .snoop-smoke::after { animation-delay:-1.75s;letter-spacing:65px;font-size:14px; }
         @keyframes pulseGold { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,215,0,0.55), 0 8px 32px rgba(0,0,0,0.4); } 50% { box-shadow: 0 0 0 12px rgba(255,215,0,0), 0 8px 32px rgba(0,0,0,0.4); } }
         @keyframes pulse { 0%, 100% { opacity:1; transform:scale(1); } 50% { opacity:0.4; transform:scale(0.8); } }
         @keyframes wiggle { 0%,100% { transform: rotate(0deg) scale(1); } 20% { transform: rotate(-10deg) scale(1.15); } 40% { transform: rotate(10deg) scale(1.2); } 60% { transform: rotate(-6deg) scale(1.1); } 80% { transform: rotate(6deg) scale(1.05); } }
@@ -3499,6 +3535,24 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
     };
     const NFT_START=new Date('2026-02-01T00:00:00Z').getTime(); // 1 февраля
     const NFT_END=new Date('2026-03-01T00:00:00Z').getTime();   // 1 марта
+    // 🌸 Bear Love — 8 марта, исчезает 9 марта 00:00 UTC (03:00 МСК)
+    const BEAR_START=new Date('2026-03-07T21:00:00Z').getTime(); // 8 марта 00:00 МСК
+    const BEAR_END=new Date('2026-03-08T21:00:00Z').getTime();   // 9 марта 00:00 МСК
+    function isBearAvailable(){const n=Date.now();return n>=BEAR_START&&n<BEAR_END;}
+    function getBearTimeLabel(){
+        const now=Date.now();
+        if(now<BEAR_START){const d=BEAR_START-now;const h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000);return {label:`🔒 Откроется через ${h}ч ${m}м`,av:false,show:true};}
+        if(now<BEAR_END){const d=BEAR_END-now;const h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000);return {label:`⏳ Исчезнет через ${h}ч ${m}м`,av:true,show:true};}
+        return {label:null,av:false,show:false};
+    }
+    // 🐶 Snoop Dogg — доступен с 9 марта 00:00 МСК бессрочно (или поставь конец если нужно)
+    const SNOOP_START=new Date('2026-03-08T21:00:00Z').getTime(); // 9 марта 00:00 МСК
+    function isSnoopAvailable(){return Date.now()>=SNOOP_START;}
+    function getSnoopTimeLabel(){
+        const now=Date.now();
+        if(now<SNOOP_START){const d=SNOOP_START-now;const h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000);return {label:`🔒 Откроется через ${h}ч ${m}м`,av:false,show:true};}
+        return {label:`🔥 Доступен сейчас!`,av:true,show:true};
+    }
     // Ящерица — 24 часа с 18 февраля 2026
     const LIZ_START=new Date('2026-02-18T17:00:00Z').getTime(); // 20:00 МСК
     const LIZ_END=new Date('2026-02-19T17:00:00Z').getTime();   // 20:00 МСК +24ч
@@ -3575,6 +3629,56 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
         </div>`;
         }
 
+        // 🌸 Bear Love — 8 марта / 🐶 Snoop Dogg — с 9 марта
+        const bearT = getBearTimeLabel();
+        const snoopT = getSnoopTimeLabel();
+        let bearHtml = '';
+        if(bearT.show || snoopT.show){
+            const bearAv = bearT.av;
+            const snoopAv = snoopT.av;
+            const bearCardHtml = bearT.show ? `
+            <div class="card bear8mar-card" style="position:relative;overflow:hidden;text-align:center;padding:0;border-radius:22px;border:2px solid #ff69b4;background:linear-gradient(135deg,#1a0010,#2a0020,#1a0010);">
+                <div class="bear-petals" aria-hidden="true"></div>
+                <div style="position:absolute;inset:0;border-radius:22px;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(255,105,180,0.18) 50%,transparent 70%);background-size:200% 100%;animation:shimmer 2.2s linear infinite;z-index:1;"></div>
+                <div style="position:relative;z-index:2;padding:20px 12px 16px;">
+                    <div class="bear-badge-8mar">🌸 8 МАРТА</div>
+                    <div class="bear-img-wrap">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e1/Noto_Emoji_Oreo_1f9f8.svg/120px-Noto_Emoji_Oreo_1f9f8.svg.png"
+                             onerror="this.style.fontSize='70px';this.style.lineHeight='88px';this.src='';this.alt='🐻'"
+                             alt="🐻" class="bear-img-8mar" style="width:88px;height:88px;object-fit:contain;filter:hue-rotate(300deg) saturate(2) drop-shadow(0 0 22px #ff69b4cc);animation:bearFloat 2.8s ease-in-out infinite;">
+                        <div class="bear-hearts-ring" aria-hidden="true"><span>💕</span><span>🌸</span><span>💕</span><span>🌸</span></div>
+                    </div>
+                    <b style="font-size:17px;display:block;background:linear-gradient(90deg,#ff69b4,#ffb3de,#ff1493,#ff69b4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;background-size:300% 100%;animation:bearTextShine 3s linear infinite;">Bear Love 🐻‍❤️</b>
+                    <p style="color:#ffb3de;font-size:11px;margin:5px 0 4px;">Исчезнет навсегда 9 марта!</p>
+                    <div style="font-weight:bold;color:#ff69b4;font-size:19px;margin-bottom:4px;">6 999 💰</div>
+                    <div style="font-size:11px;color:var(--orange);margin-bottom:10px;">${bearT.label}</div>
+                    ${bearAv
+                        ? `<button class="btn bear-buy-btn" onclick="buyPinkBear(event)">🎀 Подарить Мишку</button>`
+                        : `<button class="btn" style="background:#2a0020;color:#884;cursor:default;" disabled>🔒 Недоступно</button>`}
+                </div>
+            </div>` : '';
+            const snoopCardHtml = snoopT.show ? `
+            <div class="card snoop-card" style="position:relative;overflow:hidden;text-align:center;padding:0;border-radius:22px;border:2px solid #f5c518;background:linear-gradient(135deg,#0d0a00,#1a1400,#0d0a00);">
+                <div class="snoop-smoke" aria-hidden="true"></div>
+                <div style="position:absolute;inset:0;border-radius:22px;pointer-events:none;background:linear-gradient(105deg,transparent 30%,rgba(245,197,24,0.15) 50%,transparent 70%);background-size:200% 100%;animation:shimmer 2s linear infinite;z-index:1;"></div>
+                <div style="position:relative;z-index:2;padding:20px 12px 16px;">
+                    <div class="snoop-badge">🎤 ЛЕГЕНДА</div>
+                    <div style="position:relative;display:inline-block;margin:10px auto 12px;width:92px;height:92px;">
+                        <div style="font-size:78px;line-height:92px;animation:snoopBounce 1.8s ease-in-out infinite;display:inline-block;filter:drop-shadow(0 0 18px rgba(245,197,24,0.7));">🐶</div>
+                        <div class="snoop-notes-ring" aria-hidden="true"><span>🎵</span><span>💨</span><span>🎵</span><span>💨</span></div>
+                    </div>
+                    <b style="font-size:17px;display:block;background:linear-gradient(90deg,#f5c518,#ffe066,#f5a623,#f5c518);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;background-size:300% 100%;animation:bearTextShine 2.5s linear infinite;">Snoop Dogg 🎤</b>
+                    <p style="color:#ffe09a;font-size:11px;margin:5px 0 4px;">Drop it like it's hot! 🔥</p>
+                    <div style="font-weight:bold;color:#f5c518;font-size:19px;margin-bottom:4px;">10 000 💰</div>
+                    <div style="font-size:11px;color:var(--orange);margin-bottom:10px;">${snoopT.label}</div>
+                    ${snoopAv
+                        ? `<button class="btn snoop-buy-btn" onclick="buySnoopDogg(event)">🎤 Купить Snoop</button>`
+                        : `<button class="btn" style="background:#1a1200;color:#665500;cursor:default;" disabled>🔒 Откроется 9 марта</button>`}
+                </div>
+            </div>` : '';
+            bearHtml = `<div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:12px;">${bearCardHtml}${snoopCardHtml}</div>`;
+        }
+
         const tl=getNftTimeLabel();
         let nftHtml = '';
         if(tl!==null){
@@ -3630,6 +3734,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
             <div style="grid-column:1/-1;display:flex;align-items:center;gap:6px;padding:6px 2px;margin-bottom:-4px;">
                 <span style="font-size:11px;color:var(--secondary);">📈 Цены меняются от покупок</span>
             </div>
+            ${bearHtml}
             ${lizardNftHtml}
             ${nftHtml}
             <div id="shop-cards" style="display:contents;"></div>
@@ -3649,7 +3754,39 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
         flashBalance(); showToast(`🦎 NFT Ящерица №${lizSerial} в коллекции!`,'#4dff91');
     };
 
-    window.buyNftItem = async (nftId, e) => {
+    // 🌸 Покупка Розового Мишки — 8 марта
+    window.buyPinkBear = async (e) => {
+        if(!isBearAvailable()) return showToast("🎀 Bear Love недоступен!",'var(--err)');
+        const BEAR_PRICE = 6999;
+        const r=ref(db,'users/'+user.id), s=await get(r), d=s.val();
+        const inv=toArr(d.cloudInv);
+        if(inv.some(x=>x.id==='bear8mar')) return showToast('🐻 Мишка уже есть в коллекции!','var(--orange)');
+        if(!user.isAdm && (d.balance||0)<BEAR_PRICE) return showToast(`Нужно ${BEAR_PRICE.toLocaleString()} 💰`,'var(--err)');
+        inv.push({id:'bear8mar',n:'Bear Love',i:'🐻',img:'',special:'8mar',seen:true,ts:Date.now()});
+        await update(r,{balance:user.isAdm?(d.balance||0):(d.balance||0)-BEAR_PRICE, cloudInv:inv});
+        if(e){spawnConfetti(e.clientX,e.clientY,60);flyEmoji('🎀',e.clientX,e.clientY);flyEmoji('🌸',e.clientX-40,e.clientY+20);flyEmoji('💕',e.clientX+40,e.clientY+20);}
+        flashBalance();
+        showToast('🐻 Bear Love теперь в твоей коллекции! 🌸','#ff69b4');
+        await window.renderShop(); renderShopCards();
+    };
+
+    // 🐶 Покупка Snoop Dogg — с 9 марта
+    window.buySnoopDogg = async (e) => {
+        if(!isSnoopAvailable()) return showToast("🎤 Snoop Dogg ещё недоступен!",'var(--err)');
+        const SNOOP_PRICE = 10000;
+        const r=ref(db,'users/'+user.id), s=await get(r), d=s.val();
+        const inv=toArr(d.cloudInv);
+        if(inv.some(x=>x.id==='snoop_dogg')) return showToast('🎤 Snoop Dogg уже в коллекции!','var(--orange)');
+        if(!user.isAdm && (d.balance||0)<SNOOP_PRICE) return showToast(`Нужно ${SNOOP_PRICE.toLocaleString()} 💰`,'var(--err)');
+        inv.push({id:'snoop_dogg',n:'Snoop Dogg',i:'🐶',img:'',special:'snoop',seen:true,ts:Date.now()});
+        await update(r,{balance:user.isAdm?(d.balance||0):(d.balance||0)-SNOOP_PRICE, cloudInv:inv});
+        if(e){spawnConfetti(e.clientX,e.clientY,70);flyEmoji('🎤',e.clientX,e.clientY);flyEmoji('🎵',e.clientX-50,e.clientY+15);flyEmoji('🔥',e.clientX+50,e.clientY+15);}
+        flashBalance();
+        showToast("🐶 Snoop Dogg теперь в твоей коллекции! Drop it like it's hot! 🎤",'#f5c518');
+        await window.renderShop(); renderShopCards();
+    };
+
+        window.buyNftItem = async (nftId, e) => {
         if(!isNftAvailable()) return showToast("NFT недоступен!",'var(--err)');
         const nftMap = { 998: NFT_BEER, 999: NFT_SOCK };
         const nftObj = nftMap[nftId];
