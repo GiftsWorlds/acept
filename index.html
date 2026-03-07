@@ -2961,6 +2961,7 @@
 
     function startApp(name,id) {
         user={name,id,isAdm:(id==='ckovoroda'||id==='kukumbr'),isMod:MOD_IDS.has(id)};
+        window.user = user; // expose for maintenance system
         document.getElementById('auth-screen').style.display='none'; document.getElementById('auth-screen').style.minHeight='0';
         document.getElementById('app').style.display='block';
         document.getElementById('main-nav').style.display='flex';
@@ -8474,6 +8475,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 </div>
 
 <script>
+// Global user state — set to null until login, then populated by startApp()
+window.user = null;
 // ═══════════════════════════════════════════════════════════════
 //  AVATAR EDITOR MODAL LOGIC
 // ═══════════════════════════════════════════════════════════════
@@ -9126,41 +9129,41 @@ function _hideOverlay() {
 }
 
 // Listen to Firebase maintenance node
-onValue(_mRef, (snap) => {
-    const data = snap.val() || {};
+// We store the latest data so we can re-apply after user loads
+let _lastMaintData = null;
+
+function _applyMaintState(data) {
+    _lastMaintData = data;
     const active = !!data.active;
-
-    // Auto-deactivate if endTime passed
-    if (active && data.endTime && Date.now() > data.endTime && !_isAdminUser()) {
-        // The admin app will handle turning it off; client just ignores
-    }
-
     if (active && !_isAdminUser()) {
         _showOverlay(data);
     } else {
         _hideOverlay();
     }
-
-    // Update admin panel UI if open
     _renderAdminMaintUI(data);
+}
+
+onValue(_mRef, (snap) => {
+    const data = snap.val() || {};
+    // If window.user is not yet set, defer until poller resolves it
+    if (window.user !== undefined && window.user !== null) {
+        _applyMaintState(data);
+    } else {
+        _lastMaintData = data; // save for poller
+        _renderAdminMaintUI(data);
+    }
 });
 
-// Re-check after login (user object may not exist yet)
+// Re-check after login (user object may not exist yet on first Firebase callback)
 const _loginPoller = setInterval(() => {
-    if (window.user) {
+    if (window.user !== undefined && window.user !== null) {
         clearInterval(_loginPoller);
         // Reread current state
         get(_mRef).then(snap => {
-            const data = snap.val() || {};
-            if (data.active && !_isAdminUser()) {
-                _showOverlay(data);
-            } else {
-                _hideOverlay();
-            }
-            _renderAdminMaintUI(data);
+            _applyMaintState(snap.val() || {});
         });
     }
-}, 500);
+}, 300);
 
 // Auto-deactivate check (runs every 30s)
 setInterval(async () => {
