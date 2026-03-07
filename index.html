@@ -1424,6 +1424,7 @@
             <button class="adm-tab" onclick="admTab('sales',this)">🛒 Продажи</button>
             <button class="adm-tab" onclick="admTab('catalog',this)">🎨 Каталог</button>
             <button class="adm-tab" onclick="admTab('ai',this)" style="background:linear-gradient(135deg,rgba(124,58,237,0.2),rgba(236,72,153,0.2));border-color:rgba(124,58,237,0.4);">🤖 ИИ-Редактор</button>
+            <button class="adm-tab" id="adm-tab-maintenance" onclick="admTab('maintenance',this)" style="background:linear-gradient(135deg,rgba(231,76,60,0.15),rgba(192,57,43,0.1));border-color:rgba(231,76,60,0.35);">🔧 Тех. перерыв</button>
         </div>
 
         <!-- ── Overview ── -->
@@ -1810,6 +1811,49 @@
         </div>
 
         <!-- ── AI Editor ── -->
+        <!-- ── Maintenance ── -->
+        <div id="adm-maintenance" class="adm-section">
+            <div style="display:flex;flex-direction:column;gap:14px;">
+                <!-- Status card -->
+                <div id="maint-status-card" style="border-radius:20px;padding:20px;border:2px solid rgba(231,76,60,0.3);background:rgba(231,76,60,0.06);display:flex;align-items:center;gap:16px;">
+                    <div id="maint-status-dot" style="width:14px;height:14px;border-radius:50%;background:#2ecc71;flex-shrink:0;box-shadow:0 0 10px #2ecc71;transition:all 0.4s;"></div>
+                    <div>
+                        <div style="font-weight:bold;font-size:15px;" id="maint-status-text">Сайт работает нормально</div>
+                        <div style="font-size:12px;color:var(--secondary);margin-top:3px;" id="maint-status-sub">Технический перерыв не активен</div>
+                    </div>
+                </div>
+
+                <!-- Toggle + quick actions -->
+                <div class="tool-card">
+                    <div class="tool-card-title">⚙️ Управление тех. перерывом</div>
+                    <div style="display:flex;gap:10px;margin-bottom:14px;">
+                        <button id="maint-btn-on" class="btn" style="background:rgba(231,76,60,0.15);border:1.5px solid rgba(231,76,60,0.5);color:#ff6b6b;font-weight:bold;" onclick="maintSetActive(true)">🔧 Включить</button>
+                        <button id="maint-btn-off" class="btn" style="background:rgba(46,204,113,0.15);border:1.5px solid rgba(46,204,113,0.5);color:var(--green);font-weight:bold;" onclick="maintSetActive(false)">✅ Выключить</button>
+                    </div>
+                    <div style="font-size:12px;color:var(--secondary);margin-bottom:10px;">Можно задать время автовыключения (необязательно):</div>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="datetime-local" id="maint-end-time" style="margin:0;flex:1;height:42px;border-radius:12px;font-size:13px;" placeholder="Дата/время окончания">
+                        <button class="btn" style="width:auto;padding:0 14px;height:42px;flex-shrink:0;background:rgba(36,129,204,0.2);border:1px solid rgba(36,129,204,0.4);color:var(--accent);font-size:12px;" onclick="maintSaveEndTime()">💾 Сохранить</button>
+                        <button class="btn" style="width:auto;padding:0 10px;height:42px;flex-shrink:0;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);color:var(--secondary);font-size:12px;" onclick="maintClearEndTime()" title="Убрать время">✕</button>
+                    </div>
+                    <div id="maint-end-hint" style="font-size:11px;color:var(--secondary);margin-top:6px;"></div>
+                </div>
+
+                <!-- Custom message -->
+                <div class="tool-card">
+                    <div class="tool-card-title">✏️ Текст для пользователей</div>
+                    <textarea id="maint-custom-msg" placeholder="Оставьте пустым для текста по умолчанию..." style="min-height:70px;margin-bottom:8px;resize:vertical;font-size:13px;"></textarea>
+                    <button class="btn" style="background:rgba(36,129,204,0.2);border:1px solid rgba(36,129,204,0.3);color:var(--accent);" onclick="maintSaveMsg()">💾 Сохранить текст</button>
+                </div>
+
+                <!-- Info -->
+                <div style="background:rgba(255,255,255,0.03);border-radius:16px;padding:14px;border:1px solid rgba(255,255,255,0.06);font-size:12px;color:var(--secondary);line-height:1.6;">
+                    ℹ️ <b style="color:white;">Как это работает:</b><br>
+                    При включённом тех. перерыве все пользователи (кроме администраторов) видят красивую заглушку на весь экран и не могут пользоваться сайтом. Статус хранится в Firebase и применяется мгновенно для всех.
+                </div>
+            </div>
+        </div>
+
         <div id="adm-ai" class="adm-section" style="padding-bottom:90px;">
             <div style="display:flex;flex-direction:column;gap:12px;">
 
@@ -8983,5 +9027,238 @@ window.openChangeEmailModal = function() {
 
 
 
+<!-- ══════════════════════════════════════════
+     🔧 MAINTENANCE OVERLAY
+     ══════════════════════════════════════════ -->
+<div id="maintenance-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0a0f1a 0%,#0d1520 50%,#0a0f1a 100%);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;">
+    <!-- Animated gears background -->
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+        <div style="position:absolute;top:-60px;left:-60px;font-size:180px;opacity:0.04;animation:maintSpin 20s linear infinite;">⚙️</div>
+        <div style="position:absolute;bottom:-40px;right:-40px;font-size:140px;opacity:0.04;animation:maintSpin 15s linear infinite reverse;">⚙️</div>
+        <div style="position:absolute;top:30%;left:-30px;font-size:90px;opacity:0.03;animation:maintSpin 12s linear infinite;">⚙️</div>
+    </div>
+    <!-- Content -->
+    <div style="position:relative;z-index:1;max-width:400px;width:100%;">
+        <div style="font-size:80px;margin-bottom:20px;animation:maintPulse 2s ease-in-out infinite;">🔧</div>
+        <div style="font-size:28px;font-weight:900;color:#fff;margin-bottom:10px;letter-spacing:-0.5px;">Технический перерыв</div>
+        <div id="maint-overlay-msg" style="font-size:15px;color:rgba(255,255,255,0.55);line-height:1.6;margin-bottom:28px;">Мы проводим технические работы.<br>Скоро всё заработает!</div>
+        <div id="maint-overlay-timer" style="display:none;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:16px 24px;margin-bottom:20px;">
+            <div style="font-size:11px;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px;">Ожидаемое время окончания</div>
+            <div id="maint-overlay-countdown" style="font-size:22px;font-weight:bold;color:#4db4ff;font-variant-numeric:tabular-nums;"></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:center;margin-top:10px;">
+            <span style="width:8px;height:8px;border-radius:50%;background:#ff6b6b;animation:maintDot 1.4s ease-in-out infinite;"></span>
+            <span style="width:8px;height:8px;border-radius:50%;background:#ffd700;animation:maintDot 1.4s ease-in-out 0.2s infinite;"></span>
+            <span style="width:8px;height:8px;border-radius:50%;background:#4dff91;animation:maintDot 1.4s ease-in-out 0.4s infinite;"></span>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes maintSpin { to { transform: rotate(360deg); } }
+@keyframes maintPulse { 0%,100%{transform:scale(1) rotate(-5deg);} 50%{transform:scale(1.08) rotate(5deg);} }
+@keyframes maintDot { 0%,80%,100%{transform:scale(0.6);opacity:0.4;} 40%{transform:scale(1.1);opacity:1;} }
+</style>
+
+<script type="module">
+// ══════════════════════════════════════════
+// 🔧 MAINTENANCE SYSTEM
+// ══════════════════════════════════════════
+import { getDatabase, ref, onValue, set, get, update } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+
+const _fbApps = getApps();
+const _fbApp = _fbApps.length ? _fbApps[0] : initializeApp({
+    apiKey: "AIzaSyCqNI2GOVrLkP7wFiixJpD4ksWc85XD5EU",
+    authDomain: "gift-f97e9.firebaseapp.com",
+    databaseURL: "https://gift-f97e9-default-rtdb.firebaseio.com",
+    projectId: "gift-f97e9",
+    storageBucket: "gift-f97e9.firebasestorage.app",
+    messagingSenderId: "578142536785",
+    appId: "1:578142536785:web:b1f3c1a2d4e5f6a7b8c9d0"
+});
+const _mdb = getDatabase(_fbApp);
+const _mRef = ref(_mdb, 'maintenance');
+
+let _maintCountdownInterval = null;
+
+function _isAdminUser() {
+    // Checks window.user set by main app
+    return window.user && window.user.isAdm;
+}
+
+function _showOverlay(data) {
+    if (_isAdminUser()) return; // admins bypass overlay
+    const overlay = document.getElementById('maintenance-overlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    // Custom message
+    const msgEl = document.getElementById('maint-overlay-msg');
+    if (msgEl) msgEl.innerHTML = (data.message || 'Мы проводим технические работы.<br>Скоро всё заработает!');
+    // Countdown timer
+    const timerBlock = document.getElementById('maint-overlay-timer');
+    const countdownEl = document.getElementById('maint-overlay-countdown');
+    if (_maintCountdownInterval) clearInterval(_maintCountdownInterval);
+    if (data.endTime && timerBlock && countdownEl) {
+        timerBlock.style.display = 'block';
+        function tick() {
+            const diff = data.endTime - Date.now();
+            if (diff <= 0) { countdownEl.textContent = 'Скоро...'; return; }
+            const h = Math.floor(diff / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            const s = Math.floor((diff % 60000) / 1000);
+            countdownEl.textContent = (h ? h + 'ч ' : '') + (m ? String(m).padStart(2,'0') + 'м ' : '') + String(s).padStart(2,'0') + 'с';
+        }
+        tick();
+        _maintCountdownInterval = setInterval(tick, 1000);
+    } else if (timerBlock) {
+        timerBlock.style.display = 'none';
+    }
+    // Block scroll
+    document.body.style.overflow = 'hidden';
+}
+
+function _hideOverlay() {
+    const overlay = document.getElementById('maintenance-overlay');
+    if (overlay) overlay.style.display = 'none';
+    if (_maintCountdownInterval) { clearInterval(_maintCountdownInterval); _maintCountdownInterval = null; }
+    document.body.style.overflow = '';
+}
+
+// Listen to Firebase maintenance node
+onValue(_mRef, (snap) => {
+    const data = snap.val() || {};
+    const active = !!data.active;
+
+    // Auto-deactivate if endTime passed
+    if (active && data.endTime && Date.now() > data.endTime && !_isAdminUser()) {
+        // The admin app will handle turning it off; client just ignores
+    }
+
+    if (active && !_isAdminUser()) {
+        _showOverlay(data);
+    } else {
+        _hideOverlay();
+    }
+
+    // Update admin panel UI if open
+    _renderAdminMaintUI(data);
+});
+
+// Re-check after login (user object may not exist yet)
+const _loginPoller = setInterval(() => {
+    if (window.user) {
+        clearInterval(_loginPoller);
+        // Reread current state
+        get(_mRef).then(snap => {
+            const data = snap.val() || {};
+            if (data.active && !_isAdminUser()) {
+                _showOverlay(data);
+            } else {
+                _hideOverlay();
+            }
+            _renderAdminMaintUI(data);
+        });
+    }
+}, 500);
+
+// Auto-deactivate check (runs every 30s)
+setInterval(async () => {
+    if (!_isAdminUser()) return;
+    const snap = await get(_mRef);
+    const data = snap.val() || {};
+    if (data.active && data.endTime && Date.now() > data.endTime) {
+        await update(_mRef, { active: false });
+        if (window.showToast) window.showToast('✅ Тех. перерыв автоматически завершён', 'var(--green)');
+    }
+}, 30000);
+
+// ── Admin panel functions ────────────────────────────────
+
+function _renderAdminMaintUI(data) {
+    const statusCard = document.getElementById('maint-status-card');
+    const dot = document.getElementById('maint-status-dot');
+    const txt = document.getElementById('maint-status-text');
+    const sub = document.getElementById('maint-status-sub');
+    const endHint = document.getElementById('maint-end-hint');
+    const endInput = document.getElementById('maint-end-time');
+    const msgArea = document.getElementById('maint-custom-msg');
+    const tabBtn = document.getElementById('adm-tab-maintenance');
+
+    const active = !!data.active;
+
+    if (dot) {
+        dot.style.background = active ? '#e74c3c' : '#2ecc71';
+        dot.style.boxShadow = active ? '0 0 10px #e74c3c' : '0 0 10px #2ecc71';
+    }
+    if (txt) txt.textContent = active ? '🔧 Тех. перерыв АКТИВЕН' : 'Сайт работает нормально';
+    if (sub) {
+        if (active && data.endTime) {
+            const d = new Date(data.endTime);
+            sub.textContent = 'Автовыключение: ' + d.toLocaleString('ru-RU');
+        } else if (active) {
+            sub.textContent = 'Выключение вручную';
+        } else {
+            sub.textContent = 'Технический перерыв не активен';
+        }
+    }
+    if (statusCard) {
+        statusCard.style.borderColor = active ? 'rgba(231,76,60,0.5)' : 'rgba(46,204,113,0.3)';
+        statusCard.style.background = active ? 'rgba(231,76,60,0.1)' : 'rgba(46,204,113,0.06)';
+    }
+    if (tabBtn) {
+        tabBtn.style.borderColor = active ? 'rgba(231,76,60,0.7)' : 'rgba(231,76,60,0.35)';
+        tabBtn.textContent = active ? '🔴 Тех. перерыв' : '🔧 Тех. перерыв';
+    }
+    if (endInput && data.endTime) {
+        // Convert timestamp to datetime-local value
+        const d = new Date(data.endTime - new Date().getTimezoneOffset()*60000);
+        endInput.value = d.toISOString().slice(0,16);
+    }
+    if (endHint && data.endTime) {
+        const d = new Date(data.endTime);
+        endHint.textContent = 'Текущее время конца: ' + d.toLocaleString('ru-RU');
+    } else if (endHint) {
+        endHint.textContent = 'Время не задано — выключить вручную';
+    }
+    if (msgArea && data.message !== undefined) {
+        msgArea.value = data.message || '';
+    }
+}
+
+window.maintSetActive = async (active) => {
+    if (!_isAdminUser()) return;
+    const snap = await get(_mRef);
+    const current = snap.val() || {};
+    await update(_mRef, { active });
+    if (window.showToast) window.showToast(active ? '🔧 Тех. перерыв включён' : '✅ Тех. перерыв выключен', active ? '#e74c3c' : 'var(--green)');
+};
+
+window.maintSaveEndTime = async () => {
+    if (!_isAdminUser()) return;
+    const input = document.getElementById('maint-end-time');
+    if (!input || !input.value) { if(window.showToast) window.showToast('Выберите дату и время', 'var(--err)'); return; }
+    const ts = new Date(input.value).getTime();
+    if (isNaN(ts) || ts <= Date.now()) { if(window.showToast) window.showToast('Укажите время в будущем', 'var(--err)'); return; }
+    await update(_mRef, { endTime: ts });
+    if (window.showToast) window.showToast('⏱️ Время сохранено', 'var(--accent)');
+};
+
+window.maintClearEndTime = async () => {
+    if (!_isAdminUser()) return;
+    const input = document.getElementById('maint-end-time');
+    if (input) input.value = '';
+    await update(_mRef, { endTime: null });
+    if (window.showToast) window.showToast('Время убрано', 'var(--secondary)');
+};
+
+window.maintSaveMsg = async () => {
+    if (!_isAdminUser()) return;
+    const msg = (document.getElementById('maint-custom-msg')?.value || '').trim();
+    await update(_mRef, { message: msg });
+    if (window.showToast) window.showToast('💾 Текст сохранён', 'var(--green)');
+};
+
+</script>
 </body>
 </html>
