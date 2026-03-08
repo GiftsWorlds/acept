@@ -1256,7 +1256,7 @@
         /* ── Pinned outline - moved to main css above ── */
 </style>
 
-<div id="auth-screen" class="auth-wrap">
+<div id="auth-screen" class="auth-wrap" style="display:none">
     <!-- Theme toggle on login screen -->
     <button id="auth-theme-toggle" onclick="toggleTheme()" title="Сменить тему" style="position:fixed;top:16px;right:16px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:var(--text);width:38px;height:38px;border-radius:50%;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all 0.25s;z-index:999;">🌙</button>
     <div class="auth-logo">
@@ -7331,44 +7331,47 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
     // Auto-login from localStorage — с проверкой пароля в БД
     (()=>{
-        const s=localStorage.getItem('gifts_user');
-        if(s){
-            try{
-                const d=JSON.parse(s);
-                if(d&&d.name&&d.id){
-                    // Показываем лоадер пока проверяем
-                    const authScr = document.getElementById('auth-screen');
-                    const loader = document.createElement('div');
-                    loader.id = 'auto-login-loader';
-                    loader.style.cssText = 'position:fixed;inset:0;background:var(--bg,#0e1621);display:flex;align-items:center;justify-content:center;z-index:99999;font-size:32px;';
-                    loader.innerHTML = '<span style="animation:pulse 1s ease-in-out infinite">⏳</span>';
-                    document.body.appendChild(loader);
-                    // Верифицируем через БД
-                    get(ref(db,'users/'+d.id)).then(snap=>{
-                        const loader2 = document.getElementById('auto-login-loader');
-                        if(loader2) loader2.remove();
-                        if(snap.exists()){
-                            const u = snap.val();
-                            // Проверяем имя И session token
-                            const tokenOk = !d.tok || !u.sessionToken || d.tok === u.sessionToken;
-                            if(u.username && u.username === d.name && tokenOk){
-                                startApp(d.name, d.id);
-                                return;
-                            }
-                        }
-                        // Данные устарели или токен невалиден — чистим и показываем логин
-                        localStorage.removeItem('gifts_user');
-                        if(authScr) authScr.style.display='flex';
-                    }).catch(()=>{
-                        // При ошибке сети — всё равно пускаем (офлайн-режим)
-                        const loader2 = document.getElementById('auto-login-loader');
-                        if(loader2) loader2.remove();
-                        startApp(d.name,d.id);
-                    });
-                    return; // auth-screen остаётся скрытым пока идёт проверка
+        const authScr = document.getElementById('auth-screen');
+        const showLogin = () => { if(authScr) authScr.style.display='flex'; };
+
+        const s = localStorage.getItem('gifts_user');
+        if(!s){ showLogin(); return; }
+
+        let d;
+        try { d = JSON.parse(s); } catch(e) { localStorage.removeItem('gifts_user'); showLogin(); return; }
+        if(!d || !d.name || !d.id){ localStorage.removeItem('gifts_user'); showLogin(); return; }
+
+        // Есть сохранённые данные — auth-screen скрыт, показываем лоадер
+        const loader = document.createElement('div');
+        loader.id = 'auto-login-loader';
+        loader.style.cssText = 'position:fixed;inset:0;background:var(--bg,#0e1621);display:flex;align-items:center;justify-content:center;z-index:99999;font-size:32px;';
+        loader.innerHTML = '<span style="animation:pulse 1s ease-in-out infinite">⏳</span>';
+        document.body.appendChild(loader);
+
+        const removeLoader = () => { const l=document.getElementById('auto-login-loader'); if(l) l.remove(); };
+
+        // Верифицируем через БД
+        get(ref(db,'users/'+d.id)).then(snap=>{
+            removeLoader();
+            if(snap.exists()){
+                const u = snap.val();
+                // Проверяем имя. Токен проверяем мягко — если токенов нет совсем,
+                // пускаем (старые сессии без токена), если оба есть — сравниваем.
+                const nameOk = u.username && u.username === d.name;
+                const tokenOk = !d.tok || !u.sessionToken || d.tok === u.sessionToken;
+                if(nameOk && tokenOk){
+                    startApp(d.name, d.id);
+                    return;
                 }
-            }catch(e){ localStorage.removeItem('gifts_user'); }
-        }
+            }
+            // Данные устарели — чистим и показываем логин
+            localStorage.removeItem('gifts_user');
+            showLogin();
+        }).catch(()=>{
+            // Ошибка сети — пускаем по сохранённым данным (офлайн-режим)
+            removeLoader();
+            startApp(d.name, d.id);
+        });
     })();
 
     // ═══════════════════════════════════════════════════════
