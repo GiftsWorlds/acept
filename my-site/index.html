@@ -2377,7 +2377,8 @@
             let cat = xid !== null ? catalog.find(c => c.id == xid) : null;
             // Если не нашли по id — ищем по fbId (кастомные подарки меняют id при перезагрузке)
             if (!cat && x && x.fbId) cat = catalog.find(c => c.fbId === x.fbId);
-            return (x&&x.imgKey==='pan'?PAN_IMG:null) || (cat && cat.img) || (x && x.img) || null;
+            const _strOvr = {'bear8mar':'images/bear.webp','snoop_dogg':'images/snoop_dogg.webp'};
+            return (x&&x.imgKey==='pan'?PAN_IMG:null) || (x&&x.id&&_strOvr[x.id]) || (cat && cat.img) || (x && x.img) || null;
         }
         function giftImg(x, size='normal') {
         const isPony = (x && x.id == 20);
@@ -2387,7 +2388,8 @@
         const xid = x && (x.id !== undefined && x.id !== null) ? x.id : null;
         const cat = xid !== null ? catalog.find(c => c.id == xid) : null;
         const IMG_OVERRIDE = {22:'images/clover.png'};
-        const img = (x&&x.imgKey==='pan'?PAN_IMG:null) || (xid!==null&&IMG_OVERRIDE[xid]) || (cat && cat.img) || (x && x.img) || null;
+        const STR_IMG_OVERRIDE = {'bear8mar':'images/bear.webp','snoop_dogg':'images/snoop_dogg.webp'};
+        const img = (x&&x.imgKey==='pan'?PAN_IMG:null) || (xid!==null&&IMG_OVERRIDE[xid]) || (x&&x.id&&STR_IMG_OVERRIDE[x.id]) || (cat && cat.img) || (x && x.img) || null;
         const emoji = (x && x.i) || (cat && cat.i) || '🎁';
         if(size !== 'sm') {
                 const inner = img
