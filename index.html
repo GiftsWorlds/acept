@@ -104,6 +104,12 @@
         body.light-theme #catalog-edit-modal > div { background: #f0f4f8 !important; }
         /* Horizontal rule */
         body.light-theme hr { border-color: rgba(0,0,0,0.1) !important; }
+        /* Profile more overlay light */
+        body.light-theme .profile-more-overlay { background: var(--bg) !important; }
+        body.light-theme .profile-more-item:hover { background: rgba(0,0,0,0.04) !important; }
+        body.light-theme .profile-more-item { border-bottom-color: rgba(0,0,0,0.06) !important; }
+        body.light-theme .profile-more-header { border-bottom-color: rgba(0,0,0,0.08) !important; }
+
         /* Header top bar */
         body.light-theme #app > div:first-child { background: rgba(240,244,248,0.97) !important; border-bottom-color: rgba(0,0,0,0.08) !important; }
         /* Status dot border fix */
@@ -868,6 +874,40 @@
         .tg-stat-div { width:1px; height:32px; background:rgba(255,255,255,0.1); flex-shrink:0; }
 
         .tg-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+        /* ===== PROFILE MORE MENU ===== */
+        .profile-more-overlay {
+            position: fixed; inset: 0; background: var(--bg); z-index: 9000;
+            display: none; flex-direction: column;
+            animation: fadeInUp 0.25s ease;
+        }
+        .profile-more-overlay.open { display: flex; }
+        @keyframes fadeInUp { from { opacity:0; transform:translateY(30px); } to { opacity:1; transform:translateY(0); } }
+        .profile-more-header {
+            display: flex; align-items: center; padding: 18px 18px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.07);
+        }
+        .profile-more-close {
+            width: 38px; height: 38px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.06); color: var(--text); font-size: 18px;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; transition: 0.2s;
+        }
+        .profile-more-close:hover { background: rgba(255,255,255,0.12); }
+        .profile-more-title { flex: 1; text-align: center; font-size: 16px; font-weight: 700; color: var(--text); margin-left: 38px; }
+        .profile-more-list { display: flex; flex-direction: column; gap: 0; padding: 10px 0; flex: 1; overflow-y: auto; }
+        .profile-more-item {
+            display: flex; align-items: center; gap: 16px;
+            padding: 18px 22px; cursor: pointer; transition: background 0.15s;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .profile-more-item:hover { background: rgba(255,255,255,0.04); }
+        .profile-more-item:active { background: rgba(255,255,255,0.08); }
+        .profile-more-item-icon { font-size: 26px; width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .profile-more-item-text { flex: 1; }
+        .profile-more-item-label { font-size: 16px; font-weight: 600; color: var(--text); }
+        .profile-more-item-desc { font-size: 12px; color: var(--secondary); margin-top: 2px; }
+        .profile-more-item-arrow { color: var(--secondary); font-size: 16px; }
+
         .tg-action-btn {
             display:flex; flex-direction:column; align-items:center; gap:4px;
             background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.09);
@@ -1639,6 +1679,13 @@
                     <button class="btn" onclick="window.resetSerialCounter()" style="background:linear-gradient(135deg,rgba(231,76,60,0.8),rgba(192,57,43,0.9));width:100%;">🔄 Сбросить в 0 (следующий будет #1)</button>
                 </div>
                 <div style="height:1px;background:rgba(255,255,255,0.06);"></div>
+                <div class="tool-card" style="border:1px solid rgba(255,215,0,0.25);background:linear-gradient(135deg,rgba(255,215,0,0.06),rgba(243,156,18,0.04));">
+                    <div class="tool-card-title" style="color:#ffd700;">⚡ Компенсация за прокачки NFT</div>
+                    <div style="font-size:12px;color:var(--secondary);margin-bottom:10px;">Обнулит прокачку у всех NFT и выдаст монеты за каждый потраченный уровень (LVL1=100, LVL2=+200, LVL3=+300, LVL4=+500, LVL5=+1000).</div>
+                    <div id="upgrade-comp-status" style="font-size:12px;color:var(--secondary);min-height:18px;margin-bottom:8px;"></div>
+                    <button class="btn" id="upgrade-comp-btn" onclick="window.runUpgradeCompensation()" style="background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;font-weight:bold;">⚡ Запустить компенсацию</button>
+                </div>
+                <div style="height:1px;background:rgba(255,255,255,0.06);"></div>
                 <div class="tool-card">
                     <div class="tool-card-title">🧹 Очистить</div>
                     <div style="display:flex;flex-direction:column;gap:8px;">
@@ -2013,7 +2060,7 @@
 
     <div class="nav" id="main-nav" style="display:none;">
         <button class="nav-btn active" onclick="tab('shop',this)"><i>🛍️</i><span>Магазин</span></button>
-        <button class="nav-btn" onclick="tab('inv',this)"><div id="badge-inv" class="badge">0</div><div id="badge-merge" class="badge-merge">0</div><i>📦</i><span>Склад</span></button>
+        <button class="nav-btn" onclick="tab('inv',this)"><div id="badge-inv" class="badge">0</div><i>📦</i><span>Склад</span></button>
         <button class="nav-btn" onclick="tab('market',this)"><i>⚖️</i><span>Рынок</span></button>
         <button class="nav-btn" onclick="tab('friends',this)"><div id="badge-fr" class="badge">0</div><i>👥</i><span>Друзья</span></button>
         <button class="nav-btn" id="duel-nav-btn" onclick="openDuelFromNav()" style="position:relative;"><div id="badge-duel" class="badge" style="right:8px;display:none;">0</div><i>⚔️</i><span>Дуэль</span></button>
@@ -3198,10 +3245,7 @@
             const unseen=inv.filter(x=>!x.seen).length;
             const bInv=document.getElementById('badge-inv');
             bInv.innerText=unseen; bInv.style.display=unseen>0?'flex':'none';
-            // 🟣 Merge badge
-            const mergeCount=getMergeable(inv).length;
-            const bMerge=document.getElementById('badge-merge');
-            bMerge.innerText=mergeCount; bMerge.style.display=mergeCount>0?'flex':'none';
+
         });
         renderShop().then(()=>{ renderShopCards(); }); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges();
         setTimeout(() => { if (window.loadLeaderboard) loadLeaderboard(); }, 1500);
@@ -3322,38 +3366,32 @@
             ...filtered.filter(x => pinnedInsts2.has(String(x.inst))),
             ...filtered.filter(x => !pinnedInsts2.has(String(x.inst)))
         ];
-        // Use new rarity system
-        const mergeableIds = new Set(getMergeable(upd).map(g => `${g.items[0].id}_${getRarityLevel(g.items[0])}`));
-
         const cardsHtml = sortedFiltered.length ? sortedFiltered.map(x=>{
             const isNFT = !!x.nft;
             const isPinned2 = pinnedInsts2.has(String(x.inst));
             const rarObj = getRarityObj(x);
             const rarLevel = getRarityLevel(x);
-            const isMergeReady = mergeableIds.has(`${x.id}_${rarLevel}`) && !isNFT;
-
-            // Card style based on rarity
-            let cardExtraClass = rarObj.cardCls;
+            // Card style - no rarity for non-NFT
+            let cardExtraClass = isNFT ? rarObj.cardCls : '';
             let cardStyle = '';
-            if(isPinned2 && !isNFT && rarLevel===0) cardStyle = 'border:1.5px solid rgba(243,156,18,0.5);box-shadow:0 2px 12px rgba(243,156,18,0.15);';
+            if(isPinned2 && !isNFT) cardStyle = 'border:1.5px solid rgba(243,156,18,0.5);box-shadow:0 2px 12px rgba(243,156,18,0.15);';
 
             const rarHtml = isNFT
                 ? `<span class="rarity-nft" style="font-size:10px;margin-bottom:4px;display:block;">✦ NFT — Легендарный</span>`
-                : `<span class="${rarObj.cls}" style="margin-bottom:4px;display:block;">${rarObj.icon} ${rarObj.label}</span>`;
+                : '';
 
             const pinBadge = isPinned2 ? `<div style="position:absolute;top:6px;left:7px;font-size:13px;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.7));z-index:4;">📌</div>` : '';
             const nftBadge = isNFT ? `<div style="position:absolute;top:7px;right:7px;background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;font-size:9px;font-weight:bold;border-radius:10px;padding:2px 7px;z-index:4;">NFT</div>` : '';
             const nameStyle = isNFT ? 'background:linear-gradient(90deg,#ffd700,#ffb347,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:bold;' : '';
             const serialNum = x.nftSerial ? `№${x.nftSerial}` : (x.inst ? `#${String(x.inst).slice(-6)}` : '');
             const serialBadge = serialNum ? `<div class="nft-id-badge${isNFT?' nft':''}${x.nftSerial?'':' common-id'}">${serialNum}</div>` : '';
-            const mergeBadge = isMergeReady ? `<div class="merge-count-badge ready" title="Можно объединить!">⚗️</div>` : '';
 
             const baseMarketPrice = isNFT ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?6999:x.id==='snoop_dogg'?10000:(x.price||getPrice(x.id||0))) : getPrice(x.id||0);
             const rarMultiplier = isNFT ? 1 : ([1, 2, 5, 15][rarLevel] || 1);
             const sellPrice = Math.round(baseMarketPrice * rarMultiplier);
             const sellReward = Math.floor(sellPrice / 2);
-            return `<div class="card ${cardExtraClass}${isMergeReady?' merge-ready':''}" style="display:flex;flex-direction:column;align-items:center;position:relative;${cardStyle}">
-                ${pinBadge}${nftBadge}${mergeBadge}${serialBadge}
+            return `<div class="card ${cardExtraClass}" style="display:flex;flex-direction:column;align-items:center;position:relative;${cardStyle}">
+                ${pinBadge}${nftBadge}${serialBadge}
                 ${!isNFT ? `<button class="sell-btn" onclick="sellItem('${x.inst}',${sellReward})" title="Продать за ${sellReward} монет">🗑️</button>` : (user.isAdm ? `<button class="sell-btn" onclick="sellItem('${x.inst}',0)" title="Удалить NFT (только для админа)" style="background:rgba(231,76,60,0.7);">🗑️</button>` : '')}
                 ${x.from?`<small style="color:var(--orange);margin-bottom:4px;">От: ${x.from}</small>`:''}
                 ${giftImg(x)}
@@ -3361,27 +3399,17 @@
                 ${rarHtml}
                 <button class="btn" style="font-size:11px;background:var(--green)" onclick="giftOpen('${x.inst}')">🎁 Подарить</button>
                 <button class="btn" style="margin-top:5px;font-size:11px;background:var(--accent)" onclick="toMarket('${x.inst}')">⚖️ Рынок</button>
-                ${isMergeReady?`<button class="btn merge-btn" style="margin-top:5px;" onclick="openMergeModal()">⚗️ Слияние!</button>`:''}
                 <button class="btn" style="margin-top:5px;font-size:11px;background:${isPinned2?'var(--secondary)':'var(--orange)'}" onclick="togglePin('${x.inst}')">${isPinned2?'📌 Снять':'📌 Закрепить'}</button>
             </div>`;
         }).join('') : `<div style="grid-column:1/-1;text-align:center;color:var(--secondary);padding:30px;">${searchVal?'Ничего не найдено 🔍':'Склад пуст'}</div>`;
 
-        const mergeableCount = getMergeable(upd).length;
-        const mergeBannerHtml = mergeableCount > 0 ? `
-            <div style="grid-column:1/-1;background:linear-gradient(135deg,#120d2e,#1a0e3a);border:1.5px solid rgba(162,155,254,0.45);border-radius:18px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:5px;">
-                <div>
-                    <div style="font-weight:bold;color:#a29bfe;font-size:14px;">⚗️ Доступно слияние!</div>
-                    <div style="font-size:12px;color:var(--secondary);margin-top:2px;">${mergeableCount} групп готово к объединению</div>
-                </div>
-                <button class="btn merge-btn" style="width:auto;padding:10px 16px;" onclick="openMergeModal()">⚗️ Слить</button>
-            </div>` : '';
+
 
         document.getElementById('inv').innerHTML = `
             <div class="search-filter-bar">
                 <input type="text" id="inv-search" placeholder="🔍 Поиск в инвентаре..." oninput="_debRenderInv()" value="${searchVal}">
                 <span style="color:var(--secondary);font-size:12px;white-space:nowrap;align-self:center;">${upd.length} пред.</span>
             </div>
-            ${mergeBannerHtml}
             ${cardsHtml}
         `;
     };
@@ -5558,14 +5586,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const isLizard = isNFT && x.id === 997;
             const nftClass = isNFT ? (isLizard ? ' tg-gift-nft-lizard' : ' tg-gift-nft') : '';
             const nftPrice = isNFT ? (x.id===997?7000:x.id===998?10000:x.id===999?5000:x.id===996?5000:x.id==='bear8mar'?6999:x.id==='snoop_dogg'?10000:(x.price||getPrice(x.id||0))) : 0;
-            // NFT upgrade
-            const upgClasses = isNFT ? getNftUpgradeClasses(x) : '';
-            const upgBadge = isNFT ? getNftUpgradeBadge(x) : '';
-            const particleHtml = isNFT ? getNftParticleHtml(x) : '';
-            return `<div class="tg-gift-cell${nftClass}${isPin?' tg-gift-pinned':''}${upgClasses?' '+upgClasses:''}" onclick="openGiftDetail('${x.inst}')" style="position:relative;">
+            return `<div class="tg-gift-cell${nftClass}${isPin?' tg-gift-pinned':''}" onclick="openGiftDetail('${x.inst}')" style="position:relative;">
                 ${isNFT ? `<div class="tg-gift-nft-badge">NFT</div>` : ''}
-                ${upgBadge}
-                ${particleHtml}
                 ${isPin ? `<div style="position:absolute;top:5px;left:5px;font-size:12px;z-index:3;filter:drop-shadow(0 1px 3px rgba(0,0,0,0.8));">📌</div>` : ''}
                 <div class="tg-gift-inner">
                     ${img ? `<img src="${img}" alt="${(catalogMap.get(+x.id)||x).n}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:34px;">${emoji}</span>` : `<span style="font-size:34px;">${emoji}</span>`}
@@ -5586,7 +5608,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
         document.getElementById('profile').innerHTML = `
         <div class="tg-profile">
-            <div class="tg-profile-hero">
+            <div class="tg-profile-hero" style="position:relative;">
+                <button onclick="openProfileMore()" style="position:absolute;top:14px;right:14px;z-index:10;width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.08);color:var(--text);font-size:22px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);">⋯</button>
                 <div class="avatar-ring-wrap">
                     ${(() => {
                         const pinnedArr = [...pinnedInsts]
@@ -5603,7 +5626,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                             const rad = (angle * i - 90) * Math.PI / 180;
                             const x2 = Math.round(100 + radius * Math.cos(rad) - 14);
                             const y2 = Math.round(100 + radius * Math.sin(rad) - 14);
-                            const upgCls2 = item.upgrade && item.upgrade.level ? getNftUpgradeClasses(item) : '';
+                            const upgCls2 = '';
                             const upgStyle2 = (()=>{
                                 if(!item.upgrade||!item.upgrade.level) return '';
                                 const lvlD=NFT_UPGRADE_LEVELS[item.upgrade.level];
@@ -5643,13 +5666,6 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     <div class="tg-stat"><div class="tg-stat-val">${(d.balance||0).toLocaleString()}</div><div class="tg-stat-lbl">💰 Монет</div></div>
                 </div>
                 ${renderProfileValueBlock(inv)}
-                <div class="tg-actions">
-                    <button class="tg-action-btn" onclick="openEdit()"><span class="tg-action-icon">⚙️</span><span>Настройки</span></button>
-                    <button class="tg-action-btn" onclick="openPromoModal()"><span class="tg-action-icon">🎟️</span><span>Промокод</span></button>
-                    ${inv.some(x=>x.nft) ? `<button class="tg-action-btn" style="background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);" onclick="openNftUpgradeSelect()"><span class="tg-action-icon">⚡</span><span>Прокачка</span></button>` : ''}
-                    <button class="tg-action-btn tg-action-tg" onclick="window.open('https://t.me/Gifts_World_Pro','_blank')"><span class="tg-action-icon">📢</span><span>Канал</span></button>
-                    <button class="tg-action-btn tg-action-red" onclick="logout()"><span class="tg-action-icon">🚪</span><span>Выход</span></button>
-                </div>
             </div>
             <div class="tg-gifts-section">
                 <div class="tg-gifts-header">
@@ -5798,7 +5814,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
                 <!-- Actions -->
                 <div style="display:flex;flex-direction:column;gap:8px;">
-                    ${x.nft ? `<button class="btn" style="background:linear-gradient(90deg,#7c3aed,#a855f7);font-weight:bold;" onclick="openNftUpgradeFromDetail('${inst}')">⚡ Прокачать NFT ${(x.upgrade&&x.upgrade.level)?`(Уровень ${x.upgrade.level}/5)`:''}</button>` : ''}
+                    
                     <button class="btn" style="background:${isPinned?'var(--secondary)':'var(--orange)'};" onclick="togglePin('${inst}');closeModal()">
                         ${isPinned ? '📌 Снять' : '📌 Закрепить'}
                     </button>
@@ -6519,7 +6535,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const rows = [];
         if (v.regularCount > 0) rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="color:var(--secondary);font-size:12px;">🎁 Обычные (${v.regularCount} шт.)</span><span style="font-weight:700;color:#4db4ff;">${fmt(v.regularTotal)} 💰</span></div>`);
         if (v.nftCount > 0)     rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);"><span style="color:var(--secondary);font-size:12px;">✦ NFT (${v.nftCount} шт.)</span><span style="font-weight:700;color:#ffd700;">${fmt(v.nftTotal)} 💰</span></div>`);
-        if (v.upgradeTotal > 0) rows.push(`<div style="display:flex;justify-content:space-between;padding:4px 0;"><span style="color:var(--secondary);font-size:12px;">⚡ Вложено в прокачку</span><span style="font-weight:700;color:#a29bfe;">${fmt(v.upgradeTotal)} 💰</span></div>`);
+
         return `<div style="background:linear-gradient(135deg,rgba(15,25,55,0.9),rgba(25,12,55,0.8));border:1px solid rgba(100,130,255,0.2);border-radius:16px;padding:13px 15px;margin:10px 0 4px;">
             <div style="font-size:10px;color:rgba(255,255,255,0.4);text-align:center;margin-bottom:8px;letter-spacing:1.2px;text-transform:uppercase;">💎 Примерная стоимость профиля</div>
             <div style="text-align:center;font-size:24px;font-weight:900;margin-bottom:10px;background:linear-gradient(90deg,#4db4ff,#a29bfe,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${fmt(v.total)} 💰</div>
@@ -7363,32 +7379,94 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if(!ok) return;
         await remove(ref(db,'market'));showToast("Рынок очищен!",'var(--err)');
     };
-    // ===== INSTANT NFT AVATAR THEME UPDATE =====
-    window.applyPinnedNftThemeToAvatar = (d) => {
-        const inv = toArr(d.cloudInv);
-        const pinnedInsts = new Set((d.pinnedInsts||[]).map(String));
-        // Ищем все ring-item элементы и обновляем их стиль
-        document.querySelectorAll('.avatar-ring-item.ring-nft[data-inst]').forEach(el => {
-            const inst = el.getAttribute('data-inst');
-            const item = inv.find(x=>String(x.inst)===String(inst));
-            if(!item||!item.upgrade||!item.upgrade.level) return;
-            const lvlD = NFT_UPGRADE_LEVELS[item.upgrade.level];
-            if(!lvlD) return;
-            // Remove old upgrade classes
-            el.classList.forEach(cls=>{if(cls.startsWith('nft-lvl'))el.classList.remove(cls);});
-            // Add new classes
-            const newCls = getNftUpgradeClasses(item);
-            if(newCls) newCls.split(' ').forEach(c=>c&&el.classList.add(c));
-            // Update border glow
-            const thD = lvlD.themes && lvlD.themes.find(t=>t.id===item.upgrade.theme);
-            if(thD){
-                const colorMap = {fire:'255,80,0',ocean:'0,150,255',forest:'0,200,80',galaxy:'150,50,255',sunset:'255,100,150'};
-                const c = colorMap[item.upgrade.theme];
-                if(c && item.upgrade.level >= 1){
-                    el.style.borderColor = `rgba(${c},0.9)`;
-                    el.style.boxShadow = `0 0 ${item.upgrade.level>=3?'14':'10'}px rgba(${c},${item.upgrade.level>=3?'0.8':'0.6'}),0 2px 10px rgba(0,0,0,0.6)`;
+
+    // ===== NFT UPGRADE COMPENSATION =====
+    // Costs per level (cumulative): lvl1=100, lvl2=+200, lvl3=+300, lvl4=+500, lvl5=+1000
+    const _UPG_COST_PER_LEVEL = [0, 100, 200, 300, 500, 1000];
+    function _calcUpgradeCost(level) {
+        let total = 0;
+        for (let i = 1; i <= Math.min(level, 5); i++) total += _UPG_COST_PER_LEVEL[i];
+        return total;
+    }
+
+    window.runUpgradeCompensation = async () => {
+        if (!user.isAdm) return;
+        const btn = document.getElementById('upgrade-comp-btn');
+        const status = document.getElementById('upgrade-comp-status');
+        const ok = await showConfirm(
+            '⚡ Компенсация за прокачки',
+            'Будет выдано монет за каждый уровень прокачки NFT у всех игроков, а прокачки обнулятся. Действие необратимо.',
+            '⚡', '#ffd700', 'Запустить'
+        );
+        if (!ok) return;
+
+        btn.disabled = true;
+        btn.textContent = '⏳ Обрабатываю...';
+        status.textContent = 'Загружаю данные...';
+
+        try {
+            const snap = await get(ref(db, 'users'));
+            const users = snap.val() || {};
+            const batchUpdate = {};
+            let totalUsers = 0, totalCoins = 0, totalNfts = 0;
+
+            for (const [uid, udata] of Object.entries(users)) {
+                const inv = toArr(udata.cloudInv);
+                let userRefund = 0;
+                let changed = false;
+                const newInv = inv.map(item => {
+                    if (!item.nft || !item.upgrade || !item.upgrade.level) return item;
+                    const lvl = Math.min(item.upgrade.level, 5);
+                    const refund = _calcUpgradeCost(lvl);
+                    userRefund += refund;
+                    totalNfts++;
+                    changed = true;
+                    // Remove upgrade field
+                    const newItem = {...item};
+                    delete newItem.upgrade;
+                    return newItem;
+                });
+
+                if (changed || userRefund > 0) {
+                    const newBalance = (udata.balance || 0) + userRefund;
+                    batchUpdate[`users/${uid}/cloudInv`] = newInv;
+                    batchUpdate[`users/${uid}/balance`] = newBalance;
+                    totalUsers++;
+                    totalCoins += userRefund;
                 }
             }
+
+            if (Object.keys(batchUpdate).length === 0) {
+                status.textContent = '✅ Нет прокачанных NFT — компенсация не нужна.';
+                btn.disabled = false;
+                btn.textContent = '⚡ Запустить компенсацию';
+                return;
+            }
+
+            status.textContent = `Записываю ${Object.keys(batchUpdate).length / 2} изменений...`;
+            await update(ref(db), batchUpdate);
+
+            const msg = `✅ Готово! Затронуто игроков: ${totalUsers}, NFT обнулено: ${totalNfts}, выдано монет: ${totalCoins.toLocaleString()}`;
+            status.style.color = 'var(--green)';
+            status.textContent = msg;
+            showToast(msg, 'var(--green)');
+            logActivity('admin_action', { user: user.name, action: 'upgrade_compensation', users: totalUsers, nfts: totalNfts, coins: totalCoins });
+        } catch(e) {
+            status.style.color = 'var(--err)';
+            status.textContent = '❌ Ошибка: ' + e.message;
+            showToast('❌ Ошибка: ' + e.message, 'var(--err)');
+        }
+        btn.disabled = false;
+        btn.textContent = '⚡ Запустить компенсацию';
+    };
+
+    // ===== NFT AVATAR THEME (upgrade system removed) =====
+    window.applyPinnedNftThemeToAvatar = (d) => {
+        // Upgrade system removed - clear any leftover upgrade classes from avatar ring items
+        document.querySelectorAll('.avatar-ring-item.ring-nft[data-inst]').forEach(el => {
+            el.classList.forEach(cls=>{ if(cls.startsWith('nft-lvl')) el.classList.remove(cls); });
+            el.style.borderColor = '';
+            el.style.boxShadow = '';
         });
     };
 
@@ -9881,6 +9959,64 @@ window.maintSaveMsg = async () => {
     if (window.showToast) window.showToast('💾 Текст сохранён', 'var(--green)');
 };
 
+</script>
+
+<!-- ===== PROFILE MORE MENU OVERLAY ===== -->
+<div id="profile-more-overlay" class="profile-more-overlay">
+    <div class="profile-more-header">
+        <div class="profile-more-title">Меню</div>
+        <button class="profile-more-close" onclick="closeProfileMore()">✕</button>
+    </div>
+    <div class="profile-more-list">
+        <div class="profile-more-item" onclick="closeProfileMore(); setTimeout(openEdit, 200);">
+            <div class="profile-more-item-icon" style="background:rgba(36,129,204,0.15);">⚙️</div>
+            <div class="profile-more-item-text">
+                <div class="profile-more-item-label">Настройки</div>
+                <div class="profile-more-item-desc">Имя, аватар, конфиденциальность</div>
+            </div>
+            <div class="profile-more-item-arrow">›</div>
+        </div>
+        <div class="profile-more-item" onclick="closeProfileMore(); setTimeout(openPromoModal, 200);">
+            <div class="profile-more-item-icon" style="background:rgba(243,156,18,0.15);">🎟️</div>
+            <div class="profile-more-item-text">
+                <div class="profile-more-item-label">Промокод</div>
+                <div class="profile-more-item-desc">Активировать промокод</div>
+            </div>
+            <div class="profile-more-item-arrow">›</div>
+        </div>
+        <div class="profile-more-item" onclick="closeProfileMore(); window.open('https://t.me/Gifts_World_Pro','_blank');">
+            <div class="profile-more-item-icon" style="background:rgba(34,158,217,0.15);">📢</div>
+            <div class="profile-more-item-text">
+                <div class="profile-more-item-label">Канал</div>
+                <div class="profile-more-item-desc">Telegram канал Gifts World</div>
+            </div>
+            <div class="profile-more-item-arrow">›</div>
+        </div>
+        <div class="profile-more-item" onclick="closeProfileMore(); setTimeout(logout, 200);" style="margin-top:auto;">
+            <div class="profile-more-item-icon" style="background:rgba(231,76,60,0.15);">🚪</div>
+            <div class="profile-more-item-text">
+                <div class="profile-more-item-label" style="color:#e74c3c;">Выход</div>
+                <div class="profile-more-item-desc">Выйти из аккаунта</div>
+            </div>
+            <div class="profile-more-item-arrow" style="color:#e74c3c;">›</div>
+        </div>
+    </div>
+</div>
+
+<script>
+window.openProfileMore = () => {
+    document.getElementById('profile-more-overlay').classList.add('open');
+    document.body.style.overflow = 'hidden';
+};
+window.closeProfileMore = () => {
+    document.getElementById('profile-more-overlay').classList.remove('open');
+    document.body.style.overflow = '';
+};
+// Close on back gesture (Android)
+window.addEventListener('popstate', () => {
+    const el = document.getElementById('profile-more-overlay');
+    if (el && el.classList.contains('open')) { closeProfileMore(); }
+});
 </script>
 </body>
 </html>
