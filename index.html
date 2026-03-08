@@ -1426,7 +1426,6 @@
             <button id="lb-tab-gifts" onclick="switchLbTab('gifts')" class="lb-tab lb-tab-active">🎁 Подарки</button>
             <button id="lb-tab-coins" onclick="switchLbTab('coins')" class="lb-tab">💰 Монеты</button>
             <button id="lb-tab-friends" onclick="switchLbTab('friends')" class="lb-tab">👥 Друзья</button>
-            <button id="lb-tab-level" onclick="switchLbTab('level')" class="lb-tab">⭐ Уровень</button>
         </div>
         <div id="lb-list" style="display:flex;flex-direction:column;gap:8px;">
             <div style="text-align:center;color:var(--secondary);padding:40px;font-size:14px;">Загрузка...</div>
@@ -1593,6 +1592,39 @@
                     </div>
                     <div id="give-inst-hint" style="font-size:11px;color:var(--secondary);margin:-4px 0 8px;text-align:right;"></div>
                     <button class="btn" onclick="giveGiftToPlayer()" style="background:linear-gradient(135deg,#f39c12,#e67e22);">🎯 Выдать подарок</button>
+                </div>
+                <div class="tool-card" style="border:1px solid rgba(162,155,254,0.2);background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(168,85,247,0.05));">
+                    <div class="tool-card-title" style="color:#c4b5fd;">⭐ Выдать уровень / XP игроку</div>
+                    <div style="position:relative;margin-bottom:8px;">
+                        <input type="text" id="xp-player-search" placeholder="🔍 Поиск игрока по нику..." style="margin:0;width:100%;box-sizing:border-box;"
+                            oninput="xpPlayerSearch(this.value)"
+                            onfocus="xpPlayerSearch(this.value)"
+                            autocomplete="off">
+                        <div id="xp-player-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#111b21;border:1px solid rgba(162,155,254,0.3);border-radius:14px;z-index:999;max-height:200px;overflow-y:auto;margin-top:4px;box-shadow:0 8px 24px rgba(0,0,0,0.5);"></div>
+                    </div>
+                    <div id="xp-player-selected" style="display:none;background:rgba(162,155,254,0.1);border:1px solid rgba(162,155,254,0.25);border-radius:12px;padding:8px 12px;margin-bottom:8px;align-items:center;justify-content:space-between;">
+                        <div>
+                            <span id="xp-player-label" style="font-size:13px;font-weight:bold;color:#c4b5fd;">—</span>
+                            <div id="xp-player-curlvl" style="font-size:11px;color:var(--secondary);margin-top:2px;"></div>
+                        </div>
+                        <button onclick="xpClearPlayer()" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:16px;">✕</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+                        <div>
+                            <div style="font-size:11px;color:var(--secondary);margin-bottom:4px;">Режим</div>
+                            <select id="xp-mode" style="margin:0;width:100%;height:42px;border-radius:12px;box-sizing:border-box;" onchange="xpModeChange()">
+                                <option value="level">⭐ Установить уровень</option>
+                                <option value="xp_add">➕ Добавить XP</option>
+                                <option value="xp_set">🎯 Установить XP</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div style="font-size:11px;color:var(--secondary);margin-bottom:4px;" id="xp-amount-label">Уровень (1–100)</div>
+                            <input type="number" id="xp-amount" placeholder="Значение" min="1" max="100" style="margin:0;height:42px;width:100%;box-sizing:border-box;border-radius:12px;">
+                        </div>
+                    </div>
+                    <div id="xp-preview" style="font-size:11px;color:var(--secondary);margin-bottom:8px;min-height:16px;text-align:center;"></div>
+                    <button class="btn" onclick="giveXpToPlayer()" style="background:linear-gradient(135deg,#7c3aed,#a855f7);font-weight:bold;">⭐ Применить</button>
                 </div>
                 <div style="height:1px;background:rgba(255,255,255,0.06);"></div>
                 <div class="tool-card">
@@ -3160,7 +3192,6 @@
             bMerge.innerText=mergeCount; bMerge.style.display=mergeCount>0?'flex':'none';
         });
         renderShop().then(()=>{ renderShopCards(); }); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges();
-        setTimeout(()=>{ if(window.loadLeaderboard) loadLeaderboard(); }, 1500);
         // Запускаем realtime listener цен — обновляет у всех мгновенно
         startShopPricesListener();
         // Загружаем кастомный каталог для всех пользователей (картинки кастомных подарков)
@@ -4105,131 +4136,6 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
     }
 
     let marketData = {}, marketFilter = {q:'', sort:'mine'};
-
-    // ── Seller level/rank helpers ─────────────────────────────────────────
-    function _getSellerLevel(sellerId) {
-        // Try xp map first (loaded with leaderboard), fallback gracefully
-        const xp = window._lbXpMap && window._lbXpMap[sellerId] != null ? window._lbXpMap[sellerId] : null;
-        if (xp == null) return null;
-        return getLevelFromXp(xp);
-    }
-
-    function _sellerLevelBadge(sellerId) {
-        const lvl = _getSellerLevel(sellerId);
-        if (lvl == null) return '';
-        const isMax = lvl >= XP_MAX_LEVEL;
-        if (isMax) {
-            return `<span style="display:inline-flex;align-items:center;background:linear-gradient(90deg,rgba(255,215,0,0.3),rgba(255,180,0,0.2));border:1px solid rgba(255,215,0,0.6);color:#ffd700;font-size:8px;font-weight:900;border-radius:6px;padding:1px 6px;line-height:1.6;vertical-align:middle;margin-left:3px;box-shadow:0 0 6px rgba(255,215,0,0.25);">👑 MAX</span>`;
-        }
-        // Color tiers
-        const color = lvl >= 80 ? ['rgba(255,215,0,0.25)','rgba(255,215,0,0.5)','#ffd700']
-            : lvl >= 50 ? ['rgba(162,155,254,0.2)','rgba(162,155,254,0.45)','#c4b5fd']
-            : lvl >= 25 ? ['rgba(77,180,255,0.15)','rgba(77,180,255,0.4)','#4db4ff']
-            : ['rgba(255,255,255,0.07)','rgba(255,255,255,0.2)','#7f91a4'];
-        return `<span style="display:inline-flex;align-items:center;background:${color[0]};border:1px solid ${color[1]};color:${color[2]};font-size:8px;font-weight:900;border-radius:6px;padding:1px 6px;line-height:1.6;vertical-align:middle;margin-left:3px;">⭐${lvl}</span>`;
-    }
-
-    function _sellerBestRank(sellerId) {
-        const rm = window._lbRankMap;
-        if (!rm || !sellerId || !rm[sellerId]) return 9999;
-        const r = rm[sellerId];
-        return Math.min(r.gifts||9999, r.coins||9999, r.level||9999);
-    }
-
-    function _sellerCardBadge(sellerId) {
-        const rm = window._lbRankMap;
-        if (!rm || !sellerId || !rm[sellerId]) return '';
-        const r = rm[sellerId];
-        const best = Math.min(r.gifts||9999, r.coins||9999, r.level||9999);
-        if (best <= 10) return `<div style="position:absolute;bottom:4px;left:4px;background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;font-size:7px;font-weight:900;border-radius:5px;padding:1px 5px;z-index:4;line-height:1.5;box-shadow:0 1px 6px rgba(255,215,0,0.4);">🏆 ТОП-10</div>`;
-        if (best <= 50) return `<div style="position:absolute;bottom:4px;left:4px;background:rgba(162,155,254,0.9);color:#fff;font-size:7px;font-weight:900;border-radius:5px;padding:1px 5px;z-index:4;line-height:1.5;">⭐ ТОП-50</div>`;
-        return '';
-    }
-
-    window._miSort = 'price';
-
-    window.sortMarketItem = function(sortType) {
-        window._miSort = sortType;
-        document.querySelectorAll('.mi-sort-btn').forEach(b => {
-            const active = b.dataset.sort === sortType;
-            b.style.background = active ? 'rgba(36,129,204,0.3)' : 'rgba(255,255,255,0.05)';
-            b.style.borderColor = active ? 'rgba(36,129,204,0.6)' : 'rgba(255,255,255,0.1)';
-            b.style.color = active ? 'var(--accent)' : 'var(--secondary)';
-        });
-        const wrap = document.querySelector('.mi-lots-wrap');
-        if (!wrap) return;
-        const itemId = document.querySelector('[data-market-item-id]')?.dataset.marketItemId;
-        if (!itemId) return;
-        let lots = Object.entries(marketData).filter(([,x]) => String(x.id) === String(itemId) && (!x.expiresAt || x.expiresAt > Date.now()) && !x.sold);
-        _sortMiLots(lots, sortType);
-        wrap.innerHTML = lots.map(([k,x]) => _miLotRow(k, x, itemId)).join('');
-    };
-
-    function _sortMiLots(lots, sortType) {
-        if (sortType === 'price') lots.sort((a,b) => a[1].mP - b[1].mP);
-        else if (sortType === 'price_desc') lots.sort((a,b) => b[1].mP - a[1].mP);
-        else if (sortType === 'rating') {
-            lots.sort((a,b) => {
-                const ra = _sellerBestRank(a[1].sI), rb = _sellerBestRank(b[1].sI);
-                return ra !== rb ? ra - rb : a[1].mP - b[1].mP;
-            });
-        }
-    }
-
-    function _miLotRow(k, x, itemId) {
-        const isNFT = !!x.nft || String(itemId) === 'bear8mar' || String(itemId) === 'snoop_dogg';
-        const isLizard = isNFT && +itemId === 997;
-        const rar = getRarityObj(x);
-        const isRare = !isNFT && rar.id===1, isEpic = !isNFT && rar.id===2, isLeg = !isNFT && rar.id===3;
-        const priceColor = isLizard?'#4dff91':isNFT||isLeg?'#ffd700':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
-        const isMine = x.sI === user.id;
-        const timerStr = (()=>{
-            if(!x.expiresAt) return '';
-            const left = x.expiresAt - Date.now();
-            if(left<=0) return '<span style="color:var(--err);font-size:11px;">⏰ Истекает</span>';
-            const h=Math.floor(left/3600000), m=Math.floor((left%3600000)/60000);
-            return `<span style="color:var(--secondary);font-size:11px;">⏳ ${h>0?h+'ч ':''} ${m}м</span>`;
-        })();
-        const upgStr = x.upgrade && x.upgrade.level ? `<span style="color:#a29bfe;font-size:11px;font-weight:700;">⚡ LVL ${x.upgrade.level}</span>` : '';
-        const itemId2 = x.nftSerial ? x.nftSerial : (x.inst ? String(x.inst).slice(-6) : '');
-        const btnStyle = isMine ? 'background:rgba(231,76,60,0.15);color:var(--err);border:1px solid rgba(231,76,60,0.3);'
-            : isLizard ? 'background:linear-gradient(90deg,#007744,#4dff91);color:#000;border:none;'
-            : isNFT ? 'background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;border:none;'
-            : isLeg ? 'background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;border:none;'
-            : isEpic ? 'background:rgba(162,155,254,0.25);color:#a29bfe;border:1px solid rgba(162,155,254,0.4);'
-            : isRare ? 'background:rgba(77,180,255,0.18);color:#4db4ff;border:1px solid rgba(77,180,255,0.3);'
-            : 'background:rgba(36,129,204,0.18);color:var(--accent);border:1px solid rgba(36,129,204,0.3);';
-        const lotBg = isLizard ? 'linear-gradient(135deg,rgba(0,40,16,0.7),rgba(0,60,24,0.5))'
-            : isNFT ? 'linear-gradient(135deg,rgba(40,28,0,0.7),rgba(60,42,0,0.5))'
-            : isLeg ? 'linear-gradient(135deg,rgba(40,32,0,0.6),rgba(50,38,0,0.4))'
-            : isEpic ? 'linear-gradient(135deg,rgba(20,12,60,0.6),rgba(30,18,80,0.4))'
-            : isRare ? 'linear-gradient(135deg,rgba(8,18,50,0.6),rgba(12,24,70,0.4))'
-            : 'rgba(255,255,255,0.03)';
-        const lotBorder = isLizard ? 'rgba(77,255,145,0.35)' : isNFT ? 'rgba(255,215,0,0.35)'
-            : isLeg ? 'rgba(255,215,0,0.3)' : isEpic ? 'rgba(162,155,254,0.3)'
-            : isRare ? 'rgba(77,180,255,0.25)' : 'rgba(255,255,255,0.06)';
-        const lotGlow = isLizard ? '0 2px 12px rgba(77,255,145,0.12)' : isNFT ? '0 2px 12px rgba(255,215,0,0.12)'
-            : isLeg ? '0 2px 10px rgba(255,215,0,0.1)' : isEpic ? '0 2px 10px rgba(162,155,254,0.1)'
-            : isRare ? '0 2px 8px rgba(77,180,255,0.08)' : 'none';
-        const shimmer = isNFT ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.07) 40%,transparent 60%,rgba(255,255,255,0.04) 80%,transparent 100%);background-size:300% 100%;animation:nftGoldShimmer 3.5s linear infinite;"></div>`
-            : isLeg ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,215,0,0.1) 50%,transparent 70%);background-size:200% 100%;animation:nftGoldShimmer 4s linear infinite;"></div>` : '';
-        const extraAnim = isNFT && !isLizard ? 'animation:rainbowBorder 3s linear infinite,rainbowGlow 3s linear infinite;' : '';
-        const buyLabel = isMine ? '❌ Снять' : isLizard ? '🦎 Купить' : isNFT ? '✦ Купить' : isLeg ? '👑 Купить' : isEpic ? '💜 Купить' : isRare ? '💙 Купить' : '🛒 Купить';
-        // Level badge instead of rank badge
-        const lvlBadge = _sellerLevelBadge(x.sI);
-        return `<div style="position:relative;overflow:hidden;display:flex;align-items:center;gap:10px;padding:10px 12px;background:${lotBg};border:1.5px solid ${lotBorder};box-shadow:${lotGlow};border-radius:14px;${extraAnim}">${shimmer}
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:11px;color:var(--secondary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="openUserProfile('${x.sI}')">${buildUsername({username:x.sN,activeCosmetic:x.sCosm||{}})}${lvlBadge}${isMine?' <span style="color:#4a6080;">(вы)</span>':''}</div>
-                <div style="display:flex;align-items:center;gap:6px;">${upgStr}${timerStr}${itemId2?`<span style="font-size:10px;color:#3a5070;font-family:monospace;">#${itemId2}</span>`:''}</div>
-            </div>
-            <div style="text-align:right;flex-shrink:0;">
-                <div style="font-size:16px;font-weight:900;color:${priceColor};">${x.mP.toLocaleString()}</div>
-                <button style="margin-top:4px;border-radius:10px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}" onclick="${isMine?`remM('${k}');closeModal()`:`buyM('${k}',${x.mP},'${x.sI}',event)`}">
-                    ${buyLabel}
-                </button>
-            </div>
-        </div>`;
-    }
     window.filterMarket = (q) => { marketFilter.q = q.toLowerCase(); renderMarketCards(); };
     // 🚀 OPT: debounced версии для поиска — не перерисовываем на каждую букву
     window._debRenderInv = debounce(() => renderInv(), 150);
@@ -4266,15 +4172,68 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
         const nameGrad = isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
             :isNFT||isLeg?'background:linear-gradient(90deg,#ffd700,#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;':'';
 
-        _sortMiLots(lots, window._miSort);
-        const lotsHtml = lots.map(([k,x]) => _miLotRow(k, x, itemId)).join('');
-        const sbStyle = (s) => window._miSort===s
-            ? 'background:rgba(36,129,204,0.3);border-color:rgba(36,129,204,0.6);color:var(--accent);'
-            : 'background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:var(--secondary);';
+        // Sort lots by price asc
+        lots.sort((a,b) => a[1].mP - b[1].mP);
+
+        const lotsHtml = lots.map(([k,x]) => {
+            const isMine = x.sI === user.id;
+            const timerStr = (()=>{
+                if(!x.expiresAt) return '';
+                const left = x.expiresAt - Date.now();
+                if(left<=0) return '<span style="color:var(--err);font-size:11px;">⏰ Истекает</span>';
+                const h=Math.floor(left/3600000), m=Math.floor((left%3600000)/60000);
+                return `<span style="color:var(--secondary);font-size:11px;">⏳ ${h>0?h+'ч ':''} ${m}м</span>`;
+            })();
+            const upgStr = x.upgrade && x.upgrade.level
+                ? `<span style="color:#a29bfe;font-size:11px;font-weight:700;">⚡ LVL ${x.upgrade.level}</span>` : '';
+            const itemId2 = x.nftSerial ? x.nftSerial : (x.inst ? String(x.inst).slice(-6) : '');
+            const btnStyle = isMine
+                ? 'background:rgba(231,76,60,0.15);color:var(--err);border:1px solid rgba(231,76,60,0.3);'
+                : isLizard ? 'background:linear-gradient(90deg,#007744,#4dff91);color:#000;border:none;'
+                : isNFT ? 'background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;border:none;'
+                : isLeg ? 'background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;border:none;'
+                : isEpic ? 'background:rgba(162,155,254,0.25);color:#a29bfe;border:1px solid rgba(162,155,254,0.4);'
+                : isRare ? 'background:rgba(77,180,255,0.18);color:#4db4ff;border:1px solid rgba(77,180,255,0.3);'
+                : 'background:rgba(36,129,204,0.18);color:var(--accent);border:1px solid rgba(36,129,204,0.3);';
+            const lotBg = isLizard ? 'linear-gradient(135deg,rgba(0,40,16,0.7),rgba(0,60,24,0.5))'
+                : isNFT ? 'linear-gradient(135deg,rgba(40,28,0,0.7),rgba(60,42,0,0.5))'
+                : isLeg ? 'linear-gradient(135deg,rgba(40,32,0,0.6),rgba(50,38,0,0.4))'
+                : isEpic ? 'linear-gradient(135deg,rgba(20,12,60,0.6),rgba(30,18,80,0.4))'
+                : isRare ? 'linear-gradient(135deg,rgba(8,18,50,0.6),rgba(12,24,70,0.4))'
+                : 'rgba(255,255,255,0.03)';
+            const lotBorder = isLizard ? 'rgba(77,255,145,0.35)'
+                : isNFT ? 'rgba(255,215,0,0.35)'
+                : isLeg ? 'rgba(255,215,0,0.3)'
+                : isEpic ? 'rgba(162,155,254,0.3)'
+                : isRare ? 'rgba(77,180,255,0.25)'
+                : 'rgba(255,255,255,0.06)';
+            const lotGlow = isLizard ? '0 2px 12px rgba(77,255,145,0.12)'
+                : isNFT ? '0 2px 12px rgba(255,215,0,0.12)'
+                : isLeg ? '0 2px 10px rgba(255,215,0,0.1)'
+                : isEpic ? '0 2px 10px rgba(162,155,254,0.1)'
+                : isRare ? '0 2px 8px rgba(77,180,255,0.08)'
+                : 'none';
+            const nftLotShimmer = isNFT ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.07) 40%,transparent 60%,rgba(255,255,255,0.04) 80%,transparent 100%);background-size:300% 100%;animation:nftGoldShimmer 3.5s linear infinite;"></div>` : (isLeg ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,215,0,0.1) 50%,transparent 70%);background-size:200% 100%;animation:nftGoldShimmer 4s linear infinite;"></div>` : '');
+            // Extra rainbow animation classes for lot wrapper
+            const lotExtraAnim = isNFT && !isLizard ? 'animation:rainbowBorder 3s linear infinite,rainbowGlow 3s linear infinite;' : '';
+            const buyLabel = isMine ? '❌ Снять' : isLizard ? '🦎 Купить' : isNFT ? '✦ Купить' : isLeg ? '👑 Купить' : isEpic ? '💜 Купить' : isRare ? '💙 Купить' : '🛒 Купить';
+            return `<div style="position:relative;overflow:hidden;display:flex;align-items:center;gap:10px;padding:10px 12px;background:${lotBg};border:1.5px solid ${lotBorder};box-shadow:${lotGlow};border-radius:14px;${lotExtraAnim}">${nftLotShimmer}
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:11px;color:var(--secondary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="openUserProfile('${x.sI}')">${buildUsername({username:x.sN,activeCosmetic:x.sCosm||{}})}${isMine?' <span style="color:#4a6080;">(вы)</span>':''}</div>
+                    <div style="display:flex;align-items:center;gap:6px;">${upgStr}${timerStr}${itemId2?`<span style="font-size:10px;color:#3a5070;font-family:monospace;">#${itemId2}</span>`:''}</div>
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    <div style="font-size:16px;font-weight:900;color:${priceColor};">${x.mP.toLocaleString()}</div>
+                    <button style="margin-top:4px;border-radius:10px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}" onclick="${isMine?`remM('${k}');closeModal()`:`buyM('${k}',${x.mP},'${x.sI}',event)`}">
+                        ${buyLabel}
+                    </button>
+                </div>
+            </div>`;
+        }).join('');
 
         document.getElementById('modal-content').innerHTML = `
             <div style="padding:4px;" data-market-item-id="${itemId}">
-                <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
                     <div class="market-gift-thumb" style="width:72px;height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:18px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
                         ${giftImg(first,'lg')}
                     </div>
@@ -4287,12 +4246,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
                         <div style="font-size:11px;color:var(--secondary);margin-top:2px;">${lots.length} лот${lots.length===1?'':'ов'} · от ${lots[0][1].mP.toLocaleString()}</div>
                     </div>
                 </div>
-                <div style="display:flex;gap:6px;margin-bottom:10px;">
-                    <button class="mi-sort-btn" data-sort="price" onclick="sortMarketItem('price')" style="flex:1;padding:7px 4px;border-radius:10px;border:1px solid;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;${sbStyle('price')}">💸 Дешевле</button>
-                    <button class="mi-sort-btn" data-sort="price_desc" onclick="sortMarketItem('price_desc')" style="flex:1;padding:7px 4px;border-radius:10px;border:1px solid;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;${sbStyle('price_desc')}">💎 Дороже</button>
-                    <button class="mi-sort-btn" data-sort="rating" onclick="sortMarketItem('rating')" style="flex:1;padding:7px 4px;border-radius:10px;border:1px solid;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;${sbStyle('rating')}">🏆 Рейтинг</button>
-                </div>
-                <div class="mi-lots-wrap" style="display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow-y:auto;">
+                <div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;">
                     ${lotsHtml}
                 </div>
             </div>`;
@@ -4406,12 +4360,6 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
             const maxLvl = hasLots ? Math.max(0, ...g.lots.map(([,l]) => (l.upgrade && l.upgrade.level) ? l.upgrade.level : 0)) : 0;
             const lvlBadge = maxLvl > 0 ? `<div style="position:absolute;bottom:4px;right:4px;background:linear-gradient(90deg,#7c3aed,#a855f7);color:#fff;font-size:7px;font-weight:900;border-radius:4px;padding:1px 5px;z-index:3;line-height:1.4;letter-spacing:0.3px;">⚡LVL ${maxLvl}</div>` : '';
 
-            const _topSeller = hasLots ? g.lots.reduce((best,[,l])=>{
-                const rank = _sellerBestRank(l.sI);
-                return rank < best.rank ? {rank,id:l.sI} : best;
-            },{rank:9999,id:null}) : {rank:9999,id:null};
-            const sellerRankBadge = _sellerCardBadge(_topSeller.id);
-
             const priceStr = hasLots ? g.minP.toLocaleString() : '—';
 
             // Особые стили для NFT карточки
@@ -4427,7 +4375,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
                 style="background:${cardBg};border:${borderWidth} solid ${cardBorder};box-shadow:${extraGlow};border-radius:12px;overflow:hidden;display:flex;flex-direction:column;position:relative;cursor:pointer;opacity:${(hasLots||isNFT)?1:0.5};"
                 onclick="openMarketItem('${gid}')">
                 ${nftShine}
-                ${nftBadge}${countBadge}${lvlBadge}${sellerRankBadge}
+                ${nftBadge}${countBadge}${lvlBadge}
                 <div style="display:flex;align-items:center;justify-content:center;background:${imgBg};padding:12px 10px 10px;min-height:80px;position:relative;z-index:2;">
                     <div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;overflow:hidden;${!hasLots?'filter:grayscale(0.5);':''}${imgAnim}">${giftImg(cat,'sm')}</div>
                 </div>
@@ -6242,7 +6190,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
     window.switchLbTab = function(tab) {
         _lbTab = tab;
-        ['gifts','coins','friends','level'].forEach(t => {
+        ['gifts','coins','friends'].forEach(t => {
             const btn = document.getElementById('lb-tab-' + t);
             if (btn) btn.classList.toggle('lb-tab-active', t === tab);
         });
@@ -6274,29 +6222,10 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     gifts: Array.isArray(d.cloudInv) ? d.cloudInv.length
                          : (d.cloudInv ? Object.keys(d.cloudInv).length : 0),
                     friends: d.friends ? Object.keys(d.friends).length : 0,
-                    xp: d.xp || 0,
                     activeCosmetic: d.activeCosmetic || {},
                     cloudInv: d.cloudInv || [],
                 }));
             window._lbData = players;
-
-            // Build rank map + xp map for market seller badges
-            const byGifts = [...players].sort((a,b)=>b.gifts-a.gifts);
-            const byCoins = [...players].sort((a,b)=>b.balance-a.balance);
-            const byLevel = [...players].sort((a,b)=>{
-                const la=getLevelFromXp(a.xp), lb=getLevelFromXp(b.xp);
-                return lb!==la ? lb-la : b.xp-a.xp;
-            });
-            const rankMap = {};
-            byGifts.forEach((p,i)=>{ if(!rankMap[p.id]) rankMap[p.id]={}; rankMap[p.id].gifts=i+1; });
-            byCoins.forEach((p,i)=>{ if(!rankMap[p.id]) rankMap[p.id]={}; rankMap[p.id].coins=i+1; });
-            byLevel.forEach((p,i)=>{ if(!rankMap[p.id]) rankMap[p.id]={}; rankMap[p.id].level=i+1; });
-            window._lbRankMap = rankMap;
-            // xp lookup map: userId -> xp
-            const xpMap = {};
-            players.forEach(p => xpMap[p.id] = p.xp || 0);
-            window._lbXpMap = xpMap;
-
             if (document.getElementById('leaderboard')?.classList.contains('active')) {
                 renderLeaderboard(players);
             }
@@ -6318,16 +6247,6 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         } else if (_lbTab === 'coins') {
             sorted = [...players].sort((a, b) => b.balance - a.balance);
             valLabel = p => `<span style="font-size:15px;font-weight:800;">${p.balance.toLocaleString('ru')}</span> <span style="font-size:13px;">💰</span>`;
-        } else if (_lbTab === 'level') {
-            sorted = [...players].sort((a, b) => {
-                const la=getLevelFromXp(a.xp||0), lb=getLevelFromXp(b.xp||0);
-                return lb!==la ? lb-la : (b.xp||0)-(a.xp||0);
-            });
-            valLabel = p => {
-                const lvl = getLevelFromXp(p.xp||0);
-                const isMax = lvl >= XP_MAX_LEVEL;
-                return `<span style="font-size:15px;font-weight:800;">${isMax?'👑':'⭐'} ${isMax?'MAX':lvl}</span>`;
-            };
         } else {
             sorted = [...players].sort((a, b) => b.friends - a.friends);
             valLabel = p => `<span style="font-size:15px;font-weight:800;">${p.friends}</span> <span style="font-size:13px;">👥</span>`;
@@ -8383,6 +8302,133 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const sel = document.getElementById('give-gift-select');
         if (sel) sel.innerHTML = catalog.map(x=>`<option value="${x.id}">${x.i} ${x.n}</option>`).join('');
     }
+
+    // ── XP / Level give to player ────────────────────────────────────────
+    let _xpPlayerId = null, _xpPlayerName = null;
+
+    window.xpPlayerSearch = async (q) => {
+        if (!user || (!user.isAdm && !user.isMod)) return;
+        const drop = document.getElementById('xp-player-dropdown');
+        if (!drop) return;
+        if (!_allUsersCache) await loadAllUsers();
+        const query = (q||'').trim().toLowerCase();
+        const entries = Object.entries(_allUsersCache)
+            .filter(([id, d]) => typeof d === 'object' && d && (d.username || d.name))
+            .filter(([id, d]) => {
+                if (!query) return true;
+                const uname = (d.username || d.name || '').toLowerCase();
+                return id.toLowerCase().includes(query) || uname.includes(query);
+            }).slice(0, 20);
+        if (!entries.length) {
+            drop.style.display = query ? 'block' : 'none';
+            drop.innerHTML = query ? `<div style="padding:12px;text-align:center;color:var(--secondary);font-size:13px;">Никого не найдено</div>` : '';
+            return;
+        }
+        drop.style.display = 'block';
+        drop.innerHTML = entries.map(([id, d]) => {
+            const name = d.username || d.name || id;
+            const xp = d.xp || 0;
+            const lvl = getLevelFromXp(xp);
+            return `<div onclick="xpSelectPlayer('${id}','${name.replace(/'/g,"\'")}',${xp})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(162,155,254,0.1)'" onmouseout="this.style.background=''">
+                <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;font-weight:900;color:#fff;">⭐${lvl}</div>
+                <div><div style="font-weight:bold;font-size:13px;">${name}</div><div style="font-size:11px;color:var(--secondary);">@${id} · Ур. ${lvl} (${xp.toLocaleString()} XP)</div></div>
+            </div>`;
+        }).join('');
+    };
+
+    window.xpSelectPlayer = (id, name, xp) => {
+        _xpPlayerId = id; _xpPlayerName = name;
+        document.getElementById('xp-player-dropdown').style.display = 'none';
+        document.getElementById('xp-player-search').value = '';
+        const sel = document.getElementById('xp-player-selected');
+        if (sel) sel.style.display = 'flex';
+        document.getElementById('xp-player-label').textContent = `🎯 ${name} (@${id})`;
+        const lvl = getLevelFromXp(xp || 0);
+        const isMax = lvl >= XP_MAX_LEVEL;
+        document.getElementById('xp-player-curlvl').textContent = `Текущий уровень: ${isMax ? '👑 MAX' : '⭐ ' + lvl} · ${(xp||0).toLocaleString()} XP`;
+        xpUpdatePreview();
+    };
+
+    window.xpClearPlayer = () => {
+        _xpPlayerId = null; _xpPlayerName = null;
+        const sel = document.getElementById('xp-player-selected');
+        if (sel) sel.style.display = 'none';
+        document.getElementById('xp-preview').textContent = '';
+    };
+
+    window.xpModeChange = () => {
+        const mode = document.getElementById('xp-mode')?.value;
+        const lbl = document.getElementById('xp-amount-label');
+        const inp = document.getElementById('xp-amount');
+        if (mode === 'level') { lbl.textContent = 'Уровень (1–100)'; inp.max = 100; inp.min = 1; inp.placeholder = 'Уровень'; }
+        else if (mode === 'xp_add') { lbl.textContent = 'XP (+ или -)'; inp.removeAttribute('max'); inp.min = -999999; inp.placeholder = 'XP'; }
+        else { lbl.textContent = 'XP (точное)'; inp.removeAttribute('max'); inp.min = 0; inp.placeholder = 'XP'; }
+        xpUpdatePreview();
+    };
+
+    window.xpUpdatePreview = () => {
+        const prev = document.getElementById('xp-preview');
+        if (!prev) return;
+        const mode = document.getElementById('xp-mode')?.value;
+        const val = parseInt(document.getElementById('xp-amount')?.value);
+        if (!_xpPlayerId || isNaN(val)) { prev.textContent = ''; return; }
+        if (mode === 'level') {
+            const targetXp = xpForLevel(Math.max(1, Math.min(XP_MAX_LEVEL, val)));
+            prev.innerHTML = `→ Установить <b style="color:#c4b5fd;">⭐ ${val} ур.</b> (${targetXp.toLocaleString()} XP)`;
+        } else if (mode === 'xp_add') {
+            prev.innerHTML = `→ Добавить <b style="color:#c4b5fd;">${val > 0 ? '+' : ''}${val.toLocaleString()} XP</b>`;
+        } else {
+            const lvl = getLevelFromXp(val);
+            prev.innerHTML = `→ Установить <b style="color:#c4b5fd;">${val.toLocaleString()} XP</b> (⭐ ${lvl} ур.)`;
+        }
+    };
+
+    // Attach live preview on input change
+    document.addEventListener('DOMContentLoaded', () => {
+        const amtInp = document.getElementById('xp-amount');
+        if (amtInp) amtInp.addEventListener('input', xpUpdatePreview);
+    });
+
+    window.giveXpToPlayer = async () => {
+        if (!user || (!user.isAdm && !user.isMod)) return showToast('❌ Нет доступа', 'var(--err)');
+        if (!_xpPlayerId) return showToast('Выберите игрока', 'var(--err)');
+        const mode = document.getElementById('xp-mode')?.value;
+        const val = parseInt(document.getElementById('xp-amount')?.value);
+        if (isNaN(val)) return showToast('Введите значение', 'var(--err)');
+
+        let confirmMsg, newXp;
+        const snap = await get(ref(db, 'users/' + _xpPlayerId));
+        const d = snap.val() || {};
+        const curXp = d.xp || 0;
+
+        if (mode === 'level') {
+            const lvl = Math.max(1, Math.min(XP_MAX_LEVEL, val));
+            newXp = xpForLevel(lvl);
+            confirmMsg = `Установить ⭐ ${lvl} уровень (${newXp.toLocaleString()} XP) игроку @${_xpPlayerId}?`;
+        } else if (mode === 'xp_add') {
+            newXp = Math.max(0, curXp + val);
+            const newLvl = getLevelFromXp(newXp);
+            confirmMsg = `Добавить ${val > 0 ? '+' : ''}${val.toLocaleString()} XP игроку @${_xpPlayerId}?
+${curXp.toLocaleString()} → ${newXp.toLocaleString()} XP (⭐ ${newLvl} ур.)`;
+        } else {
+            newXp = Math.max(0, val);
+            const newLvl = getLevelFromXp(newXp);
+            confirmMsg = `Установить ${newXp.toLocaleString()} XP (⭐ ${newLvl} ур.) игроку @${_xpPlayerId}?`;
+        }
+
+        const ok = await showConfirm('Выдать уровень', confirmMsg, '⭐', '#7c3aed', 'Применить');
+        if (!ok) return;
+
+        await update(ref(db, 'users/' + _xpPlayerId), { xp: newXp });
+        const finalLvl = getLevelFromXp(newXp);
+        showToast(`✅ @${_xpPlayerId}: ⭐ ${finalLvl} ур. (${newXp.toLocaleString()} XP)`, '#a855f7');
+        // Update displayed current level
+        const curlvlEl = document.getElementById('xp-player-curlvl');
+        if (curlvlEl) curlvlEl.textContent = `Текущий уровень: ${finalLvl >= XP_MAX_LEVEL ? '👑 MAX' : '⭐ ' + finalLvl} · ${newXp.toLocaleString()} XP`;
+        // Refresh cache
+        if (_allUsersCache && _allUsersCache[_xpPlayerId]) _allUsersCache[_xpPlayerId].xp = newXp;
+        logActivity('admin_xp', { user: user.name, target: _xpPlayerId, mode, val, newXp, newLvl: finalLvl });
+    };
 
     window.givePlayerSearch = async (q) => {
         if(!user||(!user.isAdm&&!user.isMod)){showToast('❌ Нет доступа','var(--err)');return;}
