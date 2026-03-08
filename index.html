@@ -3706,13 +3706,15 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
         if(now<BEAR_END){const d=BEAR_END-now;const h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000);return {label:`⏳ Исчезнет через ${h}ч ${m}м`,av:true,show:true};}
         return {label:null,av:false,show:false};
     }
-    // 🐶 Snoop Dogg — доступен с 9 марта 00:00 МСК бессрочно (или поставь конец если нужно)
+    // 🐶 Snoop Dogg — доступен с 9 марта 00:00 МСК до 11 марта 23:59 МСК
     const SNOOP_START=new Date('2026-03-08T21:00:00Z').getTime(); // 9 марта 00:00 МСК
-    function isSnoopAvailable(){return Date.now()>=SNOOP_START;}
+    const SNOOP_END=new Date('2026-03-11T20:59:00Z').getTime();   // 11 марта 23:59 МСК
+    function isSnoopAvailable(){const n=Date.now();return n>=SNOOP_START&&n<SNOOP_END;}
     function getSnoopTimeLabel(){
         const now=Date.now();
         if(now<SNOOP_START){const d=SNOOP_START-now;const h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000);return {label:`🔒 Откроется через ${h}ч ${m}м`,av:false,show:true};}
-        return {label:`🔥 Доступен сейчас!`,av:true,show:true};
+        if(now<SNOOP_END){const d=SNOOP_END-now;const h=Math.floor(d/3600000),m=Math.floor((d%3600000)/60000);return {label:`⏳ Исчезнет через ${h}ч ${m}м`,av:true,show:true};}
+        return {label:null,av:false,show:false};
     }
     // Ящерица — 24 часа с 18 февраля 2026
     const LIZ_START=new Date('2026-02-18T17:00:00Z').getTime(); // 20:00 МСК
@@ -4222,7 +4224,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
                 if(!catIds.has(gid)) {
                     const g = grouped[gid];
                     if(marketFilter.sort !== 'mine' || g) {
-                        catItems.push({ id: gid, n: g.item.n || gid, i: g.item.i || '🎁', nft: g.item.nft, rarity: g.item.rarity, special: g.item.special, img: g.item.img });
+                        catItems.push({ id: gid, n: g.item.n || gid, i: g.item.i || '🎁', nft: g.item.nft || gid === 'bear8mar' || gid === 'snoop_dogg', rarity: g.item.rarity, special: g.item.special, img: g.item.img });
                     }
                 }
             }
@@ -4257,7 +4259,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
             const g = grouped[gid];
             const hasLots = !!g;
 
-            const isNFT = !!cat.nft;
+            const isNFT = !!cat.nft || cat.id === 'bear8mar' || cat.id === 'snoop_dogg';
             const isLizard = isNFT && cat.id === 997;
             const rar = getRarityObj(cat);
             const isRare = !isNFT && rar.id===1, isEpic = !isNFT && rar.id===2, isLeg = !isNFT && rar.id===3;
