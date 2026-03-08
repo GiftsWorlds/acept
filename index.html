@@ -1597,8 +1597,8 @@
                     <div class="tool-card-title" style="color:#c4b5fd;">⭐ Выдать уровень / XP игроку</div>
                     <div style="position:relative;margin-bottom:8px;">
                         <input type="text" id="xp-player-search" placeholder="🔍 Поиск игрока по нику..." style="margin:0;width:100%;box-sizing:border-box;"
-                            oninput="xpPlayerSearch(this.value)"
-                            onfocus="xpPlayerSearch(this.value)"
+                            oninput="window.xpPlayerSearch(this.value)"
+                            onfocus="window.xpPlayerSearch(this.value)"
                             autocomplete="off">
                         <div id="xp-player-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#111b21;border:1px solid rgba(162,155,254,0.3);border-radius:14px;z-index:999;max-height:200px;overflow-y:auto;margin-top:4px;box-shadow:0 8px 24px rgba(0,0,0,0.5);"></div>
                     </div>
@@ -1607,12 +1607,12 @@
                             <span id="xp-player-label" style="font-size:13px;font-weight:bold;color:#c4b5fd;">—</span>
                             <div id="xp-player-curlvl" style="font-size:11px;color:var(--secondary);margin-top:2px;"></div>
                         </div>
-                        <button onclick="xpClearPlayer()" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:16px;">✕</button>
+                        <button onclick="window.xpClearPlayer()" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:16px;">✕</button>
                     </div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
                         <div>
                             <div style="font-size:11px;color:var(--secondary);margin-bottom:4px;">Режим</div>
-                            <select id="xp-mode" style="margin:0;width:100%;height:42px;border-radius:12px;box-sizing:border-box;" onchange="xpModeChange()">
+                            <select id="xp-mode" style="margin:0;width:100%;height:42px;border-radius:12px;box-sizing:border-box;" onchange="window.xpModeChange()">
                                 <option value="level">⭐ Установить уровень</option>
                                 <option value="xp_add">➕ Добавить XP</option>
                                 <option value="xp_set">🎯 Установить XP</option>
@@ -1624,7 +1624,7 @@
                         </div>
                     </div>
                     <div id="xp-preview" style="font-size:11px;color:var(--secondary);margin-bottom:8px;min-height:16px;text-align:center;"></div>
-                    <button class="btn" onclick="giveXpToPlayer()" style="background:linear-gradient(135deg,#7c3aed,#a855f7);font-weight:bold;">⭐ Применить</button>
+                    <button class="btn" onclick="window.giveXpToPlayer()" style="background:linear-gradient(135deg,#7c3aed,#a855f7);font-weight:bold;">⭐ Применить</button>
                 </div>
                 <div style="height:1px;background:rgba(255,255,255,0.06);"></div>
                 <div class="tool-card">
@@ -8329,7 +8329,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const name = d.username || d.name || id;
             const xp = d.xp || 0;
             const lvl = getLevelFromXp(xp);
-            return `<div onclick="xpSelectPlayer('${id}','${name.replace(/'/g,"\'")}',${xp})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(162,155,254,0.1)'" onmouseout="this.style.background=''">
+            return `<div onclick="window.xpSelectPlayer('${id}','${name.replace(/'/g,"\'")}',${xp})" style="display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;border-bottom:1px solid rgba(255,255,255,0.04);" onmouseover="this.style.background='rgba(162,155,254,0.1)'" onmouseout="this.style.background=''">
                 <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#a855f7);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;font-weight:900;color:#fff;">⭐${lvl}</div>
                 <div><div style="font-weight:bold;font-size:13px;">${name}</div><div style="font-size:11px;color:var(--secondary);">@${id} · Ур. ${lvl} (${xp.toLocaleString()} XP)</div></div>
             </div>`;
@@ -8346,7 +8346,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const lvl = getLevelFromXp(xp || 0);
         const isMax = lvl >= XP_MAX_LEVEL;
         document.getElementById('xp-player-curlvl').textContent = `Текущий уровень: ${isMax ? '👑 MAX' : '⭐ ' + lvl} · ${(xp||0).toLocaleString()} XP`;
-        xpUpdatePreview();
+        window.xpUpdatePreview();
     };
 
     window.xpClearPlayer = () => {
@@ -8363,7 +8363,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if (mode === 'level') { lbl.textContent = 'Уровень (1–100)'; inp.max = 100; inp.min = 1; inp.placeholder = 'Уровень'; }
         else if (mode === 'xp_add') { lbl.textContent = 'XP (+ или -)'; inp.removeAttribute('max'); inp.min = -999999; inp.placeholder = 'XP'; }
         else { lbl.textContent = 'XP (точное)'; inp.removeAttribute('max'); inp.min = 0; inp.placeholder = 'XP'; }
-        xpUpdatePreview();
+        window.xpUpdatePreview();
     };
 
     window.xpUpdatePreview = () => {
@@ -8382,12 +8382,6 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             prev.innerHTML = `→ Установить <b style="color:#c4b5fd;">${val.toLocaleString()} XP</b> (⭐ ${lvl} ур.)`;
         }
     };
-
-    // Attach live preview on input change
-    document.addEventListener('DOMContentLoaded', () => {
-        const amtInp = document.getElementById('xp-amount');
-        if (amtInp) amtInp.addEventListener('input', xpUpdatePreview);
-    });
 
     window.giveXpToPlayer = async () => {
         if (!user || (!user.isAdm && !user.isMod)) return showToast('❌ Нет доступа', 'var(--err)');
@@ -8421,13 +8415,17 @@ ${curXp.toLocaleString()} → ${newXp.toLocaleString()} XP (⭐ ${newLvl} ур.)
 
         await update(ref(db, 'users/' + _xpPlayerId), { xp: newXp });
         const finalLvl = getLevelFromXp(newXp);
-        showToast(`✅ @${_xpPlayerId}: ⭐ ${finalLvl} ур. (${newXp.toLocaleString()} XP)`, '#a855f7');
-        // Update displayed current level
+        const isMaxFinal = finalLvl >= XP_MAX_LEVEL;
+        showToast(`✅ @${_xpPlayerId}: ${isMaxFinal ? '👑 MAX' : '⭐ ' + finalLvl + ' ур.'} (${newXp.toLocaleString()} XP)`, '#a855f7');
         const curlvlEl = document.getElementById('xp-player-curlvl');
-        if (curlvlEl) curlvlEl.textContent = `Текущий уровень: ${finalLvl >= XP_MAX_LEVEL ? '👑 MAX' : '⭐ ' + finalLvl} · ${newXp.toLocaleString()} XP`;
-        // Refresh cache
+        if (curlvlEl) curlvlEl.textContent = `Текущий уровень: ${isMaxFinal ? '👑 MAX' : '⭐ ' + finalLvl} · ${newXp.toLocaleString()} XP`;
         if (_allUsersCache && _allUsersCache[_xpPlayerId]) _allUsersCache[_xpPlayerId].xp = newXp;
-        logActivity('admin_xp', { user: user.name, target: _xpPlayerId, mode, val, newXp, newLvl: finalLvl });
+        // Reset amount field
+        const amtEl = document.getElementById('xp-amount');
+        if (amtEl) amtEl.value = '';
+        const prevEl = document.getElementById('xp-preview');
+        if (prevEl) prevEl.textContent = '';
+        logActivity('admin_xp', { user: user.name, userId: user.id, target: _xpPlayerId, mode, val, newXp, newLvl: finalLvl });
     };
 
     window.givePlayerSearch = async (q) => {
