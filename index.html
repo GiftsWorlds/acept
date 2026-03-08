@@ -444,8 +444,14 @@
         .btn:active:not(:disabled) { transform: scale(0.93) !important; opacity: 0.82; }
         input, textarea, select { width: 100%; padding: 14px; margin: 10px 0; border-radius: 15px; border: 2px solid #2b3a4a; background: #0e1621; color: white; outline: none; font-size: 16px; }
 
-        .page { display: none; padding: 15px; grid-template-columns: repeat(3, 1fr); gap: 12px; padding-bottom: 120px; }
+        .page { display: none; padding: 15px; grid-template-columns: repeat(3, 1fr); gap: 12px; padding-bottom: 120px;  contain: layout style; }
         .page.active { display: grid; animation: fadeInUp 0.3s ease both; }
+        /* 🚀 content-visibility: auto — браузер пропускает рендер невидимых секций */
+        #shop:not(.active), #inv:not(.active), #market:not(.active),
+        #friends:not(.active), #duel:not(.active), #profile:not(.active), #leaderboard:not(.active) {
+            content-visibility: auto;
+            contain-intrinsic-size: 0 600px;
+        }
         #leaderboard.active { display: flex !important; flex-direction: column; }
         #friends.active { display: flex !important; flex-direction: column; }
         #friends, #admin { display: none; flex-direction: column; width: 100%; max-width: 600px; margin: 0 auto; }
@@ -456,7 +462,7 @@
         .card .item-emoji { display: inline-block; transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
         .card:hover .item-emoji { animation: wiggle 0.55s ease; }
 
-        .nav { display: flex; background: var(--glass); backdrop-filter: blur(20px); position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 500px; border-radius: 30px; padding: 10px; z-index: 1000; border: 1px solid rgba(255,255,255,0.1); animation: slideInNav 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.1s both; }
+        .nav { display: flex; background: var(--glass); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transform: translateZ(0); position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 500px; border-radius: 30px; padding: 10px; z-index: 1000; border: 1px solid rgba(255,255,255,0.1); animation: slideInNav 0.55s cubic-bezier(0.34,1.56,0.64,1) 0.1s both; }
         .nav-btn { flex: 1; background: none; border: none; color: var(--secondary); cursor: pointer; display: flex; flex-direction: column; align-items: center; font-size: 11px; position: relative; transition: color 0.2s, transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
         .nav-btn:active { transform: scale(0.82); }
         .nav-btn.active { color: var(--accent); }
@@ -630,7 +636,7 @@
         .lb-name { font-size:14px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
         .lb-sub { font-size:11px;color:var(--secondary);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
         .lb-val { font-size:14px;font-weight:800;color:var(--accent);text-align:right;flex-shrink:0;white-space:nowrap; }
-        .rarity-nft { animation: rainbow 2s linear infinite; font-weight:bold; }
+        .rarity-nft { animation: rainbow 4s linear infinite; font-weight:bold; }
 
         /* ===== MERGE SYSTEM ===== */
         @keyframes mergeGlow { 0%,100%{box-shadow:0 0 0 0 rgba(255,215,0,0)} 50%{box-shadow:0 0 30px 8px rgba(255,215,0,0.5)} }
@@ -651,10 +657,23 @@
 
         /* Reduce animations on low-end devices */
         @media (prefers-reduced-motion: reduce) {
-            .nft-card, .nft-emoji, .rarity-nft, .rarity-legendary { animation: none !important; }
-            .card-rare, .card-epic, .card-legendary { animation: none !important; }
-            .merge-ready { animation: none !important; }
-            * { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+            * { animation: none !important; transition-duration: 0.01ms !important; }
+        }
+
+        /* ── Оптимизация для слабых устройств ── */
+        /* Отключаем дорогие постоянные анимации когда страница невидима */
+        .page:not(.active) * { animation-play-state: paused !important; }
+
+        /* Compositing hint для анимированных элементов */
+        .nft-card, .bear8mar-card, .market-nft-card-gold, .market-nft-card-lizard {
+            transform: translateZ(0);
+            will-change: box-shadow;
+        }
+        .nft-emoji, .bear8mar-card img { will-change: transform; }
+
+        /* Убираем backdrop-filter у навигации — очень дорого на старых GPU */
+        @supports not (backdrop-filter: blur(1px)) {
+            .nav { background: var(--bg-card) !important; }
         }
 
         .card-rare     { border:1.5px solid rgba(77,180,255,0.5)!important; background:linear-gradient(135deg,#0a0d2e,#0c1a30)!important; box-shadow:0 0 10px 2px rgba(77,180,255,0.18); }
@@ -691,7 +710,7 @@
         @keyframes bearPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,105,180,0.6),0 8px 32px rgba(255,20,147,0.3);} 50%{box-shadow:0 0 0 14px rgba(255,105,180,0),0 8px 32px rgba(255,20,147,0.5);} }
         @keyframes petalFall { 0%{transform:translateY(-20px) rotate(0deg) translateX(0);opacity:1;} 100%{transform:translateY(220px) rotate(360deg) translateX(30px);opacity:0;} }
         @keyframes heartOrbit { 0%{transform:rotate(0deg) translateX(52px) rotate(0deg);} 100%{transform:rotate(360deg) translateX(52px) rotate(-360deg);} }
-        .bear8mar-card { animation: bearPulse 2.5s ease-in-out infinite, fadeInScale 0.5s ease both; }
+        .bear8mar-card { animation: bearPulse 4s ease-in-out infinite, fadeInScale 0.5s ease both; }
         .bear-badge-8mar { position:absolute;top:12px;right:14px;font-size:11px;background:linear-gradient(90deg,#ff1493,#ff69b4,#ffb3de);color:#fff;padding:4px 12px;border-radius:20px;font-weight:bold;z-index:3;letter-spacing:1px;box-shadow:0 2px 8px rgba(255,20,147,0.5); }
         .bear-img-wrap { position:relative;display:inline-block;margin:10px auto 14px;width:120px;height:120px; }
         .bear-img-8mar { position:relative;z-index:2; }
@@ -877,8 +896,8 @@
             padding:0 6px 6px;
         }
         /* NFT market card animations */
-        .market-nft-card-gold { animation: marketNftGoldPulse 2.5s ease-in-out infinite !important; }
-        .market-nft-card-lizard { animation: marketNftLizPulse 2.5s ease-in-out infinite !important; }
+        .market-nft-card-gold { animation: marketNftGoldPulse 4s ease-in-out infinite !important; }
+        .market-nft-card-lizard { animation: marketNftLizPulse 4s ease-in-out infinite !important; }
         @keyframes marketNftGoldPulse{0%,100%{box-shadow:0 0 0 1.5px rgba(255,215,0,0.55),0 4px 20px rgba(255,215,0,0.25)}50%{box-shadow:0 0 0 2.5px rgba(255,215,0,0.9),0 6px 32px rgba(255,215,0,0.55)}}
         @keyframes marketNftLizPulse{0%,100%{box-shadow:0 0 0 1.5px rgba(77,255,145,0.55),0 4px 20px rgba(77,255,145,0.25)}50%{box-shadow:0 0 0 2.5px rgba(77,255,145,0.9),0 6px 32px rgba(77,255,145,0.55)}}
 
@@ -917,7 +936,7 @@
         .tg-gift-nft::before {
             content:''; position:absolute; inset:0; border-radius:18px; pointer-events:none; z-index:0;
             background:linear-gradient(105deg,transparent 25%,rgba(255,215,0,0.12) 50%,transparent 75%);
-            background-size:200% 100%; animation:nftGoldShimmer 2.5s linear infinite;
+            background-size:200% 100%; animation:nftGoldShimmer 4s linear infinite;
             will-change:background-position;
         }
         .tg-gift-nft .tg-gift-inner { z-index:1; }
@@ -925,14 +944,14 @@
         .tg-gift-nft .tg-gift-name {
             background:linear-gradient(90deg,#ffd700,#ffb347,#ffd700);
             background-size:200% auto;
-            animation:nftGoldShimmer 2s linear infinite;
+            animation:nftGoldShimmer 3.5s linear infinite;
             -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
             font-weight:bold;
         }
         .tg-gift-nft-badge {
             position:absolute; top:5px; right:5px; z-index:3;
             background:linear-gradient(90deg,#b8860b,#ffd700,#b8860b);
-            background-size:200% auto; animation:nftGoldShimmer 1.8s linear infinite;
+            background-size:200% auto; animation:nftGoldShimmer 3s linear infinite;
             color:#000; font-size:7px; font-weight:900; border-radius:6px; padding:2px 5px;
             letter-spacing:0.5px; box-shadow:0 1px 6px rgba(255,215,0,0.5);
             will-change:background-position;
@@ -955,14 +974,14 @@
         .tg-gift-nft-lizard::before {
             content:''; position:absolute; inset:0; border-radius:18px; pointer-events:none; z-index:0;
             background:linear-gradient(105deg,transparent 25%,rgba(77,255,145,0.12) 50%,transparent 75%);
-            background-size:200% 100%; animation:nftGoldShimmer 2.5s linear infinite;
+            background-size:200% 100%; animation:nftGoldShimmer 4s linear infinite;
             will-change:background-position;
         }
         .tg-gift-nft-lizard .tg-gift-inner { z-index:1; }
         .tg-gift-nft-lizard .tg-gift-inner img { animation:nftImgFloat 3s ease-in-out infinite; filter:drop-shadow(0 4px 16px rgba(77,255,145,0.6)); will-change:transform; }
         .tg-gift-nft-lizard .tg-gift-name {
             background:linear-gradient(90deg,#00ff88,#4dff91,#00cc66);
-            background-size:200% auto; animation:nftGoldShimmer 2s linear infinite;
+            background-size:200% auto; animation:nftGoldShimmer 3.5s linear infinite;
             -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; font-weight:bold;
         }
         .tg-gift-nft-lizard .tg-gift-nft-badge { background:linear-gradient(90deg,#007744,#4dff91,#007744); }
@@ -1433,7 +1452,7 @@
             <button class="adm-tab" onclick="admTab('tools',this)">🛠️ Инструменты</button>
             <button class="adm-tab" onclick="admTab('sales',this)">🛒 Продажи</button>
             <button class="adm-tab" onclick="admTab('catalog',this)">🎨 Каталог</button>
-            <button class="adm-tab" onclick="admTab('ai',this)" style="background:linear-gradient(135deg,rgba(124,58,237,0.2),rgba(236,72,153,0.2));border-color:rgba(124,58,237,0.4);">🤖 ИИ-Редактор</button>
+
             <button class="adm-tab" id="adm-tab-maintenance" onclick="admTab('maintenance',this)" style="background:linear-gradient(135deg,rgba(231,76,60,0.15),rgba(192,57,43,0.1));border-color:rgba(231,76,60,0.35);">🔧 Тех. перерыв</button>
         </div>
 
@@ -1456,7 +1475,7 @@
                     <button class="btn" style="background:rgba(36,129,204,0.12);border:1px solid rgba(36,129,204,0.2);color:var(--accent);font-size:12px;padding:10px;" onclick="admTab('users',document.querySelectorAll('#admin .adm-tab')[1])">👥 Игроки</button>
                     <button class="btn" style="background:rgba(36,129,204,0.12);border:1px solid rgba(36,129,204,0.2);color:var(--accent);font-size:12px;padding:10px;" onclick="admTab('sales',document.querySelectorAll('#admin .adm-tab')[5])">🛒 Продажи</button>
                     <!-- ИИ-Редактор -->
-                    <button class="btn" style="background:linear-gradient(135deg,rgba(124,58,237,0.18),rgba(236,72,153,0.12));border:1px solid rgba(124,58,237,0.4);color:#c4b5fd;font-size:12px;padding:10px;font-weight:700;" onclick="admTab('ai',document.querySelectorAll('#admin .adm-tab')[7])">🤖 ИИ-Редактор</button>
+
                     <!-- Создать подарок -->
                     <button class="btn" style="background:rgba(251,191,36,0.12);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;font-size:12px;padding:10px;font-weight:700;" onclick="admQuickCreateGift()">✨ Создать подарок</button>
                 </div>
@@ -1960,6 +1979,18 @@
 </div>
 
 <script type="module">
+
+    // ─── PERFORMANCE UTILS ────────────────────────────────────────────────────
+    function debounce(fn, ms) {
+        let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
+    }
+    function throttle(fn, ms) {
+        let last = 0; return (...a) => { const now = Date.now(); if (now - last >= ms) { last = now; fn(...a); } };
+    }
+    // Page visibility API — пауза тяжёлых операций когда вкладка скрыта
+    let _pageVisible = !document.hidden;
+    document.addEventListener('visibilitychange', () => { _pageVisible = !document.hidden; });
+
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
     import { getDatabase, ref, set, get, onValue, push, remove, update, onDisconnect, runTransaction } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
@@ -2393,7 +2424,7 @@
         const emoji = (x && x.i) || (cat && cat.i) || '🎁';
         if(size !== 'sm') {
                 const inner = img
-                ? `<img src="${img}" class="${cls}${isPony?' gift-img-pony':''}" alt="${(x&&x.n)||''}" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}',style:'font-size:${fs}px;display:block;text-align:center;'}))">`
+                ? `<img src="${img}" class="${cls}${isPony?' gift-img-pony':''}" alt="${(x&&x.n)||''}" loading="lazy" decoding="async" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'${emoji}',style:'font-size:${fs}px;display:block;text-align:center;'}))">`
                 : `<span style="font-size:${fs}px;display:block;text-align:center;">${emoji}</span>`;
             return `<div class="gift-img-wrap">${inner}</div>`;
         }
@@ -3106,7 +3137,7 @@
             const d=s.val(); if(!d) return;
             document.getElementById('header-name').innerHTML=buildUsername(d);
             document.getElementById('u-bal').innerText=d.balance;
-            renderFriends(d); renderMyProfile(d);
+            renderFriends(d); renderMyProfile(d); _invDirty = true; // инвентарь мог измениться
             // ⭐ XP за привязку TG (один раз)
             if(d.tgChatId && !d.xpTgLinked && !user.isAdm) {
                 update(ref(db,'users/'+id),{xpTgLinked:true});
@@ -3301,7 +3332,7 @@
 
         document.getElementById('inv').innerHTML = `
             <div class="search-filter-bar">
-                <input type="text" id="inv-search" placeholder="🔍 Поиск в инвентаре..." oninput="renderInv()" value="${searchVal}">
+                <input type="text" id="inv-search" placeholder="🔍 Поиск в инвентаре..." oninput="_debRenderInv()" value="${searchVal}">
                 <span style="color:var(--secondary);font-size:12px;white-space:nowrap;align-self:center;">${upd.length} пред.</span>
             </div>
             ${mergeBannerHtml}
@@ -3542,7 +3573,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
             <div style="padding:5px 0;">
                 <div style="text-align:center;margin-bottom:16px;">
                     <div style="width:80px;height:80px;margin:0 auto 10px;display:flex;align-items:center;justify-content:center;background:rgba(255,215,0,0.06);border-radius:20px;border:1px solid rgba(255,215,0,0.3);">
-                        ${img ? `<img src="${img}" style="width:64px;height:64px;object-fit:contain;">` : `<span style="font-size:54px;">${emoji}</span>`}
+                        ${img ? `<img src="${img}" loading="lazy" decoding="async" style="width:64px;height:64px;object-fit:contain;">` : `<span style="font-size:54px;">${emoji}</span>`}
                     </div>
                     <h3 style="margin:0 0 4px;">${item.n}</h3>
                     <div style="font-size:12px;color:gold;">✦ NFT · Уровень прокачки: <b>${curLevel}/5</b></div>
@@ -4073,6 +4104,9 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
 
     let marketData = {}, marketFilter = {q:'', sort:'mine'};
     window.filterMarket = (q) => { marketFilter.q = q.toLowerCase(); renderMarketCards(); };
+    // 🚀 OPT: debounced версии для поиска — не перерисовываем на каждую букву
+    window._debRenderInv = debounce(() => renderInv(), 150);
+    window._debFilterMarket = debounce((q) => filterMarket(q), 200);
     window.sortMarket = (type, btn) => {
         marketFilter.sort = type;
         document.querySelectorAll('#market .filter-btn').forEach(b=>b.classList.remove('active'));
@@ -4097,7 +4131,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
         }
         const first = lots[0][1];
         const cat = catalogMap.get(+itemId) || first;
-        const isNFT = !!first.nft;
+        const isNFT = !!first.nft || String(itemId) === 'bear8mar' || String(itemId) === 'snoop_dogg';
         const isLizard = isNFT && +itemId === 997;
         const rar = getRarityObj(first);
         const isRare = !isNFT && rar.id===1, isEpic = !isNFT && rar.id===2, isLeg = !isNFT && rar.id===3;
@@ -4146,7 +4180,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
                 : isEpic ? '0 2px 10px rgba(162,155,254,0.1)'
                 : isRare ? '0 2px 8px rgba(77,180,255,0.08)'
                 : 'none';
-            const nftLotShimmer = isNFT ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.07) 40%,transparent 60%,rgba(255,255,255,0.04) 80%,transparent 100%);background-size:300% 100%;animation:nftGoldShimmer 2s linear infinite;"></div>` : (isLeg ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,215,0,0.1) 50%,transparent 70%);background-size:200% 100%;animation:nftGoldShimmer 2.5s linear infinite;"></div>` : '');
+            const nftLotShimmer = isNFT ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.07) 40%,transparent 60%,rgba(255,255,255,0.04) 80%,transparent 100%);background-size:300% 100%;animation:nftGoldShimmer 3.5s linear infinite;"></div>` : (isLeg ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,215,0,0.1) 50%,transparent 70%);background-size:200% 100%;animation:nftGoldShimmer 4s linear infinite;"></div>` : '');
             // Extra rainbow animation classes for lot wrapper
             const lotExtraAnim = isNFT && !isLizard ? 'animation:rainbowBorder 3s linear infinite,rainbowGlow 3s linear infinite;' : '';
             const buyLabel = isMine ? '❌ Снять' : isLizard ? '🦎 Купить' : isNFT ? '✦ Купить' : isLeg ? '👑 Купить' : isEpic ? '💜 Купить' : isRare ? '💙 Купить' : '🛒 Купить';
@@ -4289,12 +4323,16 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
             const nftBadge = isNFT && hasLots ? `<div style="position:absolute;top:4px;right:4px;background:linear-gradient(90deg,${isLizard?'#007744,#4dff91':'#b8860b,#ffd700'});color:#000;font-size:7px;font-weight:900;border-radius:5px;padding:2px 6px;z-index:3;line-height:1.4;letter-spacing:0.5px;box-shadow:0 1px 6px rgba(0,0,0,0.4);">NFT</div>` : '';
             const countBadge = hasLots ? `<div style="position:absolute;top:4px;left:4px;background:rgba(36,129,204,0.9);color:#fff;font-size:7px;font-weight:700;border-radius:4px;padding:1px 4px;z-index:3;line-height:1.4;">${g.lots.length}</div>` : '';
 
+            // Max upgrade level badge
+            const maxLvl = hasLots ? Math.max(0, ...g.lots.map(([,l]) => (l.upgrade && l.upgrade.level) ? l.upgrade.level : 0)) : 0;
+            const lvlBadge = maxLvl > 0 ? `<div style="position:absolute;bottom:4px;right:4px;background:linear-gradient(90deg,#7c3aed,#a855f7);color:#fff;font-size:7px;font-weight:900;border-radius:4px;padding:1px 5px;z-index:3;line-height:1.4;letter-spacing:0.3px;">⚡LVL ${maxLvl}</div>` : '';
+
             const priceStr = hasLots ? g.minP.toLocaleString() : '—';
 
             // Особые стили для NFT карточки
             const isNFTCard = isNFT && hasLots;
             const nftCardClass = isNFTCard ? (isLizard ? ' market-nft-card-lizard' : ' market-nft-card-gold') : '';
-            const nftShine = isNFTCard ? `<div style="position:absolute;inset:0;border-radius:12px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(${isLizard?'77,255,145':'255,215,0'},0.13) 50%,transparent 70%);background-size:200% 100%;animation:nftGoldShimmer 2.5s linear infinite;z-index:1;"></div>` : '';
+            const nftShine = isNFTCard ? `<div style="position:absolute;inset:0;border-radius:12px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(${isLizard?'77,255,145':'255,215,0'},0.13) 50%,transparent 70%);background-size:200% 100%;animation:nftGoldShimmer 4s linear infinite;z-index:1;"></div>` : '';
             const nftStars = isNFTCard ? `<div style="position:absolute;top:8px;left:50%;transform:translateX(-50%);font-size:8px;z-index:2;opacity:0.7;">${isLizard?'✦':'✦'}</div>` : '';
             const imgAnim = isNFTCard ? `animation:nftImgFloat 3s ease-in-out infinite;filter:drop-shadow(0 4px 12px rgba(${isLizard?'77,255,145':'255,215,0'},0.5));` : '';
             const borderWidth = isNFTCard ? '2px' : '1.5px';
@@ -4304,7 +4342,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
                 style="background:${cardBg};border:${borderWidth} solid ${cardBorder};box-shadow:${extraGlow};border-radius:12px;overflow:hidden;display:flex;flex-direction:column;position:relative;cursor:pointer;opacity:${(hasLots||isNFT)?1:0.5};"
                 onclick="openMarketItem('${gid}')">
                 ${nftShine}
-                ${nftBadge}${countBadge}
+                ${nftBadge}${countBadge}${lvlBadge}
                 <div style="display:flex;align-items:center;justify-content:center;background:${imgBg};padding:12px 10px 10px;min-height:80px;position:relative;z-index:2;">
                     <div style="width:60px;height:60px;display:flex;align-items:center;justify-content:center;overflow:hidden;${!hasLots?'filter:grayscale(0.5);':''}${imgAnim}">${giftImg(cat,'sm')}</div>
                 </div>
@@ -4367,6 +4405,10 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
 
     window.listenMarket = () => {
         checkMarketExpiry();
+        // 🚀 OPT: throttle рендера рынка — не перерисовываем чаще раза в 2 секунды
+        const _renderMarketThrottled = throttle(() => {
+            if(document.getElementById('market-cards')) renderMarketCards();
+        }, 2000);
         onValue(ref(db,'market/'),s=>{
             marketData = s.val() || {};
             const market = document.getElementById('market');
@@ -4378,7 +4420,7 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
                 ).join('');
                 market.innerHTML = `
                     <div class="search-filter-bar">
-                        <input type="text" placeholder="🔍 Поиск на рынке..." oninput="filterMarket(this.value)">
+                        <input type="text" placeholder="🔍 Поиск на рынке..." oninput="_debFilterMarket(this.value)">
                         ${btns}
                     </div>
                     <div id="market-cards" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;grid-column:1/-1;"></div>
@@ -4401,8 +4443,8 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
         const itm=toArr(d.cloudInv).find(x=>x.inst==inst);
         if(!itm) return showToast("Не найден!",'var(--err)');
         const cat=catalog.find(c=>c.id==itm.id);
-        // 🔧 Картинка: приоритет каталога (актуальная), затем сохранённая (не data:)
-        const img=(cat&&cat.img)||(itm.img&&!itm.img.startsWith('data:')?itm.img:'')||'';
+        // 🔧 Картинка: используем resolveImg чтобы корректно обработать bear8mar/snoop_dogg и другие спецпредметы
+        const img=resolveImg(itm)||(cat&&cat.img)||'';
         const emo=(itm.i)||(cat&&cat.i)||'🎁';
         document.getElementById('modal-content').innerHTML=`
             <div style="text-align:center;padding:5px;">
@@ -6129,7 +6171,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if (_lbUnsubscribe) { _lbUnsubscribe(); _lbUnsubscribe = null; }
         list.innerHTML = '<div style="text-align:center;color:var(--secondary);padding:40px;font-size:14px;">⏳ Загрузка...</div>';
 
-        _lbUnsubscribe = onValue(ref(db, 'users'), snap => {
+        // 🚀 OPT: get() вместо onValue() для лидерборда — не нужен realtime
+        get(ref(db, 'users')).then(snap => {
             const all = snap.val() || {};
             const players = Object.entries(all)
                 .filter(([id, d]) => {
@@ -6153,7 +6196,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             if (document.getElementById('leaderboard')?.classList.contains('active')) {
                 renderLeaderboard(players);
             }
-        }, () => {
+        }).catch(() => {
             if (list) list.innerHTML = '<div style="color:var(--err);text-align:center;padding:20px;">Ошибка загрузки</div>';
         });
     };
@@ -6324,7 +6367,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             return `<div style="text-align:center;background:${bg};border-radius:16px;padding:10px 6px 8px;border:1.5px solid ${border};box-shadow:${shadow};position:relative;overflow:hidden;transition:transform 0.2s;">
                 ${isNFT ? `<div style="position:absolute;top:4px;right:4px;background:${isLizard?'linear-gradient(90deg,#007744,#4dff91)':'linear-gradient(90deg,#b8860b,#ffd700)'};color:#000;font-size:7px;font-weight:900;border-radius:5px;padding:2px 5px;letter-spacing:0.5px;z-index:2;">NFT</div>` : ''}
                 ${isPinCard ? `<div style="position:absolute;top:4px;left:4px;font-size:11px;z-index:2;">📌</div>` : ''}
-                ${isNFT ? `<div style="position:absolute;inset:0;border-radius:16px;background:linear-gradient(105deg,transparent 25%,${isLizard?'rgba(77,255,145,0.08)':'rgba(255,215,0,0.08)'} 50%,transparent 75%);background-size:200% 100%;animation:nftGoldShimmer 2.5s linear infinite;pointer-events:none;"></div>` : ''}
+                ${isNFT ? `<div style="position:absolute;inset:0;border-radius:16px;background:linear-gradient(105deg,transparent 25%,${isLizard?'rgba(77,255,145,0.08)':'rgba(255,215,0,0.08)'} 50%,transparent 75%);background-size:200% 100%;animation:nftGoldShimmer 4s linear infinite;pointer-events:none;"></div>` : ''}
                 <div style="width:56px;height:56px;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;position:relative;z-index:1;">
                     ${img ? `<img src="${img}" style="width:52px;height:52px;object-fit:contain;filter:${imgFilter};${isNFT?'animation:nftImgFloat 3s ease-in-out infinite;':''}" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:36px;">${emoji}</span>` : `<span style="font-size:36px;">${emoji}</span>`}
                 </div>
@@ -6383,7 +6426,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 </div>
 
                 <!-- All gifts (pinned first) -->
-                ${((d.privacy||{}).showGifts !== false) ? `
+                ${(user.isAdm || (d.privacy||{}).showGifts !== false) ? `
                 <div style="margin-bottom:14px;">
                     <div style="font-size:13px;font-weight:bold;color:var(--secondary);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
                         <span>🎁 Подарки</span>
@@ -6423,7 +6466,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if(id==='market') loadAdminMarket();
     };
 
-    window.admRefresh = () => { showToast('Данные обновлены 🔄','var(--accent)'); };
+    window.admRefresh = () => { if(typeof loadAdminData==='function') loadAdminData(); else if(typeof loadModData==='function') loadModData(); showToast('Обновление...','var(--accent)'); };
 
     window.admQuickCreateGift = () => {
         // Switch to catalog tab (index 6)
@@ -6582,9 +6625,14 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if(countEl) countEl.textContent = query ? `${visible} найдено` : `${document.querySelectorAll('.adm-user-row').length} игроков`;
     };
 
+    let _adminUsersUnsub = null;
     function initAdmin() {
         if(!user || !user.isAdm){ console.warn('initAdmin: no access'); return; }
-        onValue(ref(db,'users'),s=>{
+        // 🚀 OPT: используем get() вместо onValue() — не висим постоянным listener'ом на всех пользователях
+        // Данные обновляются по кнопке "Обновить" или при открытии вкладки
+        const loadAdminData = async () => {
+        const snap = await get(ref(db,'users')); const s = { val: () => snap.val() };
+        ((s)=>{
             const us=s.val(); if(!us) return;
             allUsersCache=us;
             const userList=Object.entries(us);
@@ -6789,14 +6837,18 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     </div>
                 </div>`;
             }).join('');
-        });
+        })(s); }; // end IIFE wrapper
+        loadAdminData(); // initial load
     }
 
     // ─── MOD PANEL (обрезанная панель для batlukov / nowkie) ─────────────────
     function initAdminMod() {
         if(!user || (!user.isMod && !user.isAdm)){ console.warn('initAdminMod: no access'); return; }
         const modLabel = MOD_PREFIXES[user.id] || 'Модератор';
-        onValue(ref(db,'users'),s=>{
+        // 🚀 OPT: get() вместо onValue()
+        const loadModData = async () => {
+        const snap = await get(ref(db,'users')); const s = { val: () => snap.val() };
+        ((s)=>{
             const us=s.val(); if(!us) return;
             const userList=Object.entries(us);
             const nonAdminList=userList.filter(([id])=>!ADMIN_IDS.has(id));
@@ -6926,7 +6978,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 const rows = document.querySelectorAll('#mod-users-list .adm-user-row');
                 rows.forEach(r=>{ r.style.display=(!q||r.dataset.name.includes(q.toLowerCase()))?'':'none'; });
             };
-        });
+        })(s); }; // end IIFE wrapper
+        loadModData(); // initial load
     }
 
     window.admToggleUser = async (id) => {
@@ -7136,6 +7189,10 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         });
     };
 
+    let _lastTabId = null;
+    let _invDirty = true; // флаг — нужна ли перерисовка инвентаря
+    window.markInvDirty = () => { _invDirty = true; }; // вызывается при изменении инвентаря
+
     window.tab=(id,b)=>{
         // 🔒 Проверка доступа к admin-панели
         if(id==='admin' && !user.isAdm && !user.isMod){
@@ -7147,11 +7204,14 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
         document.getElementById(id).classList.add('active');b.classList.add('active');
-        if(id==='inv') renderInv();
-        if(id==='shop') { renderShop().then(()=>renderShopCards()); }
+        // 🚀 OPT: не перерисовываем если та же вкладка и данные не изменились
+        const sameTab = (id === _lastTabId);
+        _lastTabId = id;
+        if(id==='inv') { if(_invDirty || !sameTab) { renderInv(); _invDirty = false; } }
+        if(id==='shop') { if(!sameTab) renderShop().then(()=>renderShopCards()); }
         if(id==='market') listenMarket();
         if(id==='profile') { get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); }); }
-        if(id==='leaderboard') loadLeaderboard();
+        if(id==='leaderboard') { if(!sameTab) loadLeaderboard(); }
     };
     // ===== TELEGRAM INTEGRATION =====
     const TG_BOT_TOKEN = '8080771405:AAGsN_dudAoaiNmqLdgWsol8iL7ZDwqu-Ho';
