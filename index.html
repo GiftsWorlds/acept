@@ -6628,12 +6628,12 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
     let _adminUsersUnsub = null;
     function initAdmin() {
         if(!user || !user.isAdm){ console.warn('initAdmin: no access'); return; }
+        let _activityUnsub = null;
         // 🚀 OPT: используем get() вместо onValue() — не висим постоянным listener'ом на всех пользователях
         // Данные обновляются по кнопке "Обновить" или при открытии вкладки
         const loadAdminData = async () => {
-        const snap = await get(ref(db,'users')); const s = { val: () => snap.val() };
-        ((s)=>{
-            const us=s.val(); if(!us) return;
+        const snap = await get(ref(db,'users'));
+            const us = snap.val(); if(!us) return;
             allUsersCache=us;
             const userList=Object.entries(us);
             const nonAdminList=userList.filter(([id])=>!ADMIN_IDS.has(id));
@@ -6756,7 +6756,6 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     </div>
                 </div>`;
             }).join('');
-        });
 
         // Load promos
         onValue(ref(db,'promos'),s=>{
@@ -6781,7 +6780,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         });
 
         // Live activity feed
-        onValue(ref(db,'activity_log'), snap => {
+        if (_activityUnsub) { _activityUnsub(); _activityUnsub = null; }
+        _activityUnsub = onValue(ref(db,'activity_log'), snap => {
             const feedEl = document.getElementById('adm-activity-feed');
             if(!feedEl) return;
             const raw = snap.exists() ? snap.val() : null;
@@ -6837,7 +6837,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     </div>
                 </div>`;
             }).join('');
-        })(s); }; // end IIFE wrapper
+        }); // end onValue activity_log
+        }; // end loadAdminData
         loadAdminData(); // initial load
     }
 
@@ -6847,9 +6848,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const modLabel = MOD_PREFIXES[user.id] || 'Модератор';
         // 🚀 OPT: get() вместо onValue()
         const loadModData = async () => {
-        const snap = await get(ref(db,'users')); const s = { val: () => snap.val() };
-        ((s)=>{
-            const us=s.val(); if(!us) return;
+        const snap = await get(ref(db,'users'));
+            const us = snap.val(); if(!us) return;
             const userList=Object.entries(us);
             const nonAdminList=userList.filter(([id])=>!ADMIN_IDS.has(id));
             const totalBal=nonAdminList.reduce((a,[,u])=>a+(u.balance||0),0);
@@ -6978,7 +6978,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 const rows = document.querySelectorAll('#mod-users-list .adm-user-row');
                 rows.forEach(r=>{ r.style.display=(!q||r.dataset.name.includes(q.toLowerCase()))?'':'none'; });
             };
-        })(s); }; // end IIFE wrapper
+        }; // end loadModData
         loadModData(); // initial load
     }
 
