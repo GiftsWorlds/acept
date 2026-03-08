@@ -1426,6 +1426,7 @@
             <button id="lb-tab-gifts" onclick="switchLbTab('gifts')" class="lb-tab lb-tab-active">🎁 Подарки</button>
             <button id="lb-tab-coins" onclick="switchLbTab('coins')" class="lb-tab">💰 Монеты</button>
             <button id="lb-tab-friends" onclick="switchLbTab('friends')" class="lb-tab">👥 Друзья</button>
+            <button id="lb-tab-level" onclick="switchLbTab('level')" class="lb-tab">⭐ Уровень</button>
         </div>
         <div id="lb-list" style="display:flex;flex-direction:column;gap:8px;">
             <div style="text-align:center;color:var(--secondary);padding:40px;font-size:14px;">Загрузка...</div>
@@ -6157,7 +6158,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
     window.switchLbTab = function(tab) {
         _lbTab = tab;
-        ['gifts','coins','friends'].forEach(t => {
+        ['gifts','coins','friends','level'].forEach(t => {
             const btn = document.getElementById('lb-tab-' + t);
             if (btn) btn.classList.toggle('lb-tab-active', t === tab);
         });
@@ -6189,6 +6190,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     gifts: Array.isArray(d.cloudInv) ? d.cloudInv.length
                          : (d.cloudInv ? Object.keys(d.cloudInv).length : 0),
                     friends: d.friends ? Object.keys(d.friends).length : 0,
+                    xp: d.xp || 0,
                     activeCosmetic: d.activeCosmetic || {},
                     cloudInv: d.cloudInv || [],
                 }));
@@ -6214,6 +6216,13 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         } else if (_lbTab === 'coins') {
             sorted = [...players].sort((a, b) => b.balance - a.balance);
             valLabel = p => `<span style="font-size:15px;font-weight:800;">${p.balance.toLocaleString('ru')}</span> <span style="font-size:13px;">💰</span>`;
+        } else if (_lbTab === 'level') {
+            sorted = [...players].sort((a, b) => (getLevelFromXp(b.xp) - getLevelFromXp(a.xp)) || (b.xp - a.xp));
+            valLabel = p => {
+                const lvl = getLevelFromXp(p.xp);
+                const isMax = lvl >= XP_MAX_LEVEL;
+                return `<span style="font-size:15px;font-weight:800;">${isMax ? '👑' : '⭐'} ${isMax ? 'MAX' : lvl}</span>`;
+            };
         } else {
             sorted = [...players].sort((a, b) => b.friends - a.friends);
             valLabel = p => `<span style="font-size:15px;font-weight:800;">${p.friends}</span> <span style="font-size:13px;">👥</span>`;
