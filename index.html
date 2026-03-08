@@ -1426,7 +1426,6 @@
             <button id="lb-tab-gifts" onclick="switchLbTab('gifts')" class="lb-tab lb-tab-active">🎁 Подарки</button>
             <button id="lb-tab-coins" onclick="switchLbTab('coins')" class="lb-tab">💰 Монеты</button>
             <button id="lb-tab-friends" onclick="switchLbTab('friends')" class="lb-tab">👥 Друзья</button>
-            <button id="lb-tab-level" onclick="switchLbTab('level')" class="lb-tab">⭐ Уровень</button>
         </div>
         <div id="lb-list" style="display:flex;flex-direction:column;gap:8px;">
             <div style="text-align:center;color:var(--secondary);padding:40px;font-size:14px;">Загрузка...</div>
@@ -4118,7 +4117,126 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
     // ─── РЫНОК: сетка уникальных товаров → детальная страница ───────────────
 
     // Открывает список лотов конкретного подарка
+    // Helper: get best rank for a seller
+    function _sellerBestRank(sellerId) {
+        const rm = window._lbRankMap;
+        if (!rm || !sellerId || !rm[sellerId]) return 9999;
+        const r = rm[sellerId];
+        return Math.min(r.gifts||9999, r.coins||9999, r.level||9999);
+    }
+
+    window._miSort = 'price'; // current sort for market item modal
+
+    window.sortMarketItem = function(sortType) {
+        window._miSort = sortType;
+        // Update button styles
+        document.querySelectorAll('.mi-sort-btn').forEach(b => {
+            const isActive = b.dataset.sort === sortType;
+            b.style.background = isActive ? 'rgba(36,129,204,0.3)' : 'rgba(255,255,255,0.05)';
+            b.style.borderColor = isActive ? 'rgba(36,129,204,0.6)' : 'rgba(255,255,255,0.1)';
+            b.style.color = isActive ? 'var(--accent)' : 'var(--secondary)';
+        });
+        // Re-sort and re-render lots list
+        const wrap = document.querySelector('.mi-lots-wrap');
+        if (!wrap) return;
+        const itemId = document.querySelector('[data-market-item-id]')?.dataset.marketItemId;
+        if (!itemId) return;
+        let lots = Object.entries(marketData).filter(([,x]) => String(x.id) === String(itemId) && (!x.expiresAt || x.expiresAt > Date.now()) && !x.sold);
+        _sortMiLots(lots, sortType);
+        wrap.innerHTML = lots.map(([k,x]) => _miLotRow(k, x, itemId)).join('');
+    };
+
+    function _sortMiLots(lots, sortType) {
+        if (sortType === 'price') {
+            lots.sort((a,b) => a[1].mP - b[1].mP);
+        } else if (sortType === 'price_desc') {
+            lots.sort((a,b) => b[1].mP - a[1].mP);
+        } else if (sortType === 'rating') {
+            lots.sort((a,b) => {
+                const ra = _sellerBestRank(a[1].sI), rb = _sellerBestRank(b[1].sI);
+                if (ra !== rb) return ra - rb; // lower rank number = better
+                return a[1].mP - b[1].mP;
+            });
+        }
+    }
+
+    function _miLotRow(k, x, itemId) {
+        const isNFT = !!x.nft || String(itemId) === 'bear8mar' || String(itemId) === 'snoop_dogg';
+        const isLizard = isNFT && +itemId === 997;
+        const rar = getRarityObj(x);
+        const isRare = !isNFT && rar.id===1, isEpic = !isNFT && rar.id===2, isLeg = !isNFT && rar.id===3;
+        const priceColor = isLizard?'#4dff91':isNFT||isLeg?'#ffd700':isEpic?'#a29bfe':isRare?'#4db4ff':'var(--accent)';
+        const isMine = x.sI === user.id;
+        const timerStr = (()=>{
+            if(!x.expiresAt) return '';
+            const left = x.expiresAt - Date.now();
+            if(left<=0) return '<span style="color:var(--err);font-size:11px;">⏰ Истекает</span>';
+            const h=Math.floor(left/3600000), m=Math.floor((left%3600000)/60000);
+            return `<span style="color:var(--secondary);font-size:11px;">⏳ ${h>0?h+'ч ':''} ${m}м</span>`;
+        })();
+        const upgStr = x.upgrade && x.upgrade.level
+            ? `<span style="color:#a29bfe;font-size:11px;font-weight:700;">⚡ LVL ${x.upgrade.level}</span>` : '';
+        const itemId2 = x.nftSerial ? x.nftSerial : (x.inst ? String(x.inst).slice(-6) : '');
+        const btnStyle = isMine
+            ? 'background:rgba(231,76,60,0.15);color:var(--err);border:1px solid rgba(231,76,60,0.3);'
+            : isLizard ? 'background:linear-gradient(90deg,#007744,#4dff91);color:#000;border:none;'
+            : isNFT ? 'background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;border:none;'
+            : isLeg ? 'background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;border:none;'
+            : isEpic ? 'background:rgba(162,155,254,0.25);color:#a29bfe;border:1px solid rgba(162,155,254,0.4);'
+            : isRare ? 'background:rgba(77,180,255,0.18);color:#4db4ff;border:1px solid rgba(77,180,255,0.3);'
+            : 'background:rgba(36,129,204,0.18);color:var(--accent);border:1px solid rgba(36,129,204,0.3);';
+        const lotBg = isLizard ? 'linear-gradient(135deg,rgba(0,40,16,0.7),rgba(0,60,24,0.5))'
+            : isNFT ? 'linear-gradient(135deg,rgba(40,28,0,0.7),rgba(60,42,0,0.5))'
+            : isLeg ? 'linear-gradient(135deg,rgba(40,32,0,0.6),rgba(50,38,0,0.4))'
+            : isEpic ? 'linear-gradient(135deg,rgba(20,12,60,0.6),rgba(30,18,80,0.4))'
+            : isRare ? 'linear-gradient(135deg,rgba(8,18,50,0.6),rgba(12,24,70,0.4))'
+            : 'rgba(255,255,255,0.03)';
+        const lotBorder = isLizard ? 'rgba(77,255,145,0.35)'
+            : isNFT ? 'rgba(255,215,0,0.35)'
+            : isLeg ? 'rgba(255,215,0,0.3)'
+            : isEpic ? 'rgba(162,155,254,0.3)'
+            : isRare ? 'rgba(77,180,255,0.25)'
+            : 'rgba(255,255,255,0.06)';
+        const lotGlow = isLizard ? '0 2px 12px rgba(77,255,145,0.12)'
+            : isNFT ? '0 2px 12px rgba(255,215,0,0.12)'
+            : isLeg ? '0 2px 10px rgba(255,215,0,0.1)'
+            : isEpic ? '0 2px 10px rgba(162,155,254,0.1)'
+            : isRare ? '0 2px 8px rgba(77,180,255,0.08)'
+            : 'none';
+        const nftLotShimmer = isNFT ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.07) 40%,transparent 60%,rgba(255,255,255,0.04) 80%,transparent 100%);background-size:300% 100%;animation:nftGoldShimmer 3.5s linear infinite;"></div>` : (isLeg ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,215,0,0.1) 50%,transparent 70%);background-size:200% 100%;animation:nftGoldShimmer 4s linear infinite;"></div>` : '');
+        const lotExtraAnim = isNFT && !isLizard ? 'animation:rainbowBorder 3s linear infinite,rainbowGlow 3s linear infinite;' : '';
+        const buyLabel = isMine ? '❌ Снять' : isLizard ? '🦎 Купить' : isNFT ? '✦ Купить' : isLeg ? '👑 Купить' : isEpic ? '💜 Купить' : isRare ? '💙 Купить' : '🛒 Купить';
+        // Seller rank badge in lot
+        const sellerBadge = (()=>{
+            const rm = window._lbRankMap;
+            if (!rm || !x.sI || !rm[x.sI]) return '';
+            const r = rm[x.sI];
+            const best = Math.min(r.gifts||9999, r.coins||9999, r.level||9999);
+            if (best <= 10) {
+                const cat = r.gifts<=10&&r.gifts===best?`🎁 #${r.gifts}`:r.coins<=10&&r.coins===best?`💰 #${r.coins}`:`⭐ #${r.level}`;
+                return `<span style="display:inline-flex;align-items:center;background:linear-gradient(90deg,rgba(255,215,0,0.25),rgba(255,180,0,0.15));border:1px solid rgba(255,215,0,0.5);color:#ffd700;font-size:8px;font-weight:900;border-radius:6px;padding:1px 5px;line-height:1.5;vertical-align:middle;margin-left:3px;box-shadow:0 0 6px rgba(255,215,0,0.2);">🏆 ${cat}</span>`;
+            } else if (best <= 50) {
+                const cat = r.gifts<=50&&r.gifts===best?`🎁 #${r.gifts}`:r.coins<=50&&r.coins===best?`💰 #${r.coins}`:`⭐ #${r.level}`;
+                return `<span style="display:inline-flex;align-items:center;background:rgba(162,155,254,0.15);border:1px solid rgba(162,155,254,0.4);color:#c4b5fd;font-size:8px;font-weight:900;border-radius:6px;padding:1px 5px;line-height:1.5;vertical-align:middle;margin-left:3px;">⭐ ${cat}</span>`;
+            }
+            return '';
+        })();
+        return `<div style="position:relative;overflow:hidden;display:flex;align-items:center;gap:10px;padding:10px 12px;background:${lotBg};border:1.5px solid ${lotBorder};box-shadow:${lotGlow};border-radius:14px;${lotExtraAnim}">${nftLotShimmer}
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:11px;color:var(--secondary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="openUserProfile('${x.sI}')">${buildUsername({username:x.sN,activeCosmetic:x.sCosm||{}})}${sellerBadge}${isMine?' <span style="color:#4a6080;">(вы)</span>':''}</div>
+                <div style="display:flex;align-items:center;gap:6px;">${upgStr}${timerStr}${itemId2?`<span style="font-size:10px;color:#3a5070;font-family:monospace;">#${itemId2}</span>`:''}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+                <div style="font-size:16px;font-weight:900;color:${priceColor};">${x.mP.toLocaleString()}</div>
+                <button style="margin-top:4px;border-radius:10px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}" onclick="${isMine?`remM('${k}');closeModal()`:` buyM('${k}',${x.mP},'${x.sI}',event)`}">
+                    ${buyLabel}
+                </button>
+            </div>
+        </div>`;
+    }
+
     window.openMarketItem = (itemId) => {
+        window._miSort = window._miSort || 'price';
         const lots = Object.entries(marketData).filter(([,x]) => String(x.id) === String(itemId) && (!x.expiresAt || x.expiresAt > Date.now()) && !x.sold);
         const cat0 = catalogMap.get(+itemId) || (lots[0]||[])[1] || {};
         if(!lots.length) {
@@ -4140,68 +4258,19 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
         const nameGrad = isLizard?'background:linear-gradient(90deg,#00ff88,#4dff91);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;'
             :isNFT||isLeg?'background:linear-gradient(90deg,#ffd700,#ffb347);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;':'';
 
-        // Sort lots by price asc
-        lots.sort((a,b) => a[1].mP - b[1].mP);
+        // Sort lots by current sort
+        _sortMiLots(lots, window._miSort);
 
-        const lotsHtml = lots.map(([k,x]) => {
-            const isMine = x.sI === user.id;
-            const timerStr = (()=>{
-                if(!x.expiresAt) return '';
-                const left = x.expiresAt - Date.now();
-                if(left<=0) return '<span style="color:var(--err);font-size:11px;">⏰ Истекает</span>';
-                const h=Math.floor(left/3600000), m=Math.floor((left%3600000)/60000);
-                return `<span style="color:var(--secondary);font-size:11px;">⏳ ${h>0?h+'ч ':''} ${m}м</span>`;
-            })();
-            const upgStr = x.upgrade && x.upgrade.level
-                ? `<span style="color:#a29bfe;font-size:11px;font-weight:700;">⚡ LVL ${x.upgrade.level}</span>` : '';
-            const itemId2 = x.nftSerial ? x.nftSerial : (x.inst ? String(x.inst).slice(-6) : '');
-            const btnStyle = isMine
-                ? 'background:rgba(231,76,60,0.15);color:var(--err);border:1px solid rgba(231,76,60,0.3);'
-                : isLizard ? 'background:linear-gradient(90deg,#007744,#4dff91);color:#000;border:none;'
-                : isNFT ? 'background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;border:none;'
-                : isLeg ? 'background:linear-gradient(90deg,#b8860b,#ffd700);color:#000;border:none;'
-                : isEpic ? 'background:rgba(162,155,254,0.25);color:#a29bfe;border:1px solid rgba(162,155,254,0.4);'
-                : isRare ? 'background:rgba(77,180,255,0.18);color:#4db4ff;border:1px solid rgba(77,180,255,0.3);'
-                : 'background:rgba(36,129,204,0.18);color:var(--accent);border:1px solid rgba(36,129,204,0.3);';
-            const lotBg = isLizard ? 'linear-gradient(135deg,rgba(0,40,16,0.7),rgba(0,60,24,0.5))'
-                : isNFT ? 'linear-gradient(135deg,rgba(40,28,0,0.7),rgba(60,42,0,0.5))'
-                : isLeg ? 'linear-gradient(135deg,rgba(40,32,0,0.6),rgba(50,38,0,0.4))'
-                : isEpic ? 'linear-gradient(135deg,rgba(20,12,60,0.6),rgba(30,18,80,0.4))'
-                : isRare ? 'linear-gradient(135deg,rgba(8,18,50,0.6),rgba(12,24,70,0.4))'
-                : 'rgba(255,255,255,0.03)';
-            const lotBorder = isLizard ? 'rgba(77,255,145,0.35)'
-                : isNFT ? 'rgba(255,215,0,0.35)'
-                : isLeg ? 'rgba(255,215,0,0.3)'
-                : isEpic ? 'rgba(162,155,254,0.3)'
-                : isRare ? 'rgba(77,180,255,0.25)'
-                : 'rgba(255,255,255,0.06)';
-            const lotGlow = isLizard ? '0 2px 12px rgba(77,255,145,0.12)'
-                : isNFT ? '0 2px 12px rgba(255,215,0,0.12)'
-                : isLeg ? '0 2px 10px rgba(255,215,0,0.1)'
-                : isEpic ? '0 2px 10px rgba(162,155,254,0.1)'
-                : isRare ? '0 2px 8px rgba(77,180,255,0.08)'
-                : 'none';
-            const nftLotShimmer = isNFT ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 20%,rgba(255,255,255,0.07) 40%,transparent 60%,rgba(255,255,255,0.04) 80%,transparent 100%);background-size:300% 100%;animation:nftGoldShimmer 3.5s linear infinite;"></div>` : (isLeg ? `<div style="position:absolute;inset:0;border-radius:14px;pointer-events:none;background:linear-gradient(115deg,transparent 30%,rgba(255,215,0,0.1) 50%,transparent 70%);background-size:200% 100%;animation:nftGoldShimmer 4s linear infinite;"></div>` : '');
-            // Extra rainbow animation classes for lot wrapper
-            const lotExtraAnim = isNFT && !isLizard ? 'animation:rainbowBorder 3s linear infinite,rainbowGlow 3s linear infinite;' : '';
-            const buyLabel = isMine ? '❌ Снять' : isLizard ? '🦎 Купить' : isNFT ? '✦ Купить' : isLeg ? '👑 Купить' : isEpic ? '💜 Купить' : isRare ? '💙 Купить' : '🛒 Купить';
-            return `<div style="position:relative;overflow:hidden;display:flex;align-items:center;gap:10px;padding:10px 12px;background:${lotBg};border:1.5px solid ${lotBorder};box-shadow:${lotGlow};border-radius:14px;${lotExtraAnim}">${nftLotShimmer}
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:11px;color:var(--secondary);margin-bottom:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;" onclick="openUserProfile('${x.sI}')">${buildUsername({username:x.sN,activeCosmetic:x.sCosm||{}})}${isMine?' <span style="color:#4a6080;">(вы)</span>':''}</div>
-                    <div style="display:flex;align-items:center;gap:6px;">${upgStr}${timerStr}${itemId2?`<span style="font-size:10px;color:#3a5070;font-family:monospace;">#${itemId2}</span>`:''}</div>
-                </div>
-                <div style="text-align:right;flex-shrink:0;">
-                    <div style="font-size:16px;font-weight:900;color:${priceColor};">${x.mP.toLocaleString()}</div>
-                    <button style="margin-top:4px;border-radius:10px;padding:6px 14px;font-size:11px;font-weight:700;cursor:pointer;${btnStyle}" onclick="${isMine?`remM('${k}');closeModal()`:`buyM('${k}',${x.mP},'${x.sI}',event)`}">
-                        ${buyLabel}
-                    </button>
-                </div>
-            </div>`;
-        }).join('');
+        const lotsHtml = lots.map(([k,x]) => _miLotRow(k, x, itemId)).join('');
+
+        // Sort button active state helper
+        const sbStyle = (s) => window._miSort === s
+            ? 'background:rgba(36,129,204,0.3);border-color:rgba(36,129,204,0.6);color:var(--accent);'
+            : 'background:rgba(255,255,255,0.05);border-color:rgba(255,255,255,0.1);color:var(--secondary);';
 
         document.getElementById('modal-content').innerHTML = `
             <div style="padding:4px;" data-market-item-id="${itemId}">
-                <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
                     <div class="market-gift-thumb" style="width:72px;height:72px;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.05);border-radius:18px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;">
                         ${giftImg(first,'lg')}
                     </div>
@@ -4214,7 +4283,12 @@ ${newRarObj2.icon} <b>${baseItem.n}</b>
                         <div style="font-size:11px;color:var(--secondary);margin-top:2px;">${lots.length} лот${lots.length===1?'':'ов'} · от ${lots[0][1].mP.toLocaleString()}</div>
                     </div>
                 </div>
-                <div style="display:flex;flex-direction:column;gap:8px;max-height:55vh;overflow-y:auto;">
+                <div style="display:flex;gap:6px;margin-bottom:10px;">
+                    <button class="mi-sort-btn" data-sort="price" onclick="sortMarketItem('price')" style="flex:1;padding:6px 4px;border-radius:10px;border:1px solid;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;${sbStyle('price')}">💸 Дешевле</button>
+                    <button class="mi-sort-btn" data-sort="price_desc" onclick="sortMarketItem('price_desc')" style="flex:1;padding:6px 4px;border-radius:10px;border:1px solid;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;${sbStyle('price_desc')}">💎 Дороже</button>
+                    <button class="mi-sort-btn" data-sort="rating" onclick="sortMarketItem('rating')" style="flex:1;padding:6px 4px;border-radius:10px;border:1px solid;font-size:11px;font-weight:700;cursor:pointer;transition:all 0.2s;${sbStyle('rating')}">🏆 Рейтинг</button>
+                </div>
+                <div class="mi-lots-wrap" style="display:flex;flex-direction:column;gap:8px;max-height:52vh;overflow-y:auto;">
                     ${lotsHtml}
                 </div>
             </div>`;
@@ -6158,7 +6232,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
     window.switchLbTab = function(tab) {
         _lbTab = tab;
-        ['gifts','coins','friends','level'].forEach(t => {
+        ['gifts','coins','friends'].forEach(t => {
             const btn = document.getElementById('lb-tab-' + t);
             if (btn) btn.classList.toggle('lb-tab-active', t === tab);
         });
@@ -6190,7 +6264,6 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     gifts: Array.isArray(d.cloudInv) ? d.cloudInv.length
                          : (d.cloudInv ? Object.keys(d.cloudInv).length : 0),
                     friends: d.friends ? Object.keys(d.friends).length : 0,
-                    xp: d.xp || 0,
                     activeCosmetic: d.activeCosmetic || {},
                     cloudInv: d.cloudInv || [],
                 }));
@@ -6216,13 +6289,6 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         } else if (_lbTab === 'coins') {
             sorted = [...players].sort((a, b) => b.balance - a.balance);
             valLabel = p => `<span style="font-size:15px;font-weight:800;">${p.balance.toLocaleString('ru')}</span> <span style="font-size:13px;">💰</span>`;
-        } else if (_lbTab === 'level') {
-            sorted = [...players].sort((a, b) => (getLevelFromXp(b.xp) - getLevelFromXp(a.xp)) || (b.xp - a.xp));
-            valLabel = p => {
-                const lvl = getLevelFromXp(p.xp);
-                const isMax = lvl >= XP_MAX_LEVEL;
-                return `<span style="font-size:15px;font-weight:800;">${isMax ? '👑' : '⭐'} ${isMax ? 'MAX' : lvl}</span>`;
-            };
         } else {
             sorted = [...players].sort((a, b) => b.friends - a.friends);
             valLabel = p => `<span style="font-size:15px;font-weight:800;">${p.friends}</span> <span style="font-size:13px;">👥</span>`;
