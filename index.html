@@ -5255,7 +5255,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const all = snap.val()||{};
 
             const toPlayer = ([id,u]) => ({
-                id, name:u.username||u.name||id, level:u.level||1,
+                id, name:u.username||u.name||id, level:getLevelFromXp(u.xp||0),
                 duelWins:u.duelWins||0, avatar:u.avatar||u.pic||'',
                 cosmetics:u.cosmetics||[],
                 online: u.lastSeen && (Date.now()-u.lastSeen<5*60*1000)
@@ -5376,7 +5376,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const all = snap.val()||{};
             let players = Object.entries(all)
                 .filter(([id,u])=>id!==user.id && u && u.name)
-                .map(([id,u])=>({id,name:u.username||u.name||id,level:u.level||1,duelWins:u.duelWins||0,avatar:u.avatar||u.pic||'',cosmetics:u.cosmetics||[],online:u.lastSeen&&(Date.now()-u.lastSeen<5*60*1000)}))
+                .map(([id,u])=>({id,name:u.username||u.name||id,level:getLevelFromXp(u.xp||0),duelWins:u.duelWins||0,avatar:u.avatar||u.pic||'',cosmetics:u.cosmetics||[],online:u.lastSeen&&(Date.now()-u.lastSeen<5*60*1000)}))
                 .filter(p=>p.name.toLowerCase().includes(q));
             if(!players.length){section.innerHTML=`<div style="text-align:center;padding:40px 20px;"><div style="font-size:36px;margin-bottom:10px;">🔍</div><div style="color:var(--secondary);font-size:14px;">Игрок не найден</div></div>`;return;}
             section.innerHTML=`<div style="font-size:11px;color:var(--secondary);font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">🔍 Результаты (${players.length})</div><div style="display:flex;flex-direction:column;gap:7px;">${players.map(p=>_duelPlayerCard(p,'')).join('')}</div>`;
@@ -5473,9 +5473,12 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const myItem = toArr(d.cloudInv).find(x=>String(x.inst)==String(myInst));
         if(!myItem) return showToast('Подарок не найден!','var(--err)');
         const duelKey = `${user.id}_${Date.now()}`;
+        const _duelCatItem = catalog.find(c=>c.id==myItem.id);
         await set(ref(db,`duelChallenges/${friendId}/${duelKey}`),{
             fromId:user.id, fromName:user.name,
-            itemInst:myInst, itemName:myItem.n, itemEmoji:myItem.i||'🎁',
+            itemInst:myInst, itemName:myItem.n, itemEmoji:myItem.i||(_duelCatItem&&_duelCatItem.i)||'🎁',
+            itemImg: myItem.img||(_duelCatItem&&_duelCatItem.img)||'',
+            itemId: myItem.id||'',
             ts:Date.now(), expiresAt: Date.now() + 15*60*1000
         });
         // Автоотмена через 15 минут
@@ -5491,28 +5494,50 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         showToast(`⚔️ Вызов отправлен ${friendName}!`,'#ff6b6b','⚔️');
     };
 
+    // Store current duel challenge context to avoid passing through onclick strings
+    let _currentDuelCtx = null;
+
     window.acceptDuelChallenge = async (duelKey, challenge) => {
+        // Save challenge context in variable (avoids type issues with inst passed as string)
+        _currentDuelCtx = { duelKey, challenge };
+        selectedDuelInst = null;
+
         // Show your gifts to pick your stake
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
         const myInv = toArr(d.cloudInv);
         if(!myInv.length) return showToast('У тебя нет подарков для дуэли!','var(--err)');
+
         const makeCard = (x) => {
             const cat = catalog.find(c=>c.id==x.id);
             const img = resolveImg(x);
             const emoji = x.i||(cat&&cat.i)||'🎁';
-            return `<div onclick="selectDuelGift('${x.inst}',this)" style="cursor:pointer;text-align:center;background:#0a1520;border-radius:14px;padding:10px 8px;border:2px solid rgba(255,255,255,0.06);transition:all 0.2s;" class="duel-my-card">
-                ${img?`<img src="${img}" style="width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 5px;" onerror="this.style.display='none'">`:`<div style="font-size:32px;line-height:1;margin-bottom:5px;">${emoji}</div>`}
-                <div style="font-size:10px;font-weight:bold;color:white;">${(catalogMap.get(+x.id)||x).n}</div>
+            return `<div onclick="selectDuelGift(${JSON.stringify(String(x.inst))},this)" style="cursor:pointer;text-align:center;background:#0a1520;border-radius:14px;padding:10px 8px;border:2px solid rgba(255,255,255,0.06);transition:all 0.2s;" class="duel-my-card">
+                ${img
+                    ? `<img src="${img}" style="width:44px;height:44px;object-fit:contain;display:block;margin:0 auto 5px;border-radius:8px;" onerror="this.style.display='none';this.nextElementSibling&&(this.nextElementSibling.style.display='block')">`
+                    : ''}
+                <div style="font-size:28px;line-height:1;margin-bottom:5px;${img?'display:none':''}display:block;">${emoji}</div>
+                <div style="font-size:10px;font-weight:bold;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(catalogMap.get(+x.id)||x).n}</div>
             </div>`;
         };
+
+        // Show their item with image too
+        const theirCat = catalog.find(c => c.id == challenge.itemId);
+        const theirImg = challenge.itemImg || (theirCat && theirCat.img) || '';
+        const theirEmoji = challenge.itemEmoji || (theirCat && theirCat.i) || '🎁';
+
         document.getElementById('modal-content').innerHTML=`
             <div style="padding:5px 0;">
                 <div style="text-align:center;margin-bottom:14px;">
                     <div style="font-size:32px;">⚔️</div>
                     <h3 style="margin:6px 0 4px;background:linear-gradient(90deg,#ff6b6b,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Дуэль!</h3>
-                    <div style="background:#0a1520;border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0;border:1px solid rgba(255,107,107,0.3);">
-                        <div style="font-size:24px;">${challenge.itemEmoji}</div>
-                        <div><div style="font-size:11px;color:var(--secondary);">СТАВКА ${challenge.fromName.toUpperCase()}</div><div style="font-weight:bold;color:#ff6b6b;">${challenge.itemName}</div></div>
+                    <div style="background:#0a1520;border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0;border:1px solid rgba(255,107,107,0.3);">
+                        ${theirImg
+                            ? `<img src="${theirImg}" style="width:44px;height:44px;object-fit:contain;border-radius:8px;" onerror="this.style.display='none'">`
+                            : `<div style="font-size:32px;">${theirEmoji}</div>`}
+                        <div>
+                            <div style="font-size:11px;color:var(--secondary);">СТАВКА ${challenge.fromName.toUpperCase()}</div>
+                            <div style="font-weight:bold;color:#ff6b6b;">${challenge.itemName}</div>
+                        </div>
                     </div>
                     <div style="font-size:12px;color:var(--secondary);">Выбери свою ставку:</div>
                 </div>
@@ -5523,7 +5548,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     <div style="font-size:11px;color:var(--secondary);">ТВОЯ СТАВКА</div>
                     <div id="duel-selected-name" style="font-weight:bold;color:#ff6b6b;"></div>
                 </div>
-                <button id="duel-fight-btn" class="btn" style="background:linear-gradient(90deg,#e74c3c,#c0392b);display:none;" onclick="fightDuel('${duelKey}','${challenge.fromId}','${challenge.itemInst}','${challenge.fromName}','${challenge.itemEmoji}','${challenge.itemName}')">⚔️ В БОЙ!</button>
+                <button id="duel-fight-btn" class="btn" style="background:linear-gradient(90deg,#e74c3c,#c0392b);display:none;" onclick="fightDuelFromCtx()">⚔️ В БОЙ!</button>
                 <button class="btn" style="background:rgba(255,255,255,0.05);color:var(--secondary);margin-top:8px;" onclick="declineDuel('${duelKey}')">🏳️ Отказаться</button>
             </div>`;
         openModal();
@@ -5542,6 +5567,14 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         document.getElementById('duel-fight-btn').style.display='block';
     };
 
+    // Wrapper called from В БОЙ! button — reads from stored context
+    window.fightDuelFromCtx = () => {
+        if (!_currentDuelCtx) return showToast('Ошибка: нет данных дуэли','var(--err)');
+        if (!selectedDuelInst) return showToast('Выбери ставку!','var(--err)');
+        const { duelKey, challenge } = _currentDuelCtx;
+        fightDuel(duelKey, challenge.fromId, challenge.itemInst, challenge.fromName, challenge.itemEmoji || '🎁', challenge.itemName);
+    };
+
     window.fightDuel = async (duelKey, challengerId, theirInst, challengerName, theirEmoji, theirItemName) => {
         if(!selectedDuelInst) return showToast('Выбери ставку!','var(--err)');
         // 🛡️ Rate limit
@@ -5551,9 +5584,12 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const [mySnap, theirSnap] = await Promise.all([get(ref(db,'users/'+user.id)), get(ref(db,'users/'+challengerId))]);
         const myD = mySnap.val(), theirD = theirSnap.val();
         const myInvCheck = toArr(myD.cloudInv), theirInvCheck = toArr(theirD.cloudInv);
-        const myItem = myInvCheck.find(x=>String(x.inst)==String(selectedDuelInst));
-        const theirItem = theirInvCheck.find(x=>String(x.inst)==String(theirInst));
-        if(!myItem||!theirItem) { closeModal(); return showToast('Один из предметов уже недоступен!','var(--err)'); }
+        const myInstStr = String(selectedDuelInst);
+        const theirInstStr = String(theirInst);
+        const myItem = myInvCheck.find(x=>String(x.inst)==myInstStr);
+        const theirItem = theirInvCheck.find(x=>String(x.inst)==theirInstStr);
+        if(!myItem) { closeModal(); return showToast('Твой предмет не найден в инвентаре!','var(--err)'); }
+        if(!theirItem) { closeModal(); return showToast('Предмет противника уже недоступен!','var(--err)'); }
 
         // Determine winner 50/50 (до транзакций, результат фиксирован)
         const iWin = Math.random() < 0.5;
@@ -5567,8 +5603,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             runTransaction(ref(db,'users/'+user.id), (current) => {
                 if(!current) return;
                 let inv = toArr(current.cloudInv);
-                if(!inv.some(x=>String(x.inst)==String(selectedDuelInst))) return; // предмет уже ушёл
-                inv = inv.filter(x=>String(x.inst)!=String(selectedDuelInst));
+                if(!inv.some(x=>String(x.inst)==myInstStr)) return; // предмет уже ушёл
+                inv = inv.filter(x=>String(x.inst)!=myInstStr);
                 if(iWin) {
                     inv.push({...myItem, from:'⚔️ Дуэль', inst:_duelTs});
                     inv.push({...theirItem, from:`⚔️ ${challengerName}`, seen:false, inst:_duelTs+1});
@@ -5585,8 +5621,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             runTransaction(ref(db,'users/'+challengerId), (current) => {
                 if(!current) return;
                 let inv = toArr(current.cloudInv);
-                if(!inv.some(x=>String(x.inst)==String(theirInst))) return; // предмет уже ушёл
-                inv = inv.filter(x=>String(x.inst)!=String(theirInst));
+                if(!inv.some(x=>String(x.inst)==theirInstStr)) return; // предмет уже ушёл
+                inv = inv.filter(x=>String(x.inst)!=theirInstStr);
                 if(!iWin) {
                     inv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:_duelTs});
                     inv.push({...theirItem, from:'⚔️ Дуэль', inst:_duelTs+1});
@@ -5608,17 +5644,28 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
         // DUEL ANIMATION
         const overlay = document.getElementById('modal-overlay');
+        const myImgSrc = resolveImg(myItem);
+        const theirImgSrc = (()=>{
+            const tc = catalog.find(c=>c.id==theirItem.id);
+            return theirItem.img||(tc&&tc.img)||'';
+        })();
+        const myVisual = myImgSrc
+            ? `<img src="${myImgSrc}" style="width:64px;height:64px;object-fit:contain;border-radius:12px;margin-bottom:8px;" onerror="this.outerHTML='<div style=\"font-size:52px;margin-bottom:8px;\">${myEmoji2}</div>'">`
+            : `<div style="font-size:52px;margin-bottom:8px;">${myEmoji2}</div>`;
+        const theirVisual = theirImgSrc
+            ? `<img src="${theirImgSrc}" style="width:64px;height:64px;object-fit:contain;border-radius:12px;margin-bottom:8px;" onerror="this.outerHTML='<div style=\"font-size:52px;margin-bottom:8px;\">${theirEmoji}</div>'">`
+            : `<div style="font-size:52px;margin-bottom:8px;">${theirEmoji}</div>`;
         document.getElementById('modal-content').innerHTML = `
             <div style="text-align:center;padding:20px 0;" id="duel-anim-wrap">
                 <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;letter-spacing:1px;text-transform:uppercase;">⚔️ Дуэль начинается!</div>
                 <div style="display:flex;align-items:center;justify-content:center;gap:20px;">
                     <div id="duel-left" style="text-align:center;transition:all 1s ease;">
-                        <div style="font-size:52px;margin-bottom:8px;">${myEmoji2}</div>
+                        ${myVisual}
                         <div style="font-size:12px;font-weight:bold;color:#4db4ff;">${user.name}</div>
                     </div>
                     <div id="duel-vs" style="font-size:32px;font-weight:900;color:#ff6b6b;">VS</div>
                     <div id="duel-right" style="text-align:center;transition:all 1s ease;">
-                        <div style="font-size:52px;margin-bottom:8px;">${theirEmoji}</div>
+                        ${theirVisual}
                         <div style="font-size:12px;font-weight:bold;color:#ff6b6b;">${challengerName}</div>
                     </div>
                 </div>
@@ -5731,7 +5778,9 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                         const sLeft = Math.max(0,Math.floor(((expiry-now)%60000)/1000));
                         return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0a1520;border-radius:12px;padding:10px 12px;margin-bottom:8px;border:1px solid rgba(255,107,107,0.2);">
                             <div style="display:flex;align-items:center;gap:10px;flex:1;">
-                                <div style="font-size:28px;">${ch.itemEmoji}</div>
+                                ${ch.itemImg
+                                    ? `<img src="${ch.itemImg}" style="width:44px;height:44px;object-fit:contain;border-radius:8px;flex-shrink:0;" onerror="this.style.display='none'">`
+                                    : `<div style="font-size:28px;flex-shrink:0;">${ch.itemEmoji}</div>`}
                                 <div>
                                     <div style="font-weight:bold;font-size:13px;">${ch.itemName}</div>
                                     <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName}</div>
