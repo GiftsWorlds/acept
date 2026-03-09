@@ -452,6 +452,7 @@
 
         .page { display: none; padding: 15px; grid-template-columns: repeat(3, 1fr); gap: 12px; padding-bottom: 120px;  contain: layout style; }
         .page.active { display: grid; animation: fadeInUp 0.3s ease both; }
+        #duel.page.active, #friends.page.active, #leaderboard.page.active, #profile.page.active { display: block; }
         /* 🚀 content-visibility: auto — браузер пропускает рендер невидимых секций */
         #shop:not(.active), #inv:not(.active), #market:not(.active),
         #friends:not(.active), #duel:not(.active), #profile:not(.active), #leaderboard:not(.active) {
@@ -1454,6 +1455,24 @@
         <div id="friends-list"></div>
     </div>
 
+    <!-- ===== DUEL FULL SCREEN PAGE ===== -->
+    <div id="duel" class="page" style="padding:0;padding-bottom:80px;">
+        <!-- Header -->
+        <div style="padding:15px 16px 12px;background:linear-gradient(135deg,rgba(231,76,60,0.12),rgba(255,107,107,0.06));border-bottom:1px solid rgba(255,107,107,0.2);position:sticky;top:0;z-index:10;backdrop-filter:blur(20px);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                <div style="font-size:20px;font-weight:900;background:linear-gradient(90deg,#ff6b6b,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">⚔️ Дуэли</div>
+                <div id="duel-wins-badge" style="background:rgba(255,107,107,0.15);border:1px solid rgba(255,107,107,0.3);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:bold;color:#ff6b6b;">0 побед</div>
+            </div>
+            <div style="position:relative;">
+                <input type="text" id="duel-search-input" placeholder="🔍 Найти игрока для дуэли..."
+                    oninput="duelSearchUsers(this.value)"
+                    style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.06);border:1px solid rgba(255,107,107,0.25);border-radius:14px;padding:10px 16px;color:var(--text);font-size:14px;outline:none;transition:all 0.2s;"
+                    onfocus="this.style.borderColor='rgba(255,107,107,0.6)';duelSearchUsers(this.value)" onblur="this.style.borderColor='rgba(255,107,107,0.25)'"></div>
+        </div>
+        <div id="duel-incoming-section" style="padding:12px 14px 0;"></div>
+        <div id="duel-players-section" style="padding:10px 14px;"></div>
+    </div>
+
     <div id="profile" class="page"></div>
 
     <!-- ===== LEADERBOARD ===== -->
@@ -2059,14 +2078,41 @@
     </div>
 
     <div class="nav" id="main-nav" style="display:none;">
-        <button class="nav-btn active" onclick="tab('shop',this)"><i>🛍️</i><span>Магазин</span></button>
-        <button class="nav-btn" onclick="tab('inv',this)"><div id="badge-inv" class="badge">0</div><i>📦</i><span>Склад</span></button>
-        <button class="nav-btn" onclick="tab('market',this)"><i>⚖️</i><span>Рынок</span></button>
-        <button class="nav-btn" onclick="tab('friends',this)"><div id="badge-fr" class="badge">0</div><i>👥</i><span>Друзья</span></button>
-        <button class="nav-btn" id="duel-nav-btn" onclick="openDuelFromNav()" style="position:relative;"><div id="badge-duel" class="badge" style="right:8px;display:none;">0</div><i>⚔️</i><span>Дуэль</span></button>
-        <button class="nav-btn" onclick="tab('profile',this)"><i>👤</i><span>Профиль</span></button>
-        <button class="nav-btn" id="lb-nav" onclick="tab('leaderboard',this)"><i>🏆</i><span>Рейтинг</span></button>
-        <button id="adm-nav" class="nav-btn" style="display:none;color:var(--orange)" onclick="tab('admin',this)"><i>⚙️</i><span>Админ</span></button>
+        <button class="nav-btn active" onclick="tab('shop',this)">
+          <i>🛍️</i>
+          <span>Магазин</span>
+        </button>
+        <button class="nav-btn" onclick="tab('inv',this)">
+          <div id="badge-inv" class="badge">0</div>
+          <i>📦</i>
+          <span>Склад</span>
+        </button>
+        <button class="nav-btn" onclick="tab('market',this)">
+          <i>⚖️</i>
+          <span>Рынок</span>
+        </button>
+        <button class="nav-btn" onclick="tab('friends',this)">
+          <div id="badge-fr" class="badge">0</div>
+          <i>👥</i>
+          <span>Друзья</span>
+        </button>
+        <button class="nav-btn" id="duel-nav-btn" onclick="tab('duel',this)" style="position:relative;">
+          <div id="badge-duel" class="badge" style="right:8px;display:none;">0</div>
+          <i>⚔️</i>
+          <span>Дуэль</span>
+        </button>
+        <button class="nav-btn" onclick="tab('profile',this)">
+          <i>👤</i>
+          <span>Профиль</span>
+        </button>
+        <button class="nav-btn" id="lb-nav" onclick="tab('leaderboard',this)">
+          <i>🏆</i>
+          <span>Рейтинг</span>
+        </button>
+        <button id="adm-nav" class="nav-btn" style="display:none;color:var(--orange)" onclick="tab('admin',this)">
+          <i>⚙️</i>
+          <span>Админ</span>
+        </button>
     </div>
 </div>
 
@@ -5182,32 +5228,202 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
     // ═══════════════════════════════════════════
     //  ⚔️ ДУЭЛЬ ПОДАРКАМИ
     // ═══════════════════════════════════════════
-    // Открыть дуэль из навбара — переключаемся на профиль и показываем меню выбора подарка
+    // ===== FULL DUEL PAGE =====
+    let _duelSearchTimeout = null;
+    let _duelCache = null; // { all, friendIds, recentIds }
+
+    window.renderDuelPage = async () => {
+        if(!user || !user.id) return;
+        const inp = document.getElementById('duel-search-input');
+        if(inp) inp.value = '';
+
+        // Show loading immediately
+        const section = document.getElementById('duel-players-section');
+        if(section) section.innerHTML = '<div style="text-align:center;padding:40px 20px;"><div style="font-size:32px;margin-bottom:10px;">⚔️</div><div style="color:var(--secondary);font-size:13px;">Загрузка игроков...</div></div>';
+
+        try {
+            const s = await get(ref(db,'users/'+user.id));
+            const d = s.val() || {};
+            const winsEl = document.getElementById('duel-wins-badge');
+            if(winsEl) winsEl.textContent = `⚔️ ${d.duelWins||0} побед`;
+
+            const friendIds = new Set(Object.keys(d.friends||{}));
+            // Recent opponents from user profile field (fast, no heavy activity fetch)
+            const recentIds = (d.duelRecentOpponents || []).slice(0,3);
+
+            const snap = await get(ref(db,'users'));
+            const all = snap.val()||{};
+
+            const toPlayer = ([id,u]) => ({
+                id, name:u.username||u.name||id, level:u.level||1,
+                duelWins:u.duelWins||0, avatar:u.avatar||u.pic||'',
+                cosmetics:u.cosmetics||[],
+                online: u.lastSeen && (Date.now()-u.lastSeen<5*60*1000)
+            });
+            const allPlayers = Object.entries(all)
+                .filter(([id,u])=>id!==user.id && u && (u.username||u.name))
+                .map(toPlayer);
+
+            _duelCache = { all: allPlayers, friendIds, recentIds };
+        } catch(e) {
+            console.error('renderDuelPage error:', e);
+            _duelCache = { all:[], friendIds:new Set(), recentIds:[] };
+            // Show error with retry button
+            if(section) section.innerHTML = `<div style="text-align:center;padding:40px 20px;">
+                <div style="font-size:36px;margin-bottom:10px;">⚠️</div>
+                <div style="color:var(--secondary);font-size:13px;margin-bottom:14px;">Не удалось загрузить игроков</div>
+                <button class="btn" style="width:auto;padding:8px 20px;font-size:13px;" onclick="renderDuelPage()">🔄 Попробовать снова</button>
+            </div>`;
+            return;
+        }
+        _duelRenderDefault();
+    };
+
+    function _duelRenderDefault() {
+        const section = document.getElementById('duel-players-section');
+        if(!section || !_duelCache) return;
+        const { all, friendIds, recentIds } = _duelCache;
+        let html = '';
+
+        // Recent opponents (max 3)
+        if(recentIds.length) {
+            const recPlayers = recentIds.map(id=>all.find(p=>p.id===id)).filter(Boolean);
+            if(recPlayers.length) {
+                html += `<div style="font-size:11px;color:#ff9800;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;margin-top:2px;">🕐 Недавние</div>`;
+                html += `<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;">${recPlayers.map(p=>_duelPlayerCard(p,'recent')).join('')}</div>`;
+            }
+        }
+
+        // Friends
+        const friends = all.filter(p=>friendIds.has(p.id));
+        if(friends.length) {
+            html += `<div style="font-size:11px;color:#7c4dff;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">👥 Друзья</div>`;
+            html += `<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;">${friends.map(p=>_duelPlayerCard(p,'friend')).join('')}</div>`;
+        }
+
+        // All players (excluding friends and recent already shown above)
+        const shownIds = new Set([...recentIds, ...friends.map(p=>p.id)]);
+        const others = all.filter(p=>!shownIds.has(p.id)).sort((a,b)=>(b.duelWins-a.duelWins)||a.name.localeCompare(b.name));
+        if(others.length) {
+            html += `<div style="font-size:11px;color:var(--secondary);font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">⚔️ Все игроки (${others.length})</div>`;
+            html += `<div style="display:flex;flex-direction:column;gap:7px;">${others.map(p=>_duelPlayerCard(p,'')).join('')}</div>`;
+        }
+
+        if(!html) {
+            html = `<div style="text-align:center;padding:40px 20px;"><div style="font-size:40px;margin-bottom:12px;">🏜️</div><div style="color:var(--secondary);font-size:14px;">Нет других игроков</div></div>`;
+        }
+        section.innerHTML = html;
+    }
+
+    function _duelPlayerCard(p, type) {
+        const badge = p.cosmetics.find(c=>c.startsWith('bdg_'));
+        const badgeInfo = badge ? (window.COSMETICS||[]).find(cc=>cc.id===badge) : null;
+        let borderCol = 'rgba(255,255,255,0.07)';
+        let bgCol = 'rgba(255,255,255,0.04)';
+        let hoverBg = 'rgba(255,107,107,0.08)';
+        let hoverBorder = 'rgba(255,107,107,0.3)';
+        if(type==='friend'){borderCol='rgba(124,77,255,0.25)';bgCol='rgba(124,77,255,0.06)';}
+        if(type==='recent'){borderCol='rgba(255,152,0,0.25)';bgCol='rgba(255,152,0,0.06)';}
+        return `<div onclick="duelPickGiftForPlayer('${p.id}','${p.name.replace(/'/g,"\\'")}',this)"
+            style="display:flex;align-items:center;gap:12px;background:${bgCol};border:1px solid ${borderCol};border-radius:16px;padding:11px 14px;cursor:pointer;transition:all 0.18s;"
+            onmouseover="this.style.background='${hoverBg}';this.style.borderColor='${hoverBorder}'"
+            onmouseout="this.style.background='${bgCol}';this.style.borderColor='${borderCol}'">
+            <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#1a2a3a,#0a1520);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:2px solid ${type==='friend'?'rgba(124,77,255,0.4)':type==='recent'?'rgba(255,152,0,0.4)':'rgba(255,107,107,0.2)'};position:relative;">
+                ${p.avatar?`<img src="${p.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">`:'👤'}
+                ${p.online?`<div style="position:absolute;bottom:0;right:0;width:9px;height:9px;background:#2ecc71;border-radius:50%;border:2px solid var(--bg);"></div>`:''}
+            </div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-weight:bold;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
+                <div style="font-size:11px;color:var(--secondary);">⭐ Ур.${p.level} &nbsp;•&nbsp; ⚔️ ${p.duelWins} пб.${badgeInfo?` &nbsp;${badgeInfo.val}`:''}</div>
+            </div>
+            <div style="background:linear-gradient(135deg,#e74c3c,#c0392b);border-radius:10px;padding:7px 12px;font-size:12px;font-weight:bold;color:white;white-space:nowrap;flex-shrink:0;">
+                ⚔️
+            </div>
+        </div>`;
+    }
+
+    window.duelSearchUsers = (q) => {
+        clearTimeout(_duelSearchTimeout);
+        const trimmed = q.trim().toLowerCase();
+        if(!trimmed) {
+            if(!_duelCache) { renderDuelPage(); } else { _duelRenderDefault(); }
+            return;
+        }
+        _duelSearchTimeout = setTimeout(()=>duelLoadPlayers(trimmed), 200);
+    };
+
+    window.duelLoadPlayers = async (q) => {
+        const section = document.getElementById('duel-players-section');
+        if(!section) return;
+
+        // If cache exists, search locally (instant)
+        if(_duelCache && _duelCache.all.length > 0) {
+            const results = _duelCache.all.filter(p=>p.name.toLowerCase().includes(q));
+            if(!results.length) {
+                section.innerHTML=`<div style="text-align:center;padding:40px 20px;"><div style="font-size:36px;margin-bottom:10px;">🔍</div><div style="color:var(--secondary);font-size:14px;">Игрок не найден</div></div>`;
+                return;
+            }
+            section.innerHTML = `
+                <div style="font-size:11px;color:var(--secondary);font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">🔍 Результаты (${results.length})</div>
+                <div style="display:flex;flex-direction:column;gap:7px;">${results.map(p=>_duelPlayerCard(p,_duelCache.friendIds.has(p.id)?'friend':_duelCache.recentIds.includes(p.id)?'recent':'')).join('')}</div>`;
+            return;
+        }
+
+        // Fallback: load from DB
+        section.innerHTML=`<div style="text-align:center;padding:30px;color:var(--secondary);font-size:13px;">⏳ Поиск...</div>`;
+        try {
+            const snap = await get(ref(db,'users'));
+            const all = snap.val()||{};
+            let players = Object.entries(all)
+                .filter(([id,u])=>id!==user.id && u && u.name)
+                .map(([id,u])=>({id,name:u.username||u.name||id,level:u.level||1,duelWins:u.duelWins||0,avatar:u.avatar||u.pic||'',cosmetics:u.cosmetics||[],online:u.lastSeen&&(Date.now()-u.lastSeen<5*60*1000)}))
+                .filter(p=>p.name.toLowerCase().includes(q));
+            if(!players.length){section.innerHTML=`<div style="text-align:center;padding:40px 20px;"><div style="font-size:36px;margin-bottom:10px;">🔍</div><div style="color:var(--secondary);font-size:14px;">Игрок не найден</div></div>`;return;}
+            section.innerHTML=`<div style="font-size:11px;color:var(--secondary);font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">🔍 Результаты (${players.length})</div><div style="display:flex;flex-direction:column;gap:7px;">${players.map(p=>_duelPlayerCard(p,'')).join('')}</div>`;
+        } catch(e){section.innerHTML=`<div style="text-align:center;padding:30px;color:var(--err);">Ошибка</div>`;}
+    };
+
+    window.duelPickGiftForPlayer = async (targetId, targetName, rowEl) => {
+        // Check privacy
+        const tSnap = await get(ref(db,'users/'+targetId));
+        const tPriv = (tSnap.val()&&tSnap.val().privacy)||{};
+        if(!user.isAdm && tPriv.allowDuel===false) return showToast(`❌ ${targetName} запретил дуэли`,'var(--err)');
+        // Load my inventory
+        const s = await get(ref(db,'users/'+user.id)), d = s.val();
+        const inv = toArr(d.cloudInv);
+        if(!inv.length) return showToast('У тебя нет подарков для дуэли!','var(--err)');
+        const cat2 = (x) => { const c=catalog.find(cc=>cc.id==x.id); return x.img||(c&&c.img); };
+        const emoji2 = (x) => { const c=catalog.find(cc=>cc.id==x.id); return x.i||(c&&c.i)||'🎁'; };
+        document.getElementById('modal-content').innerHTML = `
+            <div style="text-align:center;margin-bottom:16px;">
+                <div style="font-size:32px;margin-bottom:6px;">⚔️</div>
+                <div style="font-size:17px;font-weight:900;background:linear-gradient(90deg,#ff6b6b,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Дуэль с ${targetName}</div>
+                <div style="font-size:12px;color:var(--secondary);margin-top:4px;">Выбери подарок — свою ставку</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;max-height:360px;overflow-y:auto;padding:4px 2px;">
+                ${inv.map(x=>{
+                    const img=cat2(x), em=emoji2(x);
+                    return `<div onclick="startDuelWithItem('${x.inst}','${targetId}','${targetName.replace(/'/g,"\\'")}',this)"
+                        style="cursor:pointer;text-align:center;background:#0a1520;border-radius:14px;padding:10px 6px;border:2px solid rgba(255,255,255,0.06);transition:all 0.2s;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:85px;"
+                        onmouseover="this.style.borderColor='rgba(231,76,60,0.6)';this.style.background='rgba(231,76,60,0.1)'"
+                        onmouseout="this.style.borderColor='rgba(255,255,255,0.06)';this.style.background='#0a1520'">
+                        ${img?`<img src="${img}" style="width:44px;height:44px;object-fit:contain;margin-bottom:5px;" onerror="this.style.display='none'">`:`<span style="font-size:32px;line-height:1;margin-bottom:5px;">${em}</span>`}
+                        <div style="font-size:9px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72px;color:white;">${(catalogMap.get(+x.id)||x).n}</div>
+                    </div>`;
+                }).join('')}
+            </div>
+            <button class="btn" style="background:rgba(255,255,255,0.05);color:var(--secondary);margin-top:10px;" onclick="closeModal()">Отмена</button>`;
+        openModal();
+    };
+
+    window.startDuelWithItem = async (myInst, friendId, friendName) => {
+        closeModal();
+        await startDuel(myInst, friendId, friendName);
+    };
+
     window.openDuelFromNav = async () => {
-        const profBtn = document.querySelector('.nav-btn[onclick*="profile"]');
-        tab('profile', profBtn);
-        setTimeout(async () => {
-            const s = await get(ref(db,'users/'+user.id)), d = s.val();
-            const inv = toArr(d.cloudInv);
-            if(!inv.length) return showToast('У тебя нет подарков для дуэли!','var(--err)');
-            const friends = d.friends||{};
-            if(!Object.keys(friends).length) return showToast('Нет друзей для дуэли!','var(--err)');
-            const cat2 = (x) => { const c=catalog.find(cc=>cc.id==x.id); return x.img||(c&&c.img); };
-            const emoji2 = (x) => { const c=catalog.find(cc=>cc.id==x.id); return x.i||(c&&c.i)||'🎁'; };
-            document.getElementById('modal-content').innerHTML = `
-                <h3>⚔️ Выбери подарок для дуэли</h3>
-                <div style="display:flex;flex-wrap:wrap;gap:8px;max-height:320px;overflow-y:auto;padding:4px;">
-                    ${inv.map(x=>{
-                        const img=cat2(x), em=emoji2(x);
-                        return `<div onclick="openDuelModal('${x.inst}')" style="cursor:pointer;text-align:center;background:#0a1520;border-radius:14px;padding:8px 6px;border:2px solid rgba(255,255,255,0.06);transition:all 0.2s;width:80px;height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;" onmouseover="this.style.borderColor='rgba(231,76,60,0.5)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.06)'">
-                            ${img?`<img src="${img}" style="width:44px;height:44px;object-fit:contain;margin-bottom:4px;">`:`<span style="font-size:32px;line-height:1;margin-bottom:4px;">${em}</span>`}
-                            <div style="font-size:9px;font-weight:bold;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72px;">${(catalogMap.get(+x.id)||x).n}</div>
-                        </div>`;
-                    }).join('')}
-                </div>
-                <button class="btn" style="background:rgba(255,255,255,0.05);color:var(--secondary);margin-top:10px;" onclick="closeModal()">Отмена</button>`;
-            openModal();
-        }, 300);
+        const duelBtn = document.getElementById('duel-nav-btn');
+        if(duelBtn) tab('duel', duelBtn);
     };
 
     window.openDuelModal = async (inst) => {
@@ -5362,7 +5578,9 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 if(iWin && (current.duelWins||0)+1 >= 10 && !ownedSet.has('bdg_duelist')) {
                     winsUpdate.cosmetics = [...(current.cosmetics||[]), 'bdg_duelist'];
                 }
-                return {...current, cloudInv:inv, ...winsUpdate};
+                // Save recent opponent
+                const myRecent = [challengerId, ...(current.duelRecentOpponents||[]).filter(id=>id!==challengerId)].slice(0,5);
+                return {...current, cloudInv:inv, ...winsUpdate, duelRecentOpponents:myRecent};
             }),
             runTransaction(ref(db,'users/'+challengerId), (current) => {
                 if(!current) return;
@@ -5373,7 +5591,9 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     inv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:_duelTs});
                     inv.push({...theirItem, from:'⚔️ Дуэль', inst:_duelTs+1});
                 }
-                return {...current, cloudInv:inv};
+                // Save recent opponent
+                const theirRecent = [user.id, ...(current.duelRecentOpponents||[]).filter(id=>id!==user.id)].slice(0,5);
+                return {...current, cloudInv:inv, duelRecentOpponents:theirRecent};
             })
         ]);
         if(!myTx.committed || !theirTx.committed) {
@@ -5489,7 +5709,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
     function renderDuelChallenges(challenges) {
         const container = document.getElementById('duel-challenges-section');
-        if(!container) return;
+        const incomingSection = document.getElementById('duel-incoming-section');
         const now = Date.now();
         // Фильтруем истёкшие (на стороне UI)
         const entries = Object.entries(challenges).filter(([k,ch]) => {
@@ -5499,27 +5719,33 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         // Обновляем бейдж ⚔️
         const badge = document.getElementById('badge-duel');
         if(badge) { badge.style.display = entries.length > 0 ? 'flex' : 'none'; badge.textContent = entries.length; }
-        if(!entries.length){container.innerHTML='';return;}
-        container.innerHTML=`
-            <div style="background:linear-gradient(135deg,rgba(255,107,107,0.08),rgba(255,107,107,0.03));border:1px solid rgba(255,107,107,0.3);border-radius:18px;padding:14px;margin-bottom:12px;">
-                <div style="font-size:11px;font-weight:bold;color:#ff6b6b;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">⚔️ Вызовы на дуэль (${entries.length})</div>
-                ${entries.map(([key,ch])=>{
-                    const expiry = ch.expiresAt||(ch.ts+15*60*1000);
-                    const mLeft = Math.max(0,Math.floor((expiry-now)/60000));
-                    const sLeft = Math.max(0,Math.floor(((expiry-now)%60000)/1000));
-                    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0a1520;border-radius:12px;padding:10px 12px;margin-bottom:8px;border:1px solid rgba(255,107,107,0.2);">
-                        <div style="display:flex;align-items:center;gap:10px;flex:1;">
-                            <div style="font-size:28px;">${ch.itemEmoji}</div>
-                            <div>
-                                <div style="font-weight:bold;font-size:13px;">${ch.itemName}</div>
-                                <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName}</div>
-                                <div style="font-size:10px;color:var(--orange);">⏳ ${mLeft}:${String(sLeft).padStart(2,'0')}</div>
+
+        const makeHtml = (forDuelPage) => {
+            if(!entries.length) return '';
+            return `
+                <div style="background:linear-gradient(135deg,rgba(255,107,107,0.1),rgba(255,107,107,0.04));border:1px solid rgba(255,107,107,0.35);border-radius:18px;padding:14px;margin-bottom:12px;">
+                    <div style="font-size:11px;font-weight:bold;color:#ff6b6b;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">⚔️ Входящие вызовы (${entries.length})</div>
+                    ${entries.map(([key,ch])=>{
+                        const expiry = ch.expiresAt||(ch.ts+15*60*1000);
+                        const mLeft = Math.max(0,Math.floor((expiry-now)/60000));
+                        const sLeft = Math.max(0,Math.floor(((expiry-now)%60000)/1000));
+                        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0a1520;border-radius:12px;padding:10px 12px;margin-bottom:8px;border:1px solid rgba(255,107,107,0.2);">
+                            <div style="display:flex;align-items:center;gap:10px;flex:1;">
+                                <div style="font-size:28px;">${ch.itemEmoji}</div>
+                                <div>
+                                    <div style="font-weight:bold;font-size:13px;">${ch.itemName}</div>
+                                    <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName}</div>
+                                    <div style="font-size:10px;color:var(--orange);">⏳ ${mLeft}:${String(sLeft).padStart(2,'0')}</div>
+                                </div>
                             </div>
-                        </div>
-                        <button class="btn" style="padding:8px 14px;font-size:12px;width:auto;background:linear-gradient(90deg,#e74c3c,#c0392b);" onclick='acceptDuelChallenge("${key}",${JSON.stringify(ch)})'>⚔️ Принять</button>
-                    </div>`;
-                }).join('')}
-            </div>`;
+                            <button class="btn" style="padding:8px 14px;font-size:12px;width:auto;background:linear-gradient(90deg,#e74c3c,#c0392b);" onclick='acceptDuelChallenge("${key}",${JSON.stringify(ch)})'>⚔️ Принять</button>
+                        </div>`;
+                    }).join('')}
+                </div>`;
+        };
+
+        if(container) { if(!entries.length){container.innerHTML='';} else {container.innerHTML=makeHtml(false);} }
+        if(incomingSection) { incomingSection.innerHTML = makeHtml(true); }
     }
 
     window.giftOpen = async (inst) => {
@@ -7493,6 +7719,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if(id==='market') listenMarket();
         if(id==='profile') { get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); }); }
         if(id==='leaderboard') { if(!sameTab) loadLeaderboard(); }
+        if(id==='duel') { renderDuelPage(); }
     };
     // ===== TELEGRAM INTEGRATION =====
     const TG_BOT_TOKEN = '8080771405:AAGsN_dudAoaiNmqLdgWsol8iL7ZDwqu-Ho';
