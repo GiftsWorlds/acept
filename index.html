@@ -5338,7 +5338,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             onmouseover="this.style.background='${hoverBg}';this.style.borderColor='${hoverBorder}'"
             onmouseout="this.style.background='${bgCol}';this.style.borderColor='${borderCol}'">
             <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#1a2a3a,#0a1520);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:2px solid ${type==='friend'?'rgba(124,77,255,0.4)':type==='recent'?'rgba(255,152,0,0.4)':'rgba(255,107,107,0.2)'};position:relative;">
-                ${p.avatar?`<img src="${p.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">`:'👤'}
+                ${p.avatar && !p.avatar.startsWith('emoji:')?`<img src="${p.avatar}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" onerror="this.style.display='none'">`:p.avatar&&p.avatar.startsWith('emoji:')?`<span style="font-size:22px;">${p.avatar.replace('emoji:','')}</span>`:'👤'}
                 ${p.online?`<div style="position:absolute;bottom:0;right:0;width:9px;height:9px;background:#2ecc71;border-radius:50%;border:2px solid var(--bg);"></div>`:''}
             </div>
             <div style="flex:1;min-width:0;">
@@ -5849,22 +5849,42 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
     };
 
     // Listen for duel challenges
+    let _duelChallengesCache = {};
+    let _duelTimerInterval = null;
+
     function listenDuelChallenges() {
         onValue(ref(db,`duelChallenges/${user.id}`), snap => {
-            const challenges = snap.val()||{};
-            renderDuelChallenges(challenges);
+            _duelChallengesCache = snap.val()||{};
+            renderDuelChallenges(_duelChallengesCache);
         });
-        // Обновлять таймеры каждые 30 сек + удалять истёкшие
-        setInterval(async () => {
-            const snap = await get(ref(db,`duelChallenges/${user.id}`));
-            const challenges = snap.val()||{};
+        // Живой таймер — обновляет только текст таймеров каждую секунду
+        if(_duelTimerInterval) clearInterval(_duelTimerInterval);
+        _duelTimerInterval = setInterval(() => {
             const now = Date.now();
-            for(const [key, ch] of Object.entries(challenges)) {
-                const expiry = ch.expiresAt || (ch.ts + 15*60*1000);
-                if(now >= expiry) remove(ref(db,`duelChallenges/${user.id}/${key}`)).catch(()=>{});
+            let hasExpired = false;
+            // Обновляем только элементы таймеров по data-атрибуту
+            document.querySelectorAll('[data-duel-expiry]').forEach(el => {
+                const expiry = parseInt(el.getAttribute('data-duel-expiry'));
+                const diff = expiry - now;
+                if(diff <= 0) {
+                    el.textContent = '⏳ 0:00';
+                    hasExpired = true;
+                } else {
+                    const m = Math.floor(diff/60000);
+                    const s = Math.floor((diff%60000)/1000);
+                    el.textContent = `⏳ ${m}:${String(s).padStart(2,'0')}`;
+                }
+            });
+            // Если что-то истекло — перерисовываем и чистим БД
+            if(hasExpired) {
+                const now2 = Date.now();
+                for(const [key, ch] of Object.entries(_duelChallengesCache)) {
+                    const expiry = ch.expiresAt || (ch.ts + 15*60*1000);
+                    if(now2 >= expiry) remove(ref(db,`duelChallenges/${user.id}/${key}`)).catch(()=>{});
+                }
+                renderDuelChallenges(_duelChallengesCache);
             }
-            renderDuelChallenges(challenges);
-        }, 30000);
+        }, 1000);
     }
 
     function renderDuelChallenges(challenges) {
@@ -5897,7 +5917,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                                 <div>
                                     <div style="font-weight:bold;font-size:13px;">${ch.itemName}</div>
                                     <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName}</div>
-                                    <div style="font-size:10px;color:var(--orange);">⏳ ${mLeft}:${String(sLeft).padStart(2,'0')}</div>
+                                    <div data-duel-expiry="${expiry}" style="font-size:10px;color:var(--orange);">⏳ ${mLeft}:${String(sLeft).padStart(2,'0')}</div>
                                 </div>
                             </div>
                             <button class="btn" style="padding:8px 14px;font-size:12px;width:auto;background:linear-gradient(90deg,#e74c3c,#c0392b);" onclick='acceptDuelChallenge("${key}",${JSON.stringify(ch)})'>⚔️ Принять</button>
