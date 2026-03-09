@@ -5625,21 +5625,12 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if (!_currentDuelCtx) return showToast('Ошибка: нет данных дуэли','var(--err)');
         if (!selectedDuelInst) return showToast('Выбери ставку!','var(--err)');
         const { duelKey, challenge } = _currentDuelCtx;
-        // ⚡ Перечитываем challenge из Firebase чтобы получить точный itemInst
-        // (избегаем потери точности числа при JSON.stringify в onclick атрибуте)
-        try {
-            const freshSnap = await get(ref(db,`duelChallenges/${user.id}/${duelKey}`));
-            if (!freshSnap.exists()) {
-                closeModal();
-                return showToast('Вызов уже отменён или истёк','var(--err)');
-            }
-            const freshChallenge = freshSnap.val();
-            const realItemInst = freshChallenge.itemInst;
-            fightDuel(duelKey, freshChallenge.fromId || challenge.fromId, realItemInst, freshChallenge.fromName || challenge.fromName, freshChallenge.itemEmoji || challenge.itemEmoji || '🎁', freshChallenge.itemName || challenge.itemName);
-        } catch(e) {
-            // fallback to stored challenge
-            fightDuel(duelKey, challenge.fromId, challenge.itemInst, challenge.fromName, challenge.itemEmoji || '🎁', challenge.itemName);
-        }
+        // Перечитываем вызов из Firebase напрямую — чтобы получить точный itemInst
+        // (JSON.stringify в onclick искажает большие числа-timestamp)
+        const freshSnap = await get(ref(db,`duelChallenges/${user.id}/${duelKey}`));
+        if (!freshSnap.exists()) { closeModal(); return showToast('Вызов уже отменён','var(--err)'); }
+        const fresh = freshSnap.val();
+        fightDuel(duelKey, fresh.fromId, fresh.itemInst, fresh.fromName, fresh.itemEmoji || '🎁', fresh.itemName);
     };
 
     window.fightDuel = async (duelKey, challengerId, theirInst, challengerName, theirEmoji, theirItemName) => {
@@ -5652,27 +5643,15 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const myD = mySnap.val(), theirD = theirSnap.val();
         const myInvCheck = toArr(myD.cloudInv), theirInvCheck = toArr(theirD.cloudInv);
         const myInstStr = String(selectedDuelInst);
+        // theirInst может быть строкой или числом — ищем по строковому совпадению
+        // также ищем по duelLocked с этим конкретным duelKey (точное совпадение ключа)
         const theirInstStr = String(theirInst);
         const myItem = myInvCheck.find(x=>String(x.inst)==myInstStr);
-        // Ищем предмет противника — строгое совпадение строк, затем чисел
-        // (на случай потери точности при JSON через onclick)
-        let theirItem = theirInvCheck.find(x=>String(x.inst)==theirInstStr);
-        if(!theirItem && !isNaN(Number(theirInst))) {
-            // Попробуем найти по числовому значению (±0 погрешность)
-            const theirInstNum = Number(theirInst);
-            theirItem = theirInvCheck.find(x => Math.abs(Number(x.inst) - theirInstNum) < 2);
-        }
-        if(!theirItem) {
-            // Последний шанс: найти предмет с флагом duelLocked у противника
-            // (предмет заблокирован для этой дуэли)
-            theirItem = theirInvCheck.find(x => x.duelLocked && x.id == (challenge?.itemId || ''));
-        }
+        const theirItem = theirInvCheck.find(x=>String(x.inst)==theirInstStr)
+            || theirInvCheck.find(x=>x.duelLocked && String(x.duelLocked)===String(duelKey));
+        const theirInstFinal = theirItem ? String(theirItem.inst) : theirInstStr;
         if(!myItem) { closeModal(); return showToast('Твой предмет не найден в инвентаре!','var(--err)'); }
-        if(!theirItem) {
-            await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`)).catch(()=>{});
-            closeModal();
-            return showToast('Предмет противника уже недоступен — вызов отменён','var(--err)');
-        }
+        if(!theirItem) { closeModal(); return showToast('Предмет противника уже недоступен!','var(--err)'); }
 
         // Determine winner 50/50 (до транзакций, результат фиксирован)
         const iWin = Math.random() < 0.5;
@@ -5708,13 +5687,12 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const theirTx = await runTransaction(ref(db,'users/'+challengerId), (current) => {
             if(!current) return;
             const inv = toArr(current.cloudInv);
-            // Ищем предмет по строке, числу, или duelLocked флагу
-            const theirFound = inv.find(x=>String(x.inst)==theirInstStr)
-                || inv.find(x=>!isNaN(Number(x.inst))&&Math.abs(Number(x.inst)-Number(theirInstStr))<2)
-                || inv.find(x=>x.duelLocked);
-            if(!theirFound) return; // предмет уже ушёл — abort
-            const actualTheirInstStr = String(theirFound.inst);
-            const newInv = inv.filter(x=>String(x.inst)!=actualTheirInstStr);
+            // Ищем предмет по точному inst или по duelLocked с нашим duelKey
+            const foundItem = inv.find(x=>String(x.inst)==theirInstFinal)
+                || inv.find(x=>x.duelLocked && String(x.duelLocked)===String(duelKey));
+            if(!foundItem) return; // предмет уже ушёл — abort
+            const foundInstStr = String(foundItem.inst);
+            const newInv = inv.filter(x=>String(x.inst)!=foundInstStr);
             if(!iWin) {
                 newInv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:_duelTs});
                 newInv.push({...theirItem, from:'⚔️ Дуэль', inst:_duelTs+1, seen:false});
