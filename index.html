@@ -5485,24 +5485,46 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const dPrivSnap=await get(ref(db,'users/'+friendId));
         const dPriv=(dPrivSnap.val()&&dPrivSnap.val().privacy)||{};
         if(!user.isAdm && dPriv.allowDuel===false) return showToast(`❌ Вы не можете вызвать ${friendName} на дуэль из-за его настроек конфиденциальности`,'var(--err)');
-        // Send duel challenge
-        const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const myItem = toArr(d.cloudInv).find(x=>String(x.inst)==String(myInst));
-        if(!myItem) return showToast('Подарок не найден!','var(--err)');
+
         const duelKey = `${user.id}_${Date.now()}`;
+        const expiresAt = Date.now() + 15*60*1000;
+
+        // 🛡️ Атомарно помечаем предмет как занятый в дуэли
+        let capturedItem = null;
+        const lockTx = await runTransaction(ref(db,'users/'+user.id), (current) => {
+            if(!current) return;
+            const inv = toArr(current.cloudInv);
+            const itm = inv.find(x=>String(x.inst)==String(myInst));
+            if(!itm) return; // предмет не найден — abort
+            if(itm.duelLocked) return; // уже заблокирован — abort
+            capturedItem = itm;
+            const newInv = inv.map(x => String(x.inst)==String(myInst) ? {...x, duelLocked: duelKey} : x);
+            return {...current, cloudInv: newInv};
+        });
+        if(!lockTx.committed || !capturedItem) return showToast('Предмет уже занят или не найден!','var(--err)');
+
+        const myItem = capturedItem;
         const _duelCatItem = catalog.find(c=>c.id==myItem.id);
         await set(ref(db,`duelChallenges/${friendId}/${duelKey}`),{
             fromId:user.id, fromName:user.name,
             itemInst:myInst, itemName:myItem.n, itemEmoji:myItem.i||(_duelCatItem&&_duelCatItem.i)||'🎁',
             itemImg: myItem.img||(_duelCatItem&&_duelCatItem.img)||'',
             itemId: myItem.id||'',
-            ts:Date.now(), expiresAt: Date.now() + 15*60*1000
+            ts:Date.now(), expiresAt
         });
-        // Автоотмена через 15 минут
+        // Автоотмена через 15 минут — разблокируем предмет
         setTimeout(async () => {
             try {
                 const snap = await get(ref(db,`duelChallenges/${friendId}/${duelKey}`));
-                if(snap.exists()) await remove(ref(db,`duelChallenges/${friendId}/${duelKey}`));
+                if(snap.exists()) {
+                    await remove(ref(db,`duelChallenges/${friendId}/${duelKey}`));
+                    // Снимаем блокировку с предмета
+                    await runTransaction(ref(db,'users/'+user.id), (current) => {
+                        if(!current) return;
+                        const newInv = toArr(current.cloudInv).map(x => String(x.inst)==String(myInst) ? (()=>{const c={...x};delete c.duelLocked;return c;})() : x);
+                        return {...current, cloudInv: newInv};
+                    });
+                }
             } catch(e){}
         }, 15*60*1000);
         getTgId(friendId).then(cid=>sendTg(cid,`⚔️ <b>Вызов на дуэль!</b>\n\n<b>${user.name}</b> бросает тебе вызов!\n\n🎯 Его ставка: <b>${myItem.n} ${myItem.i||''}</b>\n🏆 Победитель заберёт оба подарка!\n\n📱 Открой приложение → Друзья → Дуэли`));
@@ -5521,8 +5543,9 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
         // Show your gifts to pick your stake
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const myInv = toArr(d.cloudInv);
-        if(!myInv.length) return showToast('У тебя нет подарков для дуэли!','var(--err)');
+        // 🛡️ Фильтруем заблокированные в других дуэлях предметы
+        const myInv = toArr(d.cloudInv).filter(x => !x.duelLocked);
+        if(!myInv.length) return showToast('У тебя нет доступных подарков для дуэли!','var(--err)');
 
         // Store inst->item map so selectDuelGift can find item by inst without passing via onclick
         window._duelMyInvMap = {};
@@ -5678,13 +5701,24 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         }
         _duelAllUsersCache = null; // Инвалидируем кеш после дуэли
         await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`));
+        // 🛡️ Снимаем блокировку duelLocked с предмета отправителя вызова
+        await runTransaction(ref(db,'users/'+challengerId), (current) => {
+            if(!current) return;
+            const newInv = toArr(current.cloudInv).map(x => {
+                if(String(x.inst)==String(theirInst)) { const c={...x}; delete c.duelLocked; return c; }
+                return x;
+            });
+            return {...current, cloudInv: newInv};
+        }).catch(()=>{});
         logActivity('duel_result', {winner: winnerName, winnerId, loser: iWin ? challengerName : user.name, loserId: iWin ? challengerId : user.id, item1: myItem.n, item2: theirItem.n});
         // XP: +50 победителю, -20 проигравшему
         awardXp(winnerId, 50);
         awardXp(iWin ? challengerId : user.id, -20);
 
         // DUEL ANIMATION
+        openModal();
         const overlay = document.getElementById('modal-overlay');
+        overlay.style.animation = '';
         const myImgSrc = resolveImg(myItem);
         const theirImgSrc = (()=>{
             const tc = catalog.find(c=>c.id==theirItem.id);
@@ -5782,6 +5816,23 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
     };
 
     window.declineDuel = async (duelKey) => {
+        // Получаем данные вызова чтобы разблокировать предмет отправителя
+        try {
+            const snap = await get(ref(db,`duelChallenges/${user.id}/${duelKey}`));
+            if(snap.exists()) {
+                const ch = snap.val();
+                if(ch.fromId && ch.itemInst) {
+                    await runTransaction(ref(db,'users/'+ch.fromId), (current) => {
+                        if(!current) return;
+                        const newInv = toArr(current.cloudInv).map(x => {
+                            if(String(x.inst)==String(ch.itemInst)) { const c={...x}; delete c.duelLocked; return c; }
+                            return x;
+                        });
+                        return {...current, cloudInv: newInv};
+                    });
+                }
+            }
+        } catch(e){}
         await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`));
         closeModal();
         showToast('Вызов отклонён','var(--secondary)');
