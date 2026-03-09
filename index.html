@@ -5507,7 +5507,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const _duelCatItem = catalog.find(c=>c.id==myItem.id);
         await set(ref(db,`duelChallenges/${friendId}/${duelKey}`),{
             fromId:user.id, fromName:user.name,
-            itemInst:myInst, itemName:myItem.n, itemEmoji:myItem.i||(_duelCatItem&&_duelCatItem.i)||'🎁',
+            itemInst:String(myInst), itemName:myItem.n, itemEmoji:myItem.i||(_duelCatItem&&_duelCatItem.i)||'🎁',
             itemImg: myItem.img||(_duelCatItem&&_duelCatItem.img)||'',
             itemId: myItem.id||'',
             ts:Date.now(), expiresAt
@@ -5640,9 +5640,20 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const myInstStr = String(selectedDuelInst);
         const theirInstStr = String(theirInst);
         const myItem = myInvCheck.find(x=>String(x.inst)==myInstStr);
-        const theirItem = theirInvCheck.find(x=>String(x.inst)==theirInstStr);
+        // Ищем предмет противника — проверяем и строгое и нестрогое совпадение
+        const theirItem = theirInvCheck.find(x=>String(x.inst)==theirInstStr)
+            || theirInvCheck.find(x=>Number(x.inst)==Number(theirInst));
+        console.log('[DUEL] theirInst:', theirInst, 'type:', typeof theirInst,
+            'theirInstStr:', theirInstStr,
+            'theirInv insts:', theirInvCheck.map(x=>x.inst+' ('+typeof x.inst+')'),
+            'found:', !!theirItem);
         if(!myItem) { closeModal(); return showToast('Твой предмет не найден в инвентаре!','var(--err)'); }
-        if(!theirItem) { closeModal(); return showToast('Предмет противника уже недоступен!','var(--err)'); }
+        if(!theirItem) {
+            // Предмет не найден — удаляем вызов из Firebase чтобы не висел
+            await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`)).catch(()=>{});
+            closeModal();
+            return showToast('Предмет противника уже недоступен — вызов отменён','var(--err)');
+        }
 
         // Determine winner 50/50 (до транзакций, результат фиксирован)
         const iWin = Math.random() < 0.5;
