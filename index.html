@@ -5645,8 +5645,6 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const theirInstStr = String(theirInst);
         const myItem = myInvCheck.find(x=>String(x.inst)==myInstStr);
         // Ищем предмет противника: по inst или по duelLocked с точным duelKey
-        console.warn('[DUEL] theirInst='+theirInst+' type='+typeof theirInst+' duelKey='+duelKey);
-        console.warn('[DUEL] theirInv='+JSON.stringify(theirInvCheck.map(x=>({inst:x.inst,t:typeof x.inst,locked:x.duelLocked||0}))));
         const theirItem = theirInvCheck.find(x=>String(x.inst)===theirInstStr)
             || theirInvCheck.find(x=>x.duelLocked && String(x.duelLocked)===String(duelKey));
         const theirInstFinal = theirItem ? String(theirItem.inst) : theirInstStr;
