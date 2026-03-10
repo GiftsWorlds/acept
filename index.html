@@ -5644,10 +5644,14 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const myInstStr = String(selectedDuelInst);
         const theirInstStr = String(theirInst);
         const myItem = myInvCheck.find(x=>String(x.inst)==myInstStr);
-        // Ищем предмет противника: по inst или по duelLocked с точным duelKey
-        const theirItem = theirInvCheck.find(x=>String(x.inst)===theirInstStr)
-            || theirInvCheck.find(x=>x.duelLocked && String(x.duelLocked)===String(duelKey));
+        // Ищем предмет противника: по duelLocked+duelKey (приоритет), затем по inst (точное и нечёткое)
+        const theirItem = theirInvCheck.find(x=>x.duelLocked && String(x.duelLocked)===String(duelKey))
+            || theirInvCheck.find(x=>String(x.inst)===theirInstStr)
+            || theirInvCheck.find(x=>String(x.inst)==theirInstStr); // нечёткое == для числа/строки
         const theirInstFinal = theirItem ? String(theirItem.inst) : theirInstStr;
+        console.log('[DUEL DEBUG] theirInst:', theirInstStr, '| duelKey:', duelKey);
+        console.log('[DUEL DEBUG] theirInv insts:', theirInvCheck.map(x=>String(x.inst)+':'+(x.duelLocked||'')));
+        console.log('[DUEL DEBUG] theirItem found:', !!theirItem, theirItem?.inst);
         if(!myItem) { closeModal(); return showToast('Твой предмет не найден в инвентаре!','var(--err)'); }
         if(!theirItem) { closeModal(); return showToast('Предмет противника уже недоступен!','var(--err)'); }
 
@@ -5686,8 +5690,9 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             if(!current) return;
             const inv = toArr(current.cloudInv);
             // Ищем предмет по inst или по duelLocked+duelKey
-            const txTheirItem = inv.find(x=>String(x.inst)===theirInstFinal)
-                || inv.find(x=>x.duelLocked && String(x.duelLocked)===String(duelKey));
+            const txTheirItem = inv.find(x=>x.duelLocked && String(x.duelLocked)===String(duelKey))
+                || inv.find(x=>String(x.inst)===theirInstFinal)
+                || inv.find(x=>String(x.inst)==theirInstFinal);
             if(!txTheirItem) return; // предмет уже ушёл — abort
             const newInv = inv.filter(x=>String(x.inst)!==String(txTheirItem.inst));
             if(!iWin) {
