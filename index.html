@@ -5632,41 +5632,53 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const myEmoji2 = myItem.i||(catalog.find(c=>c.id==myItem.id)?.i)||'🎁';
         const _duelTs = Date.now();
 
-        // 🛡️ Атомарное обновление инвентарей обоих участников параллельно
-        const [myTx, theirTx] = await Promise.all([
-            runTransaction(ref(db,'users/'+user.id), (current) => {
-                if(!current) return;
-                let inv = toArr(current.cloudInv);
-                if(!inv.some(x=>String(x.inst)==String(selectedDuelInst))) return;
-                inv = inv.filter(x=>String(x.inst)!=String(selectedDuelInst));
-                if(iWin) {
-                    inv.push({...myItem, from:'⚔️ Дуэль', inst:_duelTs, seen:false});
-                    inv.push({...theirItem, from:`⚔️ ${challengerName}`, seen:false, inst:_duelTs+1});
-                }
-                const winsUpdate = iWin ? {duelWins:(current.duelWins||0)+1} : {};
-                const ownedSet = new Set(current.cosmetics||[]);
-                if(iWin && (current.duelWins||0)+1 >= 10 && !ownedSet.has('bdg_duelist')) {
-                    winsUpdate.cosmetics = [...(current.cosmetics||[]), 'bdg_duelist'];
-                }
-                const myRecent = [challengerId, ...(current.duelRecentOpponents||[]).filter(id=>id!==challengerId)].slice(0,5);
-                return {...current, cloudInv:inv, ...winsUpdate, duelRecentOpponents:myRecent};
-            }),
-            runTransaction(ref(db,'users/'+challengerId), (current) => {
-                if(!current) return;
-                let inv = toArr(current.cloudInv);
-                if(!inv.some(x=>String(x.inst)==String(theirInst))) return;
-                inv = inv.filter(x=>String(x.inst)!=String(theirInst));
-                if(!iWin) {
-                    inv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:_duelTs});
-                    inv.push({...theirItem, from:'⚔️ Дуэль', inst:_duelTs+1, seen:false});
-                }
-                const theirRecent = [user.id, ...(current.duelRecentOpponents||[]).filter(id=>id!==user.id)].slice(0,5);
-                return {...current, cloudInv:inv, duelRecentOpponents:theirRecent};
-            })
-        ]);
-        if(!myTx.committed || !theirTx.committed) {
+        // 🛡️ Сначала последовательно: сначала мой инвентарь
+        const myTx = await runTransaction(ref(db,'users/'+user.id), (current) => {
+            if(!current) return undefined; // abort
+            let inv = toArr(current.cloudInv);
+            if(!inv.some(x=>String(x.inst)==String(selectedDuelInst))) return undefined; // предмет уже ушёл — abort
+            inv = inv.filter(x=>String(x.inst)!=String(selectedDuelInst));
+            if(iWin) {
+                inv.push({...myItem, from:'⚔️ Дуэль', inst:_duelTs, seen:false});
+                inv.push({...theirItem, from:`⚔️ ${challengerName}`, seen:false, inst:_duelTs+1});
+            }
+            const winsUpdate = iWin ? {duelWins:(current.duelWins||0)+1} : {};
+            const ownedSet = new Set(current.cosmetics||[]);
+            if(iWin && (current.duelWins||0)+1 >= 10 && !ownedSet.has('bdg_duelist')) {
+                winsUpdate.cosmetics = [...(current.cosmetics||[]), 'bdg_duelist'];
+            }
+            const myRecent = [challengerId, ...(current.duelRecentOpponents||[]).filter(id=>id!==challengerId)].slice(0,5);
+            return {...current, cloudInv:inv, ...winsUpdate, duelRecentOpponents:myRecent};
+        });
+        if(!myTx.committed) {
             closeModal();
-            return showToast('Один из предметов уже был использован!','var(--err)');
+            return showToast('Твой предмет уже был использован!','var(--err)');
+        }
+
+        // Потом инвентарь противника
+        const theirTx = await runTransaction(ref(db,'users/'+challengerId), (current) => {
+            if(!current) return undefined; // abort
+            let inv = toArr(current.cloudInv);
+            if(!inv.some(x=>String(x.inst)==String(theirInst))) return undefined; // предмет уже ушёл — abort
+            inv = inv.filter(x=>String(x.inst)!=String(theirInst));
+            if(!iWin) {
+                inv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:_duelTs});
+                inv.push({...theirItem, from:'⚔️ Дуэль', inst:_duelTs+1, seen:false});
+            }
+            const theirRecent = [user.id, ...(current.duelRecentOpponents||[]).filter(id=>id!==user.id)].slice(0,5);
+            return {...current, cloudInv:inv, duelRecentOpponents:theirRecent};
+        });
+        if(!theirTx.committed) {
+            // Откат — возвращаем предмет себе
+            await runTransaction(ref(db,'users/'+user.id), (current) => {
+                if(!current) return undefined;
+                let inv = toArr(current.cloudInv).filter(x=>String(x.inst)!=String(_duelTs)&&String(x.inst)!=String(_duelTs+1));
+                inv.push({...myItem});
+                const rollback = iWin ? {duelWins:Math.max(0,(current.duelWins||0)-1)} : {};
+                return {...current, cloudInv:inv, ...rollback};
+            }).catch(()=>{});
+            closeModal();
+            return showToast('Предмет противника уже был использован!','var(--err)');
         }
         _duelAllUsersCache = null;
         await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`));
@@ -5674,9 +5686,9 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         awardXp(winnerId, 50);
         awardXp(iWin ? challengerId : user.id, -20);
 
-        // DUEL ANIMATION
-        openModal();
+        // DUEL ANIMATION — модал уже открыт, просто обновляем контент
         const overlay = document.getElementById('modal-overlay');
+        if(!overlay) openModal();
         document.getElementById('modal-content').innerHTML = `
             <div style="text-align:center;padding:20px 0;" id="duel-anim-wrap">
                 <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;letter-spacing:1px;text-transform:uppercase;">⚔️ Дуэль начинается!</div>
@@ -5741,24 +5753,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         }
     };
 
-        window.declineDuel = async (duelKey) => {
-        // Получаем данные вызова чтобы разблокировать предмет отправителя
-        try {
-            const snap = await get(ref(db,`duelChallenges/${user.id}/${duelKey}`));
-            if(snap.exists()) {
-                const ch = snap.val();
-                if(ch.fromId && ch.itemInst) {
-                    await runTransaction(ref(db,'users/'+ch.fromId), (current) => {
-                        if(!current) return;
-                        const newInv = toArr(current.cloudInv).map(x => {
-                            if(String(x.inst)==String(ch.itemInst)) { const c={...x}; delete c.duelLocked; return c; }
-                            return x;
-                        });
-                        return {...current, cloudInv: newInv};
-                    });
-                }
-            }
-        } catch(e){}
+    window.declineDuel = async (duelKey) => {
         await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`));
         closeModal();
         showToast('Вызов отклонён','var(--secondary)');
