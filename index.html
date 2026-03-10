@@ -5246,7 +5246,15 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if(section) section.innerHTML = '<div style="text-align:center;padding:40px 20px;"><div style="font-size:32px;margin-bottom:10px;">⚔️</div><div style="color:var(--secondary);font-size:13px;">Загрузка игроков...</div></div>';
 
         try {
-            const s = await get(ref(db,'users/'+user.id));
+            const _now = Date.now();
+
+            // Параллельно грузим данные текущего юзера и всех игроков (если кеш устарел)
+            const userPromise = get(ref(db,'users/'+user.id));
+            const allPromise = (_duelAllUsersCache && (_now - _duelAllUsersCache.ts) < 300000)
+                ? Promise.resolve(null)
+                : get(ref(db,'users'));
+
+            const [s, snapOrNull] = await Promise.all([userPromise, allPromise]);
             const d = s.val() || {};
             const winsEl = document.getElementById('duel-wins-badge');
             if(winsEl) winsEl.textContent = `⚔️ ${d.duelWins||0} побед`;
@@ -5255,15 +5263,13 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             // Recent opponents from user profile field (fast, no heavy activity fetch)
             const recentIds = (d.duelRecentOpponents || []).slice(0,3);
 
-            // Кеш всех юзеров на 60 секунд — не грузим каждый раз
+            // Кеш всех юзеров на 5 минут
             let all = {};
-            const _now = Date.now();
-            if(_duelAllUsersCache && (_now - _duelAllUsersCache.ts) < 60000) {
-                all = _duelAllUsersCache.data;
-            } else {
-                const snap = await get(ref(db,'users'));
-                all = snap.val()||{};
+            if(snapOrNull) {
+                all = snapOrNull.val()||{};
                 _duelAllUsersCache = { data: all, ts: _now };
+            } else {
+                all = _duelAllUsersCache.data;
             }
 
             const toPlayer = ([id,u]) => ({
