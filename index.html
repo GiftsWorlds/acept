@@ -5481,155 +5481,215 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
     };
 
     window.startDuel = async (myInst, friendId, friendName) => {
-        // Проверка конфиденциальности
-        const dPrivSnap=await get(ref(db,'users/'+friendId));
-        const dPriv=(dPrivSnap.val()&&dPrivSnap.val().privacy)||{};
-        if(!user.isAdm && dPriv.allowDuel===false) return showToast(`❌ Вы не можете вызвать ${friendName} на дуэль из-за его настроек конфиденциальности`,'var(--err)');
-        // Send duel challenge
-        const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const myItem = toArr(d.cloudInv).find(x=>String(x.inst)==String(myInst));
+        const dPrivSnap = await get(ref(db,'users/'+friendId));
+        const dPriv = (dPrivSnap.val()&&dPrivSnap.val().privacy)||{};
+        if(!user.isAdm && dPriv.allowDuel===false)
+            return showToast(`❌ Нельзя вызвать ${friendName} на дуэль — закрыто настройками`,'var(--err)');
+
+        const s = await get(ref(db,'users/'+user.id));
+        const myItem = toArr(s.val().cloudInv).find(x => x.inst == myInst || String(x.inst) === String(myInst));
         if(!myItem) return showToast('Подарок не найден!','var(--err)');
+
         const duelKey = `${user.id}_${Date.now()}`;
-        await set(ref(db,`duelChallenges/${friendId}/${duelKey}`),{
-            fromId:user.id, fromName:user.name,
-            itemInst:myInst, itemName:myItem.n, itemEmoji:myItem.i||'🎁',
-            ts:Date.now(), expiresAt: Date.now() + 15*60*1000
+        await set(ref(db,`duelChallenges/${friendId}/${duelKey}`), {
+            fromId:    user.id,
+            fromName:  user.name,
+            itemInst:  myItem.inst,   // сохраняем как есть (число)
+            itemName:  myItem.n,
+            itemEmoji: myItem.i || (catalog.find(c=>c.id==myItem.id)||{}).i || '🎁',
+            ts:        Date.now(),
+            expiresAt: Date.now() + 15*60*1000
         });
-        // Автоотмена через 15 минут
-        setTimeout(async () => {
-            try {
-                const snap = await get(ref(db,`duelChallenges/${friendId}/${duelKey}`));
-                if(snap.exists()) await remove(ref(db,`duelChallenges/${friendId}/${duelKey}`));
-            } catch(e){}
+        setTimeout(async()=>{
+            try{const sn=await get(ref(db,`duelChallenges/${friendId}/${duelKey}`));if(sn.exists())await remove(ref(db,`duelChallenges/${friendId}/${duelKey}`));}catch(e){}
         }, 15*60*1000);
-        getTgId(friendId).then(cid=>sendTg(cid,`⚔️ <b>Вызов на дуэль!</b>\n\n<b>${user.name}</b> бросает тебе вызов!\n\n🎯 Его ставка: <b>${myItem.n} ${myItem.i||''}</b>\n🏆 Победитель заберёт оба подарка!\n\n📱 Открой приложение → Друзья → Дуэли`));
-        logActivity('duel_challenge', {user: user.name, userId: user.id, toName: friendName, toId: friendId, item: myItem.n, emoji: myItem.i||'🎁'});
+        getTgId(friendId).then(cid=>sendTg(cid,`⚔️ <b>Вызов на дуэль!</b>\n\n<b>${user.name}</b> бросает тебе вызов!\n\n🎯 Его ставка: <b>${myItem.n} ${myItem.i||''}</b>\n🏆 Победитель заберёт оба подарка!\n\n📱 Открой приложение → Дуэли`));
+        logActivity('duel_challenge',{user:user.name,userId:user.id,toName:friendName,toId:friendId,item:myItem.n});
         closeModal();
         showToast(`⚔️ Вызов отправлен ${friendName}!`,'#ff6b6b','⚔️');
     };
 
-    window.acceptDuelChallenge = async (duelKey, challenge) => {
-        // Show your gifts to pick your stake
-        const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        const myInv = toArr(d.cloudInv);
+    // ─── Глобальное состояние дуэли ───────────────────────────────────────────
+    window._duelChallengesMap = {};   // ключ → данные вызова
+    let _selectedDuelInst = null;     // inst выбранного предмета (число или строка)
+    let _currentDuelKey   = null;     // duelKey текущего открытого вызова
+
+    // ─── Принятие вызова ──────────────────────────────────────────────────────
+    window.acceptDuelChallenge = async (duelKey) => {
+        _currentDuelKey   = duelKey;
+        _selectedDuelInst = null;
+
+        // Читаем СВЕЖИЕ данные из Firebase
+        const snap = await get(ref(db,`duelChallenges/${user.id}/${duelKey}`));
+        if(!snap.exists()) return showToast('Вызов уже отменён','var(--err)');
+        const ch = snap.val();
+
+        const s = await get(ref(db,'users/'+user.id));
+        const myInv = toArr(s.val().cloudInv);
         if(!myInv.length) return showToast('У тебя нет подарков для дуэли!','var(--err)');
+
         const makeCard = (x) => {
             const cat = catalog.find(c=>c.id==x.id);
             const img = resolveImg(x);
-            const emoji = x.i||(cat&&cat.i)||'🎁';
-            return `<div onclick="selectDuelGift('${x.inst}',this)" style="cursor:pointer;text-align:center;background:#0a1520;border-radius:14px;padding:10px 8px;border:2px solid rgba(255,255,255,0.06);transition:all 0.2s;" class="duel-my-card">
-                ${img?`<img src="${img}" style="width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 5px;" onerror="this.style.display='none'">`:`<div style="font-size:32px;line-height:1;margin-bottom:5px;">${emoji}</div>`}
-                <div style="font-size:10px;font-weight:bold;color:white;">${(catalogMap.get(+x.id)||x).n}</div>
+            const em  = x.i||(cat&&cat.i)||'🎁';
+            return `<div onclick="selectDuelGift(this,'${x.inst}')" class="duel-my-card"
+                style="cursor:pointer;text-align:center;background:#0a1520;border-radius:14px;
+                       padding:10px 8px;border:2px solid rgba(255,255,255,0.06);transition:all 0.2s;">
+                ${img
+                    ? `<img src="${img}" style="width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 5px;" onerror="this.style.display='none'">`
+                    : `<div style="font-size:32px;line-height:1;margin-bottom:5px;">${em}</div>`}
+                <div style="font-size:10px;font-weight:bold;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(catalogMap.get(+x.id)||x).n}</div>
             </div>`;
         };
-        document.getElementById('modal-content').innerHTML=`
+
+        const chEmoji = ch.itemEmoji || '🎁';
+        document.getElementById('modal-content').innerHTML = `
             <div style="padding:5px 0;">
                 <div style="text-align:center;margin-bottom:14px;">
                     <div style="font-size:32px;">⚔️</div>
-                    <h3 style="margin:6px 0 4px;background:linear-gradient(90deg,#ff6b6b,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Дуэль!</h3>
-                    <div style="background:#0a1520;border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0;border:1px solid rgba(255,107,107,0.3);">
-                        <div style="font-size:24px;">${challenge.itemEmoji}</div>
-                        <div><div style="font-size:11px;color:var(--secondary);">СТАВКА ${challenge.fromName.toUpperCase()}</div><div style="font-weight:bold;color:#ff6b6b;">${challenge.itemName}</div></div>
+                    <h3 style="margin:6px 0 4px;background:linear-gradient(90deg,#ff6b6b,#ffd700);
+                       -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Дуэль!</h3>
+                    <div style="background:#0a1520;border-radius:12px;padding:10px;display:flex;
+                       align-items:center;justify-content:center;gap:10px;margin:10px 0;
+                       border:1px solid rgba(255,107,107,0.3);">
+                        <div style="font-size:24px;">${chEmoji}</div>
+                        <div>
+                            <div style="font-size:11px;color:var(--secondary);">СТАВКА ${(ch.fromName||'').toUpperCase()}</div>
+                            <div style="font-weight:bold;color:#ff6b6b;">${ch.itemName||'?'}</div>
+                        </div>
                     </div>
                     <div style="font-size:12px;color:var(--secondary);">Выбери свою ставку:</div>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-height:220px;overflow-y:auto;margin-bottom:14px;">
                     ${myInv.map(makeCard).join('')}
                 </div>
-                <div id="duel-selected-info" style="display:none;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.3);border-radius:14px;padding:8px;text-align:center;margin-bottom:12px;">
+                <div id="duel-selected-info" style="display:none;background:rgba(255,107,107,0.08);
+                    border:1px solid rgba(255,107,107,0.3);border-radius:14px;padding:8px;
+                    text-align:center;margin-bottom:12px;">
                     <div style="font-size:11px;color:var(--secondary);">ТВОЯ СТАВКА</div>
                     <div id="duel-selected-name" style="font-weight:bold;color:#ff6b6b;"></div>
                 </div>
-                <button id="duel-fight-btn" class="btn" style="background:linear-gradient(90deg,#e74c3c,#c0392b);display:none;" onclick="fightDuel('${duelKey}','${challenge.fromId}','${challenge.itemInst}','${challenge.fromName}','${challenge.itemEmoji}','${challenge.itemName}')">⚔️ В БОЙ!</button>
-                <button class="btn" style="background:rgba(255,255,255,0.05);color:var(--secondary);margin-top:8px;" onclick="declineDuel('${duelKey}')">🏳️ Отказаться</button>
+                <button id="duel-fight-btn" class="btn"
+                    style="background:linear-gradient(90deg,#e74c3c,#c0392b);display:none;"
+                    onclick="fightDuel()">⚔️ В БОЙ!</button>
+                <button class="btn"
+                    style="background:rgba(255,255,255,0.05);color:var(--secondary);margin-top:8px;"
+                    onclick="declineDuel('${duelKey}')">🏳️ Отказаться</button>
             </div>`;
         openModal();
     };
 
-    let selectedDuelInst = null, selectedDuelEmoji = '🎁', selectedDuelName = '';
-    window.selectDuelGift = (inst, el) => {
-        selectedDuelInst = inst;
-        document.querySelectorAll('.duel-my-card').forEach(c=>{c.style.border='2px solid rgba(255,255,255,0.06)';c.style.background='#0a1520';});
-        el.style.border='2px solid #ff6b6b';el.style.background='rgba(255,107,107,0.1)';
-        const imgEl = el.querySelector('img');
-        selectedDuelEmoji = el.querySelector('div[style*="font-size:32px"]')?.innerText || '🎁';
-        selectedDuelName = el.querySelector('div[style*="font-weight:bold"]')?.innerText||'?';
+    // ─── Выбор предмета ───────────────────────────────────────────────────────
+    window.selectDuelGift = (el, inst) => {
+        _selectedDuelInst = inst;   // сохраняем как пришло из атрибута (строка)
+        document.querySelectorAll('.duel-my-card').forEach(c=>{
+            c.style.border='2px solid rgba(255,255,255,0.06)';
+            c.style.background='#0a1520';
+        });
+        el.style.border='2px solid #ff6b6b';
+        el.style.background='rgba(255,107,107,0.1)';
+        const nameEl = el.querySelector('div[style*="font-weight:bold"]');
         document.getElementById('duel-selected-info').style.display='block';
-        document.getElementById('duel-selected-name').innerText=selectedDuelName;
+        document.getElementById('duel-selected-name').innerText = nameEl ? nameEl.innerText : '?';
         document.getElementById('duel-fight-btn').style.display='block';
     };
 
-    window.fightDuel = async (duelKey, challengerId, theirInst, challengerName, theirEmoji, theirItemName) => {
-        if(!selectedDuelInst) return showToast('Выбери ставку!','var(--err)');
-        // 🛡️ Rate limit
-        const _rlD = _protection.duel(); if(!_rlD.ok) return showToast(_rlD.msg, '#e74c3c');
+    // ─── В БОЙ! ───────────────────────────────────────────────────────────────
+    window.fightDuel = async () => {
+        if(!_selectedDuelInst) return showToast('Выбери ставку!','var(--err)');
+        if(!_currentDuelKey)   return showToast('Ошибка: нет ключа дуэли','var(--err)');
 
-        // 🛡️ Fetch both inventories для проверки наличия предметов
-        const [mySnap, theirSnap] = await Promise.all([get(ref(db,'users/'+user.id)), get(ref(db,'users/'+challengerId))]);
-        const myD = mySnap.val(), theirD = theirSnap.val();
-        const myInvCheck = toArr(myD.cloudInv), theirInvCheck = toArr(theirD.cloudInv);
-        const myItem = myInvCheck.find(x=>String(x.inst)==String(selectedDuelInst));
-        const theirItem = theirInvCheck.find(x=>String(x.inst)==String(theirInst));
-        if(!myItem||!theirItem) { closeModal(); return showToast('Один из предметов уже недоступен!','var(--err)'); }
+        const _rlD = _protection.duel();
+        if(!_rlD.ok) return showToast(_rlD.msg,'#e74c3c');
 
-        // Determine winner 50/50 (до транзакций, результат фиксирован)
-        const iWin = Math.random() < 0.5;
-        const winnerId = iWin ? user.id : challengerId;
+        // Читаем СВЕЖИЕ данные из Firebase
+        const freshSnap = await get(ref(db,`duelChallenges/${user.id}/${_currentDuelKey}`));
+        if(!freshSnap.exists()){ closeModal(); return showToast('Вызов уже отменён','var(--err)'); }
+        const ch = freshSnap.val();
+
+        const challengerId   = ch.fromId;
+        const challengerName = ch.fromName;
+        const theirInst      = ch.itemInst;   // число как сохранили
+        const theirEmoji     = ch.itemEmoji || '🎁';
+        const theirItemName  = ch.itemName  || '?';
+        const duelKey        = _currentDuelKey;
+
+        // Загружаем оба инвентаря
+        const [mySnap, theirSnap] = await Promise.all([
+            get(ref(db,'users/'+user.id)),
+            get(ref(db,'users/'+challengerId))
+        ]);
+        const myD    = mySnap.val();
+        const theirD = theirSnap.val();
+        const myInv    = toArr(myD.cloudInv);
+        const theirInv = toArr(theirD.cloudInv);
+
+        // Ищем предметы — сравниваем и как строку и как число
+        const myItem    = myInv.find(x => x.inst == _selectedDuelInst);
+        const theirItem = theirInv.find(x => x.inst == theirInst);
+
+        if(!myItem)    { closeModal(); return showToast('Твой предмет уже недоступен!','var(--err)'); }
+        if(!theirItem) { closeModal(); return showToast('Предмет противника уже недоступен!','var(--err)'); }
+
+        // Результат 50/50
+        const iWin       = Math.random() < 0.5;
+        const winnerId   = iWin ? user.id : challengerId;
         const winnerName = iWin ? user.name : challengerName;
-        const myEmoji2 = myItem.i||(catalog.find(c=>c.id==myItem.id)?.i)||'🎁';
-        const _duelTs = Date.now();
+        const myEmoji2   = myItem.i||(catalog.find(c=>c.id==myItem.id)||{}).i||'🎁';
+        const _ts        = Date.now();
 
-        // 🛡️ Атомарное обновление инвентарей обоих участников через runTransaction
+        // Атомарные транзакции
         const [myTx, theirTx] = await Promise.all([
-            runTransaction(ref(db,'users/'+user.id), (current) => {
-                if(!current) return;
-                let inv = toArr(current.cloudInv);
-                if(!inv.some(x=>String(x.inst)==String(selectedDuelInst))) return; // предмет уже ушёл
-                inv = inv.filter(x=>String(x.inst)!=String(selectedDuelInst));
-                if(iWin) {
-                    inv.push({...myItem, from:'⚔️ Дуэль', inst:_duelTs});
-                    inv.push({...theirItem, from:`⚔️ ${challengerName}`, seen:false, inst:_duelTs+1});
+            runTransaction(ref(db,'users/'+user.id), cur => {
+                if(!cur) return cur;
+                let inv = toArr(cur.cloudInv);
+                if(!inv.some(x => x.inst == _selectedDuelInst)) return;   // abort — предмет ушёл
+                inv = inv.filter(x => x.inst != _selectedDuelInst);
+                if(iWin){
+                    inv.push({...myItem,   from:'⚔️ Дуэль',            inst:_ts,   seen:false});
+                    inv.push({...theirItem,from:`⚔️ ${challengerName}`, inst:_ts+1, seen:false});
                 }
-                const winsUpdate = iWin ? {duelWins:(current.duelWins||0)+1} : {};
-                const ownedSet = new Set(current.cosmetics||[]);
-                if(iWin && (current.duelWins||0)+1 >= 10 && !ownedSet.has('bdg_duelist')) {
-                    winsUpdate.cosmetics = [...(current.cosmetics||[]), 'bdg_duelist'];
-                }
-                return {...current, cloudInv:inv, ...winsUpdate};
+                const wins = iWin ? {duelWins:(cur.duelWins||0)+1} : {};
+                if(iWin && (cur.duelWins||0)+1>=10 && !(cur.cosmetics||[]).includes('bdg_duelist'))
+                    wins.cosmetics=[...(cur.cosmetics||[]),'bdg_duelist'];
+                return {...cur, cloudInv:inv, ...wins};
             }),
-            runTransaction(ref(db,'users/'+challengerId), (current) => {
-                if(!current) return;
-                let inv = toArr(current.cloudInv);
-                if(!inv.some(x=>String(x.inst)==String(theirInst))) return; // предмет уже ушёл
-                inv = inv.filter(x=>String(x.inst)!=String(theirInst));
-                if(!iWin) {
-                    inv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:_duelTs});
-                    inv.push({...theirItem, from:'⚔️ Дуэль', inst:_duelTs+1});
+            runTransaction(ref(db,'users/'+challengerId), cur => {
+                if(!cur) return cur;
+                let inv = toArr(cur.cloudInv);
+                if(!inv.some(x => x.inst == theirInst)) return;   // abort — предмет ушёл
+                inv = inv.filter(x => x.inst != theirInst);
+                if(!iWin){
+                    inv.push({...myItem,   from:`⚔️ ${user.name}`, inst:_ts,   seen:false});
+                    inv.push({...theirItem,from:'⚔️ Дуэль',         inst:_ts+1, seen:false});
                 }
-                return {...current, cloudInv:inv};
+                return {...cur, cloudInv:inv};
             })
         ]);
-        if(!myTx.committed || !theirTx.committed) {
+
+        if(!myTx.committed || !theirTx.committed){
             closeModal();
-            return showToast('Один из предметов уже был использован!','var(--err)');
+            return showToast('Один из предметов уже был использован в другой дуэли!','var(--err)');
         }
+
+        // Удаляем вызов и пишем лог
         await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`));
-        logActivity('duel_result', {winner: winnerName, winnerId, loser: iWin ? challengerName : user.name, loserId: iWin ? challengerId : user.id, item1: myItem.n, item2: theirItem.n});
-        // XP: +50 победителю, -20 проигравшему
+        logActivity('duel_result',{winner:winnerName,winnerId,loser:iWin?challengerName:user.name,loserId:iWin?challengerId:user.id,item1:myItem.n,item2:theirItem.n});
         awardXp(winnerId, 50);
         awardXp(iWin ? challengerId : user.id, -20);
 
-        // DUEL ANIMATION
+        // ── Анимация ──────────────────────────────────────────────────────────
         const overlay = document.getElementById('modal-overlay');
         document.getElementById('modal-content').innerHTML = `
             <div style="text-align:center;padding:20px 0;" id="duel-anim-wrap">
-                <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;letter-spacing:1px;text-transform:uppercase;">⚔️ Дуэль начинается!</div>
+                <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;
+                    letter-spacing:1px;text-transform:uppercase;">⚔️ Дуэль начинается!</div>
                 <div style="display:flex;align-items:center;justify-content:center;gap:20px;">
                     <div id="duel-left" style="text-align:center;transition:all 1s ease;">
                         <div style="font-size:52px;margin-bottom:8px;">${myEmoji2}</div>
                         <div style="font-size:12px;font-weight:bold;color:#4db4ff;">${user.name}</div>
                     </div>
-                    <div id="duel-vs" style="font-size:32px;font-weight:900;color:#ff6b6b;">VS</div>
+                    <div style="font-size:32px;font-weight:900;color:#ff6b6b;">VS</div>
                     <div id="duel-right" style="text-align:center;transition:all 1s ease;">
                         <div style="font-size:52px;margin-bottom:8px;">${theirEmoji}</div>
                         <div style="font-size:12px;font-weight:bold;color:#ff6b6b;">${challengerName}</div>
@@ -5638,121 +5698,140 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 <div id="duel-result" style="margin-top:24px;opacity:0;transition:opacity 0.5s;"></div>
             </div>`;
 
-        // Phase 1: shake
         setTimeout(()=>{
-            document.getElementById('duel-left').style.animation='duelShakeL 0.4s ease-in-out 4';
-            document.getElementById('duel-right').style.animation='duelShakeR 0.4s ease-in-out 4';
-            overlay.style.animation='duelFlash 0.4s ease 4';
-        },300);
+            const l=document.getElementById('duel-left'), r=document.getElementById('duel-right');
+            if(l) l.style.animation='duelShakeL 0.4s ease-in-out 4';
+            if(r) r.style.animation='duelShakeR 0.4s ease-in-out 4';
+            if(overlay) overlay.style.animation='duelFlash 0.4s ease 4';
+        }, 300);
 
-        // Phase 2: clash emoji
         setTimeout(()=>{
-            const el=document.createElement('div');el.className='duel-clash-emoji';el.innerText='💥';
-            document.body.appendChild(el);setTimeout(()=>el.remove(),900);
-        },900);
+            const el=document.createElement('div');
+            el.className='duel-clash-emoji'; el.innerText='💥';
+            document.body.appendChild(el); setTimeout(()=>el.remove(),900);
+        }, 900);
 
-        // Phase 3: result
         setTimeout(()=>{
-            overlay.style.animation='';
+            if(overlay) overlay.style.animation='';
+            const l=document.getElementById('duel-left'), r=document.getElementById('duel-right');
             if(iWin){
-                document.getElementById('duel-left').style.animation='duelWinner 0.6s ease forwards';
-                document.getElementById('duel-right').style.animation='duelLoser 0.6s ease forwards';
+                if(l) l.style.animation='duelWinner 0.6s ease forwards';
+                if(r) r.style.animation='duelLoser 0.6s ease forwards';
             } else {
-                document.getElementById('duel-right').style.animation='duelWinner 0.6s ease forwards';
-                document.getElementById('duel-left').style.animation='duelLoser 0.6s ease forwards';
+                if(r) r.style.animation='duelWinner 0.6s ease forwards';
+                if(l) l.style.animation='duelLoser 0.6s ease forwards';
             }
-        },1800);
+        }, 1800);
 
-        // Phase 4: show result text
         setTimeout(()=>{
             const res=document.getElementById('duel-result');
             if(!res) return;
             res.style.opacity='1';
             if(iWin){
-                spawnConfetti(window.innerWidth/2,window.innerHeight/2,60);
-                const newWins2 = (myD.duelWins||0) + 1;
-                const badgeJustUnlocked = newWins2 >= 10 && !new Set(myD.cosmetics||[]).has('bdg_duelist');
-                res.innerHTML=`<div style="font-size:36px;margin-bottom:10px;">🏆</div><div style="font-size:20px;font-weight:900;color:gold;">ТЫ ПОБЕДИЛ!</div><div style="font-size:13px;color:var(--secondary);margin-top:6px;">Ты получил оба подарка</div><div style="font-size:12px;color:#4db4ff;margin-top:8px;">⚔️ Побед: ${newWins2}/10</div>${badgeJustUnlocked?'<div style="margin-top:10px;background:linear-gradient(135deg,rgba(255,107,107,0.15),rgba(255,215,0,0.1));border:1px solid rgba(255,215,0,0.4);border-radius:14px;padding:10px;"><div style="font-size:22px;">⚔️</div><div style="font-weight:bold;color:gold;font-size:13px;">Бейдж «Дуэлянт» разблокирован!</div></div>':''}`;
-                if(badgeJustUnlocked) setTimeout(()=>showToast('⚔️ Бейдж «Дуэлянт» разблокирован!','gold'), 500);
+                spawnConfetti(window.innerWidth/2, window.innerHeight/2, 60);
+                const newWins = (myD.duelWins||0)+1;
+                const badgeNew = newWins>=10 && !(myD.cosmetics||[]).includes('bdg_duelist');
+                res.innerHTML=`
+                    <div style="font-size:36px;margin-bottom:10px;">🏆</div>
+                    <div style="font-size:20px;font-weight:900;color:gold;">ТЫ ПОБЕДИЛ!</div>
+                    <div style="font-size:13px;color:var(--secondary);margin-top:6px;">Ты получил оба подарка</div>
+                    <div style="font-size:12px;color:#4db4ff;margin-top:8px;">⚔️ Побед: ${newWins}/10</div>
+                    ${badgeNew?`<div style="margin-top:10px;background:linear-gradient(135deg,rgba(255,107,107,0.15),rgba(255,215,0,0.1));border:1px solid rgba(255,215,0,0.4);border-radius:14px;padding:10px;">
+                        <div style="font-size:22px;">⚔️</div>
+                        <div style="font-weight:bold;color:gold;font-size:13px;">Бейдж «Дуэлянт» разблокирован!</div>
+                    </div>`:''}`;
+                if(badgeNew) setTimeout(()=>showToast('⚔️ Бейдж «Дуэлянт» разблокирован!','gold'),500);
             } else {
-                res.innerHTML=`<div style="font-size:36px;margin-bottom:10px;">💀</div><div style="font-size:20px;font-weight:900;color:#ff6b6b;">ТЫ ПРОИГРАЛ</div><div style="font-size:13px;color:var(--secondary);margin-top:6px;">${challengerName} забрал оба подарка</div>`;
+                res.innerHTML=`
+                    <div style="font-size:36px;margin-bottom:10px;">💀</div>
+                    <div style="font-size:20px;font-weight:900;color:#ff6b6b;">ТЫ ПРОИГРАЛ</div>
+                    <div style="font-size:13px;color:var(--secondary);margin-top:6px;">${challengerName} забрал оба подарка</div>`;
             }
             setTimeout(()=>{
                 if(!document.getElementById('duel-close-btn')){
-                    const btn=document.createElement('button');btn.className='btn';btn.id='duel-close-btn';btn.style.marginTop='16px';btn.innerText='Закрыть';btn.onclick=closeModal;
+                    const btn=document.createElement('button');
+                    btn.className='btn'; btn.id='duel-close-btn';
+                    btn.style.marginTop='16px'; btn.innerText='Закрыть';
+                    btn.onclick=closeModal;
                     document.getElementById('duel-result').appendChild(btn);
                 }
-            },200);
-        },2600);
+            }, 200);
+        }, 2600);
 
-        // Уведомления с правильными предметами
-        if(iWin) {
-            // challenger проиграл свою ставку (theirItem)
+        // Telegram уведомления
+        if(iWin){
             getTgId(challengerId).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n😔 К сожалению, ты проиграл.\n❌ Утеряно: <b>${theirItemName}</b> ${theirEmoji}`));
         } else {
-            // challenger выиграл оба предмета
             getTgId(challengerId).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n🎉 Поздравляем, ты победил!\n✅ Получено: <b>${theirItemName}</b> ${theirEmoji}\n✅ Сохранено: <b>${myItem.n}</b> ${myEmoji2}`));
         }
     };
 
+    // ─── Отклонить вызов ──────────────────────────────────────────────────────
     window.declineDuel = async (duelKey) => {
         await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`));
         closeModal();
         showToast('Вызов отклонён','var(--secondary)');
     };
 
-    // Listen for duel challenges
-    function listenDuelChallenges() {
-        onValue(ref(db,`duelChallenges/${user.id}`), snap => {
-            const challenges = snap.val()||{};
-            renderDuelChallenges(challenges);
+    // ─── Слушаем входящие вызовы ──────────────────────────────────────────────
+    function listenDuelChallenges(){
+        onValue(ref(db,`duelChallenges/${user.id}`), snap=>{
+            renderDuelChallenges(snap.val()||{});
         });
-        // Обновлять таймеры каждые 30 сек + удалять истёкшие
-        setInterval(async () => {
+        // Каждые 30 сек удаляем истёкшие
+        setInterval(async()=>{
             const snap = await get(ref(db,`duelChallenges/${user.id}`));
-            const challenges = snap.val()||{};
-            const now = Date.now();
-            for(const [key, ch] of Object.entries(challenges)) {
-                const expiry = ch.expiresAt || (ch.ts + 15*60*1000);
-                if(now >= expiry) remove(ref(db,`duelChallenges/${user.id}/${key}`)).catch(()=>{});
+            const all  = snap.val()||{};
+            const now  = Date.now();
+            for(const [key,ch] of Object.entries(all)){
+                const exp = ch.expiresAt||(ch.ts+15*60*1000);
+                if(now>=exp) remove(ref(db,`duelChallenges/${user.id}/${key}`)).catch(()=>{});
             }
-            renderDuelChallenges(challenges);
+            renderDuelChallenges(all);
         }, 30000);
     }
 
-    function renderDuelChallenges(challenges) {
-        const container = document.getElementById('duel-challenges-section');
-        if(!container) return;
-        const now = Date.now();
-        // Фильтруем истёкшие (на стороне UI)
-        const entries = Object.entries(challenges).filter(([k,ch]) => {
-            const expiry = ch.expiresAt || (ch.ts + 15*60*1000);
-            return now < expiry;
+    // ─── Рендер списка вызовов ────────────────────────────────────────────────
+    function renderDuelChallenges(challenges){
+        window._duelChallengesMap = challenges||{};
+        const now  = Date.now();
+        const entries = Object.entries(challenges).filter(([,ch])=>{
+            return now < (ch.expiresAt||(ch.ts+15*60*1000));
         });
-        // Обновляем бейдж ⚔️
+
         const badge = document.getElementById('badge-duel');
-        if(badge) { badge.style.display = entries.length > 0 ? 'flex' : 'none'; badge.textContent = entries.length; }
-        if(!entries.length){container.innerHTML='';return;}
-        container.innerHTML=`
-            <div style="background:linear-gradient(135deg,rgba(255,107,107,0.08),rgba(255,107,107,0.03));border:1px solid rgba(255,107,107,0.3);border-radius:18px;padding:14px;margin-bottom:12px;">
-                <div style="font-size:11px;font-weight:bold;color:#ff6b6b;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">⚔️ Вызовы на дуэль (${entries.length})</div>
+        if(badge){ badge.style.display=entries.length?'flex':'none'; badge.textContent=entries.length; }
+
+        const html = entries.length===0 ? '' : `
+            <div style="background:linear-gradient(135deg,rgba(255,107,107,0.08),rgba(255,107,107,0.03));
+                border:1px solid rgba(255,107,107,0.3);border-radius:18px;padding:14px;margin-bottom:12px;">
+                <div style="font-size:11px;font-weight:bold;color:#ff6b6b;letter-spacing:0.5px;
+                    text-transform:uppercase;margin-bottom:10px;">⚔️ Вызовы на дуэль (${entries.length})</div>
                 ${entries.map(([key,ch])=>{
-                    const expiry = ch.expiresAt||(ch.ts+15*60*1000);
-                    const mLeft = Math.max(0,Math.floor((expiry-now)/60000));
-                    const sLeft = Math.max(0,Math.floor(((expiry-now)%60000)/1000));
-                    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0a1520;border-radius:12px;padding:10px 12px;margin-bottom:8px;border:1px solid rgba(255,107,107,0.2);">
+                    const exp  = ch.expiresAt||(ch.ts+15*60*1000);
+                    const diff = Math.max(0, exp-now);
+                    const m = Math.floor(diff/60000);
+                    const s = Math.floor((diff%60000)/1000);
+                    return `<div style="display:flex;align-items:center;justify-content:space-between;
+                        gap:10px;background:#0a1520;border-radius:12px;padding:10px 12px;
+                        margin-bottom:8px;border:1px solid rgba(255,107,107,0.2);">
                         <div style="display:flex;align-items:center;gap:10px;flex:1;">
-                            <div style="font-size:28px;">${ch.itemEmoji}</div>
+                            <div style="font-size:28px;">${ch.itemEmoji||'🎁'}</div>
                             <div>
-                                <div style="font-weight:bold;font-size:13px;">${ch.itemName}</div>
-                                <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName}</div>
-                                <div style="font-size:10px;color:var(--orange);">⏳ ${mLeft}:${String(sLeft).padStart(2,'0')}</div>
+                                <div style="font-weight:bold;font-size:13px;">${ch.itemName||'?'}</div>
+                                <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName||'?'}</div>
+                                <div style="font-size:10px;color:var(--orange);">⏳ ${m}:${String(s).padStart(2,'0')}</div>
                             </div>
                         </div>
-                        <button class="btn" style="padding:8px 14px;font-size:12px;width:auto;background:linear-gradient(90deg,#e74c3c,#c0392b);" onclick='acceptDuelChallenge("${key}",${JSON.stringify(ch)})'>⚔️ Принять</button>
+                        <button class="btn" style="padding:8px 14px;font-size:12px;width:auto;
+                            background:linear-gradient(90deg,#e74c3c,#c0392b);"
+                            onclick="acceptDuelChallenge('${key}')">⚔️ Принять</button>
                     </div>`;
                 }).join('')}
             </div>`;
+
+        const c = document.getElementById('duel-incoming-section');
+        if(c) c.innerHTML = html;
     }
 
     window.giftOpen = async (inst) => {
