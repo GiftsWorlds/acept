@@ -7,6 +7,9 @@
     <title>Gifts World Pro</title>
     <link rel="manifest" href="manifest.json">
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <meta name="theme-color" content="#070d14">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -3317,22 +3320,28 @@
             bInv.innerText=unseen; bInv.style.display=unseen>0?'flex':'none';
 
         });
-        renderShop().then(()=>{ renderShopCards(); }); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges(); listenDuelResults();
-        // Прогреваем кеш игроков для дуэлей заранее — чтобы при открытии было мгновенно
-        setTimeout(() => {
+        // 🚀 Запускаем слушатели и кеши немедленно
+        listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges(); listenDuelResults();
+        startShopPricesListener();
+        loadCustomCatalog();
+
+        // 🚀 Параллельно прогреваем ВСЕ вкладки сразу — чтобы при переходе было мгновенно
+        Promise.all([
+            // Магазин
+            window.renderShop ? window.renderShop().then(()=>{ if(window.renderShopCards) renderShopCards(); }) : Promise.resolve(),
+            // Инвентарь
+            new Promise(res => { try { if(window.renderInv) renderInv(); } catch(e){} res(); }),
+            // Профиль
+            get(ref(db,'users/'+id)).then(s=>{ if(s.exists() && window.renderMyProfile) renderMyProfile(s.val()); }).catch(()=>{}),
+            // Рейтинг
+            new Promise(res => setTimeout(()=>{ if(window.loadLeaderboard) loadLeaderboard(); res(); }, 800)),
+            // Дуэли — кеш игроков
             get(ref(db,'users')).then(snap => {
                 if(snap.exists()) {
                     _duelAllUsersCache = { data: snap.val(), ts: Date.now() };
-                    // Рендерим страницу дуэлей если она уже открыта
-                    if(_duelCache) _duelRenderDefault();
                 }
-            }).catch(()=>{});
-        }, 2000);
-        setTimeout(() => { if (window.loadLeaderboard) loadLeaderboard(); }, 1500);
-        // Запускаем realtime listener цен — обновляет у всех мгновенно
-        startShopPricesListener();
-        // Загружаем кастомный каталог для всех пользователей (картинки кастомных подарков)
-        loadCustomCatalog();
+            }).catch(()=>{}),
+        ]).catch(()=>{});
     }
 
 
@@ -8025,14 +8034,19 @@ function renderDuelChallenges(challenges){
         document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
         document.querySelectorAll('.nav-btn').forEach(n=>n.classList.remove('active'));
         document.getElementById(id).classList.add('active');b.classList.add('active');
-        // 🚀 OPT: не перерисовываем если та же вкладка и данные не изменились
+        // 🚀 OPT: минимальный рендер при переключении — всё уже прогрето при логине
         const sameTab = (id === _lastTabId);
         _lastTabId = id;
+        // Инвентарь — только если изменился
         if(id==='inv') { if(_invDirty || !sameTab) { renderInv(); _invDirty = false; } }
+        // Магазин — только если первый раз (уже загружен при логине)
         if(id==='shop') { if(!sameTab) renderShop().then(()=>renderShopCards()); }
-        if(id==='market') listenMarket();
-        if(id==='profile') { get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); }); }
-        if(id==='leaderboard') { if(!sameTab) loadLeaderboard(); }
+        // Рынок — realtime, всегда актуален через listenMarket
+        // Профиль — уже в onValue, не нужен повторный get
+        if(id==='profile' && !sameTab) { get(ref(db,'users/'+user.id)).then(s=>{ if(s.val()) renderMyProfile(s.val()); }); }
+        // Рейтинг — только если первый раз
+        if(id==='leaderboard' && !sameTab) loadLeaderboard();
+        // Дуэли — кеш уже прогрет, renderDuelPage использует его мгновенно
         if(id==='duel') { renderDuelPage(); }
     };
     // ===== TELEGRAM INTEGRATION =====
@@ -9594,7 +9608,25 @@ ${curXp.toLocaleString()} → ${newXp.toLocaleString()} XP (⭐ ${newLvl} ур.)
 
     // ── PWA: Service Worker Registration ──────────────────────
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('sw.js').catch(() => {});
+        navigator.serviceWorker.register('sw.js').then(reg => {
+            // Проверяем обновление SW каждый раз при загрузке
+            reg.update();
+            // Если найдено обновление — активируем сразу без ожидания
+            reg.addEventListener('updatefound', () => {
+                const newSW = reg.installing;
+                if (!newSW) return;
+                newSW.addEventListener('statechange', () => {
+                    if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+                        // Новый SW готов — говорим ему активироваться немедленно
+                        newSW.postMessage({ type: 'SKIP_WAITING' });
+                    }
+                });
+            });
+        }).catch(() => {});
+        // При активации нового SW — перезагружаем страницу чтобы подхватить новые файлы
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+        });
     }
 
     // ── PWA: Install Prompt ────────────────────────────────────
