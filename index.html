@@ -2470,7 +2470,7 @@
         if (!delta || !userId) return;
         const r = ref(db, 'users/' + userId);
         await runTransaction(r, (current) => {
-            if (!current) return;
+            if (!current) return undefined;  // ABORT — не удалять профиль!
             const curXp = current.xp || 0;
             const newXp = Math.max(0, curXp + delta);
             return { ...current, xp: newXp };
@@ -3295,6 +3295,12 @@
 
         });
         renderShop().then(()=>{ renderShopCards(); }); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges();
+        // Прогреваем кеш игроков для дуэлей заранее — чтобы при открытии было мгновенно
+        setTimeout(() => {
+            get(ref(db,'users')).then(snap => {
+                if(snap.exists()) _duelAllUsersCache = { data: snap.val(), ts: Date.now() };
+            }).catch(()=>{});
+        }, 2000);
         setTimeout(() => { if (window.loadLeaderboard) loadLeaderboard(); }, 1500);
         // Запускаем realtime listener цен — обновляет у всех мгновенно
         startShopPricesListener();
@@ -5241,9 +5247,15 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const inp = document.getElementById('duel-search-input');
         if(inp) inp.value = '';
 
-        // Show loading immediately
+        // Если кеш уже есть — показываем мгновенно, иначе показываем загрузку
         const section = document.getElementById('duel-players-section');
-        if(section) section.innerHTML = '<div style="text-align:center;padding:40px 20px;"><div style="font-size:32px;margin-bottom:10px;">⚔️</div><div style="color:var(--secondary);font-size:13px;">Загрузка игроков...</div></div>';
+        if(_duelAllUsersCache) {
+            // Быстрый рендер из кеша пока грузим свежие данные юзера
+            _duelCache = _duelCache || { all:[], friendIds:new Set(), recentIds:[] };
+            _duelRenderDefault();
+        } else {
+            if(section) section.innerHTML = '<div style="text-align:center;padding:40px 20px;"><div style="font-size:32px;margin-bottom:10px;">⚔️</div><div style="color:var(--secondary);font-size:13px;">Загрузка игроков...</div></div>';
+        }
 
         try {
             const _now = Date.now();
@@ -5503,7 +5515,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         await set(ref(db,`duelChallenges/${friendId}/${duelKey}`), {
             fromId:    user.id,
             fromName:  user.name,
-            itemInst:  myItem.inst,   // сохраняем как есть (число)
+            itemInst:  String(myItem.inst),   // сохраняем как строку — избегаем проблем с типами
             itemName:  myItem.n,
             itemEmoji: myItem.i || (catalog.find(c=>c.id==myItem.id)||{}).i || '🎁',
             ts:        Date.now(),
@@ -5533,9 +5545,20 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if(!snap.exists()) return showToast('Вызов уже отменён','var(--err)');
         const ch = snap.val();
 
-        const s = await get(ref(db,'users/'+user.id));
+        // Проверяем что предмет соперника ещё существует перед показом модалки
+        const [s, challSnap] = await Promise.all([
+            get(ref(db,'users/'+user.id)),
+            get(ref(db,'users/'+ch.fromId))
+        ]);
         const myInv = toArr(s.val().cloudInv);
         if(!myInv.length) return showToast('У тебя нет подарков для дуэли!','var(--err)');
+        const challInv = toArr((challSnap.val()||{}).cloudInv);
+        const challItemExists = challInv.some(x => String(x.inst) === String(ch.itemInst));
+        if(!challItemExists) {
+            // Предмет уже не существует — удаляем протухший вызов
+            await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`)).catch(()=>{});
+            return showToast('⚠️ Предмет соперника уже недоступен — вызов отменён','var(--orange)');
+        }
 
         const makeCard = (x) => {
             const cat = catalog.find(c=>c.id==x.id);
@@ -5590,7 +5613,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
     // ─── Выбор предмета ───────────────────────────────────────────────────────
     window.selectDuelGift = (el, inst) => {
-        _selectedDuelInst = inst;   // сохраняем как пришло из атрибута (строка)
+        _selectedDuelInst = String(inst);   // всегда строка для надёжного сравнения
         document.querySelectorAll('.duel-my-card').forEach(c=>{
             c.style.border='2px solid rgba(255,255,255,0.06)';
             c.style.background='#0a1520';
@@ -5619,7 +5642,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
         const challengerId   = ch.fromId;
         const challengerName = ch.fromName;
-        const theirInst      = ch.itemInst;   // число как сохранили
+        const theirInst      = String(ch.itemInst);   // всегда строка для надёжного сравнения
         const theirEmoji     = ch.itemEmoji || '🎁';
         const theirItemName  = ch.itemName  || '?';
         const duelKey        = _currentDuelKey;
@@ -5638,8 +5661,16 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const myItem    = myInv.find(x => x.inst == _selectedDuelInst);
         const theirItem = theirInv.find(x => x.inst == theirInst);
 
-        if(!myItem)    { closeModal(); return showToast('Твой предмет уже недоступен!','var(--err)'); }
-        if(!theirItem) { closeModal(); return showToast('Предмет противника уже недоступен!','var(--err)'); }
+        if(!myItem) {
+            closeModal();
+            return showToast('Твой предмет уже недоступен — возможно ты его продал/обменял','var(--err)');
+        }
+        if(!theirItem) {
+            // Предмет соперника не найден — вызов устарел, удаляем его
+            try { await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`)); } catch(e){}
+            closeModal();
+            return showToast('Предмет соперника уже недоступен — вызов отменён','var(--orange)');
+        }
 
         // Результат 50/50
         const iWin       = Math.random() < 0.5;
@@ -5648,46 +5679,54 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const myEmoji2   = myItem.i||(catalog.find(c=>c.id==myItem.id)||{}).i||'🎁';
         const _ts        = Date.now();
 
-        // Атомарные транзакции
+        // Атомарные транзакции (с ретраем при disconnect)
         let myTx, theirTx;
+        const _runDuelTx = async () => Promise.all([
+            runTransaction(ref(db,'users/'+user.id), cur => {
+                if(!cur) return undefined;  // АБОРТ — данные ещё не загружены (return null удалил бы профиль!)
+                let inv = toArr(cur.cloudInv);
+                if(!inv.some(x => String(x.inst) === String(_selectedDuelInst))) return undefined;   // abort — предмет ушёл
+                inv = inv.filter(x => String(x.inst) !== String(_selectedDuelInst));
+                if(iWin){
+                    inv.push({...myItem,   from:'⚔️ Дуэль',            inst:_ts,   seen:false});
+                    inv.push({...theirItem,from:`⚔️ ${challengerName}`, inst:_ts+1, seen:false});
+                }
+                const wins = iWin ? {duelWins:(cur.duelWins||0)+1} : {};
+                if(iWin && (cur.duelWins||0)+1>=10 && !(cur.cosmetics||[]).includes('bdg_duelist'))
+                    wins.cosmetics=[...(cur.cosmetics||[]),'bdg_duelist'];
+                return {...cur, cloudInv:inv, ...wins};
+            }),
+            runTransaction(ref(db,'users/'+challengerId), cur => {
+                if(!cur) return undefined;  // АБОРТ — данные ещё не загружены (return null удалил бы профиль!)
+                let inv = toArr(cur.cloudInv);
+                if(!inv.some(x => String(x.inst) === String(theirInst))) return undefined;   // abort — предмет ушёл
+                inv = inv.filter(x => String(x.inst) !== String(theirInst));
+                if(!iWin){
+                    inv.push({...myItem,   from:`⚔️ ${user.name}`, inst:_ts,   seen:false});
+                    inv.push({...theirItem,from:'⚔️ Дуэль',         inst:_ts+1, seen:false});
+                }
+                return {...cur, cloudInv:inv};
+            })
+        ]);
         try {
-            [myTx, theirTx] = await Promise.all([
-                runTransaction(ref(db,'users/'+user.id), cur => {
-                    if(!cur) return cur;
-                    let inv = toArr(cur.cloudInv);
-                    if(!inv.some(x => x.inst == _selectedDuelInst)) return;   // abort — предмет ушёл
-                    inv = inv.filter(x => x.inst != _selectedDuelInst);
-                    if(iWin){
-                        inv.push({...myItem,   from:'⚔️ Дуэль',            inst:_ts,   seen:false});
-                        inv.push({...theirItem,from:`⚔️ ${challengerName}`, inst:_ts+1, seen:false});
-                    }
-                    const wins = iWin ? {duelWins:(cur.duelWins||0)+1} : {};
-                    if(iWin && (cur.duelWins||0)+1>=10 && !(cur.cosmetics||[]).includes('bdg_duelist'))
-                        wins.cosmetics=[...(cur.cosmetics||[]),'bdg_duelist'];
-                    return {...cur, cloudInv:inv, ...wins};
-                }),
-                runTransaction(ref(db,'users/'+challengerId), cur => {
-                    if(!cur) return cur;
-                    let inv = toArr(cur.cloudInv);
-                    if(!inv.some(x => x.inst == theirInst)) return;   // abort — предмет ушёл
-                    inv = inv.filter(x => x.inst != theirInst);
-                    if(!iWin){
-                        inv.push({...myItem,   from:`⚔️ ${user.name}`, inst:_ts,   seen:false});
-                        inv.push({...theirItem,from:'⚔️ Дуэль',         inst:_ts+1, seen:false});
-                    }
-                    return {...cur, cloudInv:inv};
-                })
-            ]);
+            [myTx, theirTx] = await _runDuelTx();
         } catch(txErr) {
             if(txErr && txErr.message === 'disconnect') {
+                // Ретрай один раз после переподключения
+                try {
+                    await new Promise(r => setTimeout(r, 1500));
+                    [myTx, theirTx] = await _runDuelTx();
+                } catch(txErr2) {
+                    closeModal();
+                    return showToast('Потеряно соединение, попробуй снова','var(--err)');
+                }
+            } else {
                 closeModal();
-                return showToast('Потеряно соединение, попробуй снова','var(--err)');
+                return showToast('Ошибка дуэли: ' + (txErr&&txErr.message||'неизвестная ошибка'),'var(--err)');
             }
-            closeModal();
-            return showToast('Ошибка дуэли: ' + (txErr&&txErr.message||'неизвестная ошибка'),'var(--err)');
         }
 
-        if(!myTx.committed || !theirTx.committed){
+        if(!myTx || !theirTx || !myTx.committed || !theirTx.committed){
             closeModal();
             return showToast('Один из предметов уже был использован в другой дуэли!','var(--err)');
         }
