@@ -3309,20 +3309,16 @@
 
         });
         renderShop().then(()=>{ renderShopCards(); }); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges(); listenDuelResults();
-        // Загружаем лёгкие профили для дуэлей — мгновенно (без инвентаря)
-        get(ref(db,'duelProfiles')).then(snap => {
-            if(snap.exists()) {
-                // Конвертируем duelProfiles в формат совместимый с кешем
-                const profiles = snap.val();
-                const fakeUsers = {};
-                Object.entries(profiles).forEach(([uid, p]) => {
-                    fakeUsers[uid] = { ...p, cloudInv: [] };
-                });
-                _duelAllUsersCache = { data: fakeUsers, ts: Date.now() };
-                // Рендерим страницу дуэлей если она открыта
-                if(_duelCache) _duelRenderDefault();
-            }
-        }).catch(()=>{});
+        // Прогреваем кеш игроков для дуэлей заранее — чтобы при открытии было мгновенно
+        setTimeout(() => {
+            get(ref(db,'users')).then(snap => {
+                if(snap.exists()) {
+                    _duelAllUsersCache = { data: snap.val(), ts: Date.now() };
+                    // Рендерим страницу дуэлей если она уже открыта
+                    if(_duelCache) _duelRenderDefault();
+                }
+            }).catch(()=>{});
+        }, 2000);
         setTimeout(() => { if (window.loadLeaderboard) loadLeaderboard(); }, 1500);
         // Запускаем realtime listener цен — обновляет у всех мгновенно
         startShopPricesListener();
@@ -5286,7 +5282,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const userPromise = get(ref(db,'users/'+user.id));
             const allPromise = (_duelAllUsersCache && (_now - _duelAllUsersCache.ts) < 300000)
                 ? Promise.resolve(null)
-                : get(ref(db,'duelProfiles'));  // лёгкий узел без инвентаря
+                : get(ref(db,'users'));  // полный список юзеров
 
             const [s, snapOrNull] = await Promise.all([userPromise, allPromise]);
             const d = s.val() || {};
@@ -5297,14 +5293,10 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             // Recent opponents from user profile field (fast, no heavy activity fetch)
             const recentIds = (d.duelRecentOpponents || []).slice(0,3);
 
-            // Кеш лёгких профилей на 5 минут
+            // Кеш всех юзеров на 5 минут
             let all = {};
             if(snapOrNull) {
-                const profiles = snapOrNull.val()||{};
-                // Конвертируем в совместимый формат
-                Object.entries(profiles).forEach(([uid, p]) => {
-                    all[uid] = { ...p, cloudInv: [] };
-                });
+                all = snapOrNull.val()||{};
                 _duelAllUsersCache = { data: all, ts: _now };
             } else {
                 all = _duelAllUsersCache.data;
@@ -5405,46 +5397,75 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             if(!_duelCache) { renderDuelPage(); } else { _duelRenderDefault(); }
             return;
         }
-        _duelSearchTimeout = setTimeout(()=>duelLoadPlayers(trimmed), 200);
+        _duelSearchTimeout = setTimeout(()=>duelLoadPlayers(trimmed), 150);
     };
 
     window.duelLoadPlayers = async (q) => {
         const section = document.getElementById('duel-players-section');
         if(!section) return;
 
-        // If cache exists, search locally (instant)
-        if(_duelCache && _duelCache.all.length > 0) {
-            const results = _duelCache.all.filter(p=>p.name.toLowerCase().includes(q));
+        // Если кеш игроков есть — ищем мгновенно локально
+        if(_duelCache && _duelCache.all && _duelCache.all.length > 0) {
+            const results = _duelCache.all.filter(p => p.name.toLowerCase().includes(q));
             if(!results.length) {
-                section.innerHTML=`<div style="text-align:center;padding:40px 20px;"><div style="font-size:36px;margin-bottom:10px;">🔍</div><div style="color:var(--secondary);font-size:14px;">Игрок не найден</div></div>`;
+                section.innerHTML = `<div style="text-align:center;padding:40px 20px;"><div style="font-size:36px;margin-bottom:10px;">🔍</div><div style="color:var(--secondary);font-size:14px;">Игрок не найден</div></div>`;
                 return;
             }
-            section.innerHTML = `
-                <div style="font-size:11px;color:var(--secondary);font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">🔍 Результаты (${results.length})</div>
-                <div style="display:flex;flex-direction:column;gap:7px;">${results.map(p=>_duelPlayerCard(p,_duelCache.friendIds.has(p.id)?'friend':_duelCache.recentIds.includes(p.id)?'recent':'')).join('')}</div>`;
+            // Разбиваем результаты по категориям
+            const friendResults = results.filter(p => _duelCache.friendIds.has(p.id));
+            const otherResults = results.filter(p => !_duelCache.friendIds.has(p.id));
+            let html = `<div style="font-size:11px;color:var(--secondary);font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">🔍 Результаты (${results.length})</div>`;
+            if(friendResults.length) {
+                html += `<div style="font-size:11px;color:#7c4dff;font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">👥 Друзья</div>`;
+                html += `<div style="display:flex;flex-direction:column;gap:7px;margin-bottom:12px;">${friendResults.map(p=>_duelPlayerCard(p,'friend')).join('')}</div>`;
+            }
+            if(otherResults.length) {
+                html += `<div style="display:flex;flex-direction:column;gap:7px;">${otherResults.map(p=>_duelPlayerCard(p,_duelCache.recentIds.includes(p.id)?'recent':'')).join('')}</div>`;
+            }
+            section.innerHTML = html;
             return;
         }
 
-        // Fallback: load from DB
-        section.innerHTML=`<div style="text-align:center;padding:30px;color:var(--secondary);font-size:13px;">⏳ Поиск...</div>`;
+        // Fallback: кеша нет — грузим из DB и ищем
+        section.innerHTML = `<div style="text-align:center;padding:30px;color:var(--secondary);font-size:13px;">⏳ Поиск...</div>`;
         try {
-            // Кеш всех юзеров на 60 секунд — не грузим каждый раз
-            let all = {};
+            // Если есть сырой кеш пользователей — используем его
+            let allRaw = {};
             const _now = Date.now();
-            if(_duelAllUsersCache && (_now - _duelAllUsersCache.ts) < 60000) {
-                all = _duelAllUsersCache.data;
+            if(_duelAllUsersCache && (_now - _duelAllUsersCache.ts) < 300000) {
+                allRaw = _duelAllUsersCache.data;
             } else {
                 const snap = await get(ref(db,'users'));
-                all = snap.val()||{};
-                _duelAllUsersCache = { data: all, ts: _now };
+                allRaw = snap.val() || {};
+                _duelAllUsersCache = { data: allRaw, ts: _now };
             }
-            let players = Object.entries(all)
-                .filter(([id,u])=>id!==user.id && u && u.name)
-                .map(([id,u])=>({id,name:u.username||u.name||id,level:getLevelFromXp(u.xp||0),duelWins:u.duelWins||0,avatar:u.avatar||u.pic||'',cosmetics:u.cosmetics||[],online:u.lastSeen&&(Date.now()-u.lastSeen<5*60*1000)}))
-                .filter(p=>p.name.toLowerCase().includes(q));
-            if(!players.length){section.innerHTML=`<div style="text-align:center;padding:40px 20px;"><div style="font-size:36px;margin-bottom:10px;">🔍</div><div style="color:var(--secondary);font-size:14px;">Игрок не найден</div></div>`;return;}
-            section.innerHTML=`<div style="font-size:11px;color:var(--secondary);font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">🔍 Результаты (${players.length})</div><div style="display:flex;flex-direction:column;gap:7px;">${players.map(p=>_duelPlayerCard(p,'')).join('')}</div>`;
-        } catch(e){section.innerHTML=`<div style="text-align:center;padding:30px;color:var(--err);">Ошибка</div>`;}
+            const toPlayer = ([id,u]) => ({
+                id, name: u.username||u.name||id, level: getLevelFromXp(u.xp||0),
+                duelWins: u.duelWins||0, avatar: u.avatar||u.pic||'',
+                cosmetics: u.cosmetics||[], online: u.lastSeen&&(Date.now()-u.lastSeen<5*60*1000)
+            });
+            const players = Object.entries(allRaw)
+                .filter(([id,u]) => id !== user.id && u && (u.username||u.name))
+                .map(toPlayer)
+                .filter(p => p.name.toLowerCase().includes(q));
+
+            // Заодно обновляем _duelCache если его нет
+            if(!_duelCache || !_duelCache.all.length) {
+                const allPlayers = Object.entries(allRaw)
+                    .filter(([id,u]) => id !== user.id && u && (u.username||u.name))
+                    .map(toPlayer);
+                _duelCache = _duelCache || { all: allPlayers, friendIds: new Set(), recentIds: [] };
+                _duelCache.all = allPlayers;
+            }
+
+            if(!players.length) {
+                section.innerHTML = `<div style="text-align:center;padding:40px 20px;"><div style="font-size:36px;margin-bottom:10px;">🔍</div><div style="color:var(--secondary);font-size:14px;">Игрок не найден</div></div>`;
+                return;
+            }
+            section.innerHTML = `<div style="font-size:11px;color:var(--secondary);font-weight:bold;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:8px;">🔍 Результаты (${players.length})</div><div style="display:flex;flex-direction:column;gap:7px;">${players.map(p=>_duelPlayerCard(p,'')).join('')}</div>`;
+        } catch(e) {
+            section.innerHTML = `<div style="text-align:center;padding:30px;color:var(--err);">Ошибка поиска</div>`;
+        }
     };
 
     window.duelPickGiftForPlayer = async (targetId, targetName, rowEl) => {
