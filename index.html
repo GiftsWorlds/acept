@@ -1464,7 +1464,10 @@
         <div style="padding:15px 16px 12px;background:linear-gradient(135deg,rgba(231,76,60,0.12),rgba(255,107,107,0.06));border-bottom:1px solid rgba(255,107,107,0.2);position:sticky;top:0;z-index:10;backdrop-filter:blur(20px);">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
                 <div style="font-size:20px;font-weight:900;background:linear-gradient(90deg,#ff6b6b,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">⚔️ Дуэли</div>
-                <div id="duel-wins-badge" style="background:rgba(255,107,107,0.15);border:1px solid rgba(255,107,107,0.3);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:bold;color:#ff6b6b;">0 побед</div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                    <div id="duel-wins-badge" style="background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.35);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:bold;color:#2ecc71;">⚔️ 0 побед</div>
+                    <div id="duel-losses-badge" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.35);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:bold;color:#e74c3c;">💀 0 пор.</div>
+                </div>
             </div>
             <div style="position:relative;">
                 <input type="text" id="duel-search-input" placeholder="🔍 Найти игрока для дуэли..."
@@ -5287,7 +5290,9 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const [s, snapOrNull] = await Promise.all([userPromise, allPromise]);
             const d = s.val() || {};
             const winsEl = document.getElementById('duel-wins-badge');
-            if(winsEl) winsEl.innerHTML = `⚔️ <span style='color:#2ecc71;'>${d.duelWins||0} побед</span> / <span style='color:#e74c3c;'>${d.duelLosses||0} пор.</span>`;
+            const lossesEl = document.getElementById('duel-losses-badge');
+            if(winsEl) winsEl.textContent = `⚔️ ${d.duelWins||0} побед`;
+            if(lossesEl) lossesEl.textContent = `💀 ${d.duelLosses||0} пор.`;
 
             const friendIds = new Set(Object.keys(d.friends||{}));
             // Recent opponents from user profile field (fast, no heavy activity fetch)
@@ -5382,7 +5387,13 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             </div>
             <div style="flex:1;min-width:0;">
                 <div style="font-weight:bold;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
-                <div style="font-size:11px;color:var(--secondary);">⭐ Ур.${p.level} &nbsp;•&nbsp; <span style="color:#2ecc71;">⚔️ ${p.duelWins}П</span> <span style="color:#e74c3c;">/ ${p.duelLosses||0}П</span>${badgeInfo?` &nbsp;${badgeInfo.val}`:''}</div>
+                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;margin-top:3px;">
+                    <span style="font-size:11px;color:var(--secondary);">⭐ Ур.${p.level}</span>
+                    <span style="font-size:10px;color:var(--secondary);">•</span>
+                    <span style="background:rgba(46,204,113,0.15);border:1px solid rgba(46,204,113,0.35);border-radius:20px;padding:1px 7px;font-size:10px;font-weight:bold;color:#2ecc71;">⚔️ ${p.duelWins} побед</span>
+                    <span style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.35);border-radius:20px;padding:1px 7px;font-size:10px;font-weight:bold;color:#e74c3c;">💀 ${p.duelLosses||0} пор.</span>
+                    ${badgeInfo?`<span style="font-size:11px;">${badgeInfo.val}</span>`:''}
+                </div>
             </div>
             <div style="background:linear-gradient(135deg,#e74c3c,#c0392b);border-radius:10px;padding:7px 12px;font-size:12px;font-weight:bold;color:white;white-space:nowrap;flex-shrink:0;">
                 ⚔️
