@@ -2211,8 +2211,8 @@
     ];
 
     const ADMIN_IDS = new Set(['ckovoroda','kukumbr']);
-    const MOD_IDS = new Set(['batlukov','nowkie']);
-    const MOD_PREFIXES = { batlukov: '🎨 Художник', nowkie: '🧪 Тестировщик' };
+    const MOD_IDS = new Set(['nowkie']);
+    const MOD_PREFIXES = { nowkie: '🧪 Тестировщик' };
 
     // Нормализация cloudInv: Firebase может вернуть объект вместо массива
     function toArr(v) { return Array.isArray(v) ? v : (v && typeof v === 'object' ? Object.values(v) : []); }
@@ -5287,7 +5287,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const [s, snapOrNull] = await Promise.all([userPromise, allPromise]);
             const d = s.val() || {};
             const winsEl = document.getElementById('duel-wins-badge');
-            if(winsEl) winsEl.textContent = `⚔️ ${d.duelWins||0} побед`;
+            if(winsEl) winsEl.innerHTML = `⚔️ <span style='color:#2ecc71;'>${d.duelWins||0} побед</span> / <span style='color:#e74c3c;'>${d.duelLosses||0} пор.</span>`;
 
             const friendIds = new Set(Object.keys(d.friends||{}));
             // Recent opponents from user profile field (fast, no heavy activity fetch)
@@ -5304,7 +5304,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
             const toPlayer = ([id,u]) => ({
                 id, name:u.username||u.name||id, level:getLevelFromXp(u.xp||0),
-                duelWins:u.duelWins||0, avatar:u.avatar||u.pic||'',
+                duelWins:u.duelWins||0, duelLosses:u.duelLosses||0, avatar:u.avatar||u.pic||'',
                 cosmetics:u.cosmetics||[],
                 online: u.lastSeen && (Date.now()-u.lastSeen<5*60*1000)
             });
@@ -5382,7 +5382,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             </div>
             <div style="flex:1;min-width:0;">
                 <div style="font-weight:bold;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${p.name}</div>
-                <div style="font-size:11px;color:var(--secondary);">⭐ Ур.${p.level} &nbsp;•&nbsp; ⚔️ ${p.duelWins} пб.${badgeInfo?` &nbsp;${badgeInfo.val}`:''}</div>
+                <div style="font-size:11px;color:var(--secondary);">⭐ Ур.${p.level} &nbsp;•&nbsp; <span style="color:#2ecc71;">⚔️ ${p.duelWins}П</span> <span style="color:#e74c3c;">/ ${p.duelLosses||0}П</span>${badgeInfo?` &nbsp;${badgeInfo.val}`:''}</div>
             </div>
             <div style="background:linear-gradient(135deg,#e74c3c,#c0392b);border-radius:10px;padding:7px 12px;font-size:12px;font-weight:bold;color:white;white-space:nowrap;flex-shrink:0;">
                 ⚔️
@@ -5441,8 +5441,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             }
             const toPlayer = ([id,u]) => ({
                 id, name: u.username||u.name||id, level: getLevelFromXp(u.xp||0),
-                duelWins: u.duelWins||0, avatar: u.avatar||u.pic||'',
-                cosmetics: u.cosmetics||[], online: u.lastSeen&&(Date.now()-u.lastSeen<5*60*1000)
+                id, name: u.username||u.name||id, level: getLevelFromXp(u.xp||0),
+                duelWins: u.duelWins||0, duelLosses: u.duelLosses||0, avatar: u.avatar||u.pic||'',
             });
             const players = Object.entries(allRaw)
                 .filter(([id,u]) => id !== user.id && u && (u.username||u.name))
@@ -5768,7 +5768,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     inv.push({...myItem,   from:'⚔️ Дуэль',            inst:_ts,   seen:false});
                     inv.push({...theirItem,from:`⚔️ ${challengerName}`, inst:_ts+1, seen:false});
                 }
-                const wins = iWin ? {duelWins:(cur.duelWins||0)+1} : {};
+                const wins = iWin ? {duelWins:(cur.duelWins||0)+1} : {duelLosses:(cur.duelLosses||0)+1};
                 if(iWin && (cur.duelWins||0)+1>=10 && !(cur.cosmetics||[]).includes('bdg_duelist'))
                     wins.cosmetics=[...(cur.cosmetics||[]),'bdg_duelist'];
                 return {...cur, cloudInv:inv, ...wins};
