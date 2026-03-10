@@ -3304,6 +3304,12 @@
             if(user.isAdm && (d.xp || 0) < xpForLevel(XP_MAX_LEVEL)) {
                 update(ref(db,'users/'+id),{xp: xpForLevel(XP_MAX_LEVEL)});
             }
+            // ⚔️ Обновляем бейджи побед/поражений в дуэлях в реальном времени
+            const winsEl = document.getElementById('duel-wins-badge');
+            const lossesEl = document.getElementById('duel-losses-badge');
+            if(winsEl) winsEl.textContent = `⚔️ ${d.duelWins||0} побед`;
+            if(lossesEl) lossesEl.textContent = `💀 ${d.duelLosses||0} пор.`;
+
             // 🔴 Unseen gifts badge
             const inv=toArr(d.cloudInv);
             const unseen=inv.filter(x=>!x.seen).length;
@@ -5289,11 +5295,6 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
             const [s, snapOrNull] = await Promise.all([userPromise, allPromise]);
             const d = s.val() || {};
-            const winsEl = document.getElementById('duel-wins-badge');
-            const lossesEl = document.getElementById('duel-losses-badge');
-            if(winsEl) winsEl.textContent = `⚔️ ${d.duelWins||0} побед`;
-            if(lossesEl) lossesEl.textContent = `💀 ${d.duelLosses||0} пор.`;
-
             const friendIds = new Set(Object.keys(d.friends||{}));
             // Recent opponents from user profile field (fast, no heavy activity fetch)
             const recentIds = (d.duelRecentOpponents || []).slice(0,3);
