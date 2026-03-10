@@ -5761,7 +5761,11 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     inv.push({...myItem,   from:`⚔️ ${user.name}`, inst:_ts,   seen:false});
                     inv.push({...theirItem,from:'⚔️ Дуэль',         inst:_ts+1, seen:false});
                 }
-                return {...cur, cloudInv:inv};
+                // Начисляем победу или поражение challenger-у
+                const challStats = !iWin ? {duelWins:(cur.duelWins||0)+1} : {duelLosses:(cur.duelLosses||0)+1};
+                if(!iWin && (cur.duelWins||0)+1>=10 && !(cur.cosmetics||[]).includes('bdg_duelist'))
+                    challStats.cosmetics=[...(cur.cosmetics||[]),'bdg_duelist'];
+                return {...cur, cloudInv:inv, ...challStats};
             });
 
             if(!theirTx.committed){
@@ -5951,7 +5955,19 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         onValue(ref(db,`duelChallenges/${user.id}`), snap=>{
             renderDuelChallenges(snap.val()||{});
         });
-        // Каждые 30 сек удаляем истёкшие
+        // Каждую секунду обновляем таймеры в DOM без перерендера
+        setInterval(()=>{
+            const now = Date.now();
+            document.querySelectorAll('.duel-timer[data-exp]').forEach(el=>{
+                const exp = parseInt(el.dataset.exp)||0;
+                const diff = Math.max(0, exp - now);
+                const m = Math.floor(diff/60000);
+                const s = Math.floor((diff%60000)/1000);
+                el.textContent = '⏳ ' + m + ':' + String(s).padStart(2,'0');
+                if(diff<=0) el.textContent = '⏳ 0:00';
+            });
+        }, 1000);
+        // Каждые 30 сек удаляем истёкшие и перерисовываем
         setInterval(async()=>{
             const snap = await get(ref(db,`duelChallenges/${user.id}`));
             const all  = snap.val()||{};
@@ -6029,7 +6045,7 @@ function renderDuelChallenges(challenges){
                             <div>
                                 <div style="font-weight:bold;font-size:13px;">${ch.itemName||'?'}</div>
                                 <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName||'?'}</div>
-                                <div style="font-size:10px;color:var(--orange);">⏳ ${m}:${String(s).padStart(2,'0')}</div>
+                                <div class="duel-timer" data-exp="${exp}" style="font-size:10px;color:var(--orange);">⏳ ${m}:${String(s).padStart(2,'0')}</div>
                             </div>
                         </div>
                         <button class="btn" style="padding:8px 14px;font-size:12px;width:auto;
