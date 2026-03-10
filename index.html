@@ -745,16 +745,19 @@
         @keyframes balanceFlash { 0% { color: var(--accent); transform: scale(1); } 35% { color: #2ecc71; transform: scale(1.3); } 100% { color: var(--accent); transform: scale(1); } }
 
         /* ===== DUEL & TRADE ANIMATIONS ===== */
-        @keyframes duelShakeL { 0%,100%{transform:translateX(0) rotate(0deg)} 20%{transform:translateX(-18px) rotate(-8deg)} 40%{transform:translateX(12px) rotate(5deg)} 60%{transform:translateX(-8px) rotate(-4deg)} 80%{transform:translateX(5px) rotate(2deg)} }
-        @keyframes duelShakeR { 0%,100%{transform:translateX(0) rotate(0deg)} 20%{transform:translateX(18px) rotate(8deg)} 40%{transform:translateX(-12px) rotate(-5deg)} 60%{transform:translateX(8px) rotate(4deg)} 80%{transform:translateX(-5px) rotate(-2deg)} }
-        @keyframes duelClash { 0%{transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:1} 25%{transform:translate(-50%,-50%) scale(2.5) rotate(15deg);opacity:1} 50%{transform:translate(-50%,-50%) scale(3.2) rotate(-10deg);opacity:0.9} 75%{transform:translate(-50%,-50%) scale(2) rotate(5deg);opacity:0.5} 100%{transform:translate(-50%,-50%) scale(0) rotate(0deg);opacity:0} }
-        @keyframes duelWinner { 0%{transform:translateY(0) scale(1)} 30%{transform:translateY(-22px) scale(1.35)} 60%{transform:translateY(-12px) scale(1.25)} 100%{transform:translateY(-6px) scale(1.2)} }
-        @keyframes duelLoser { 0%{transform:scale(1);opacity:1;filter:none} 100%{transform:scale(0.4) translateY(25px);opacity:0.15;filter:grayscale(1) blur(2px)} }
-        @keyframes duelFlash { 0%,100%{background:rgba(0,0,0,0.88)} 30%{background:rgba(255,80,0,0.3)} 60%{background:rgba(255,30,0,0.4)} }
+        @keyframes duelShakeL { 0%{transform:translateX(0) rotate(0)} 10%{transform:translateX(-28px) rotate(-12deg) scale(1.15)} 25%{transform:translateX(18px) rotate(8deg) scale(1.08)} 40%{transform:translateX(-14px) rotate(-6deg)} 60%{transform:translateX(8px) rotate(4deg)} 80%{transform:translateX(-4px) rotate(-2deg)} 100%{transform:translateX(0) rotate(0)} }
+        @keyframes duelShakeR { 0%{transform:translateX(0) rotate(0)} 10%{transform:translateX(28px) rotate(12deg) scale(1.15)} 25%{transform:translateX(-18px) rotate(-8deg) scale(1.08)} 40%{transform:translateX(14px) rotate(6deg)} 60%{transform:translateX(-8px) rotate(-4deg)} 80%{transform:translateX(4px) rotate(2deg)} 100%{transform:translateX(0) rotate(0)} }
+        @keyframes duelClash { 0%{transform:translate(-50%,-50%) scale(0.3) rotate(-30deg);opacity:0} 15%{opacity:1} 35%{transform:translate(-50%,-50%) scale(3.5) rotate(8deg);opacity:1} 65%{transform:translate(-50%,-50%) scale(4) rotate(-4deg);opacity:0.9} 85%{transform:translate(-50%,-50%) scale(2) rotate(2deg);opacity:0.4} 100%{transform:translate(-50%,-50%) scale(0.2) rotate(0);opacity:0} }
+        @keyframes duelWinner { 0%{transform:scale(1);filter:none} 25%{transform:scale(1.5) translateY(-12px);filter:drop-shadow(0 0 18px gold) brightness(1.2)} 55%{transform:scale(1.45) translateY(-16px);filter:drop-shadow(0 0 28px gold) brightness(1.35)} 100%{transform:scale(1.3) translateY(-10px);filter:drop-shadow(0 0 14px gold) brightness(1.2)} }
+        @keyframes duelLoser { 0%{transform:scale(1);opacity:1;filter:none} 20%{transform:scale(0.85) rotate(-8deg);opacity:0.7} 60%{transform:scale(0.5) rotate(-15deg) translateY(20px);opacity:0.3;filter:grayscale(0.8)} 100%{transform:scale(0.25) rotate(-22deg) translateY(38px);opacity:0;filter:grayscale(1) blur(3px)} }
+        @keyframes duelFlash { 0%,100%{background:rgba(0,0,0,0.92)} 20%{background:rgba(255,120,0,0.55)} 45%{background:rgba(220,0,0,0.65)} 70%{background:rgba(255,160,0,0.45)} }
+        @keyframes duelVsFloat { 0%,100%{transform:scale(1) rotate(-3deg)} 50%{transform:scale(1.25) rotate(3deg)} }
+        @keyframes duelResultPop { 0%{transform:scale(0.2) translateY(20px);opacity:0} 55%{transform:scale(1.08) translateY(-4px)} 80%{transform:scale(0.97) translateY(2px)} 100%{transform:scale(1) translateY(0);opacity:1} }
+        @keyframes duelGlow { 0%,100%{box-shadow:0 0 15px rgba(255,215,0,0.3),inset 0 0 15px rgba(255,215,0,0.05)} 50%{box-shadow:0 0 40px rgba(255,215,0,0.7),inset 0 0 25px rgba(255,215,0,0.12)} }
         @keyframes swordSpin { 0%{transform:translate(-50%,-50%) rotate(0deg) scale(1)} 50%{transform:translate(-50%,-50%) rotate(200deg) scale(2)} 100%{transform:translate(-50%,-50%) rotate(360deg) scale(1)} }
         @keyframes tradeArrow { 0%,100%{transform:translateX(0);opacity:1} 50%{transform:translateX(6px);opacity:0.6} }
         @keyframes tradeGlow { 0%,100%{box-shadow:0 0 0 0 rgba(46,204,113,0)} 50%{box-shadow:0 0 0 8px rgba(46,204,113,0.15)} }
-        .duel-clash-emoji { position:fixed; top:50%; left:50%; font-size:64px; pointer-events:none; z-index:9999; animation: duelClash 0.85s ease forwards; }
+        .duel-clash-emoji { position:fixed; top:50%; left:50%; font-size:82px; pointer-events:none; z-index:9999; animation: duelClash 1s cubic-bezier(0.22,1,0.36,1) forwards; }
         .duel-sword-spin { position:fixed; top:50%; left:50%; font-size:52px; pointer-events:none; z-index:9999; animation: swordSpin 0.6s ease-in-out; }
 
 
@@ -3277,6 +3280,17 @@
             document.getElementById('header-name').innerHTML=buildUsername(d);
             document.getElementById('u-bal').innerText=d.balance;
             renderFriends(d); renderMyProfile(d); _invDirty = true; // инвентарь мог измениться
+            // Обновляем лёгкий профиль для дуэлей (без инвентаря)
+            update(ref(db,'duelProfiles/'+id), {
+                username: d.username||d.name||id,
+                pic: d.pic||'',
+                xp: d.xp||0,
+                duelWins: d.duelWins||0,
+                activeCosmetic: d.activeCosmetic||{},
+                cosmetics: d.cosmetics||[],
+                lastSeen: Date.now(),
+                privacy: d.privacy||{}
+            }).catch(()=>{});
             // ⭐ XP за привязку TG (один раз)
             if(d.tgChatId && !d.xpTgLinked && !user.isAdm) {
                 update(ref(db,'users/'+id),{xpTgLinked:true});
@@ -3294,13 +3308,21 @@
             bInv.innerText=unseen; bInv.style.display=unseen>0?'flex':'none';
 
         });
-        renderShop().then(()=>{ renderShopCards(); }); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges();
-        // Прогреваем кеш игроков для дуэлей заранее — чтобы при открытии было мгновенно
-        setTimeout(() => {
-            get(ref(db,'users')).then(snap => {
-                if(snap.exists()) _duelAllUsersCache = { data: snap.val(), ts: Date.now() };
-            }).catch(()=>{});
-        }, 2000);
+        renderShop().then(()=>{ renderShopCards(); }); listenMarket(); giveNftToCkovoroda(); listenTradeOffers(); listenDuelChallenges(); listenDuelResults();
+        // Загружаем лёгкие профили для дуэлей — мгновенно (без инвентаря)
+        get(ref(db,'duelProfiles')).then(snap => {
+            if(snap.exists()) {
+                // Конвертируем duelProfiles в формат совместимый с кешем
+                const profiles = snap.val();
+                const fakeUsers = {};
+                Object.entries(profiles).forEach(([uid, p]) => {
+                    fakeUsers[uid] = { ...p, cloudInv: [] };
+                });
+                _duelAllUsersCache = { data: fakeUsers, ts: Date.now() };
+                // Рендерим страницу дуэлей если она открыта
+                if(_duelCache) _duelRenderDefault();
+            }
+        }).catch(()=>{});
         setTimeout(() => { if (window.loadLeaderboard) loadLeaderboard(); }, 1500);
         // Запускаем realtime listener цен — обновляет у всех мгновенно
         startShopPricesListener();
@@ -5264,7 +5286,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             const userPromise = get(ref(db,'users/'+user.id));
             const allPromise = (_duelAllUsersCache && (_now - _duelAllUsersCache.ts) < 300000)
                 ? Promise.resolve(null)
-                : get(ref(db,'users'));
+                : get(ref(db,'duelProfiles'));  // лёгкий узел без инвентаря
 
             const [s, snapOrNull] = await Promise.all([userPromise, allPromise]);
             const d = s.val() || {};
@@ -5275,10 +5297,14 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             // Recent opponents from user profile field (fast, no heavy activity fetch)
             const recentIds = (d.duelRecentOpponents || []).slice(0,3);
 
-            // Кеш всех юзеров на 5 минут
+            // Кеш лёгких профилей на 5 минут
             let all = {};
             if(snapOrNull) {
-                all = snapOrNull.val()||{};
+                const profiles = snapOrNull.val()||{};
+                // Конвертируем в совместимый формат
+                Object.entries(profiles).forEach(([uid, p]) => {
+                    all[uid] = { ...p, cloudInv: [] };
+                });
                 _duelAllUsersCache = { data: all, ts: _now };
             } else {
                 all = _duelAllUsersCache.data;
@@ -5753,98 +5779,118 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 'var(--err)');
         }
 
-        // Удаляем вызов и пишем лог
-        await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`));
+        // Background ops — don't await, show animation immediately
+        remove(ref(db,`duelChallenges/${user.id}/${duelKey}`)).catch(()=>{});
         logActivity('duel_result',{winner:winnerName,winnerId,loser:iWin?challengerName:user.name,loserId:iWin?challengerId:user.id,item1:myItem.n,item2:theirItem.n});
         awardXp(winnerId, 50);
         awardXp(iWin ? challengerId : user.id, -20);
-
-        // ── Анимация ──────────────────────────────────────────────────────────
-        const overlay = document.getElementById('modal-overlay');
-        document.getElementById('modal-content').innerHTML = `
-            <div style="text-align:center;padding:20px 0;" id="duel-anim-wrap">
-                <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;
-                    letter-spacing:1px;text-transform:uppercase;">⚔️ Дуэль начинается!</div>
-                <div style="display:flex;align-items:center;justify-content:center;gap:20px;">
-                    <div id="duel-left" style="text-align:center;transition:all 1s ease;">
-                        <div style="font-size:52px;margin-bottom:8px;">${myEmoji2}</div>
-                        <div style="font-size:12px;font-weight:bold;color:#4db4ff;">${user.name}</div>
-                    </div>
-                    <div style="font-size:32px;font-weight:900;color:#ff6b6b;">VS</div>
-                    <div id="duel-right" style="text-align:center;transition:all 1s ease;">
-                        <div style="font-size:52px;margin-bottom:8px;">${theirEmoji}</div>
-                        <div style="font-size:12px;font-weight:bold;color:#ff6b6b;">${challengerName}</div>
-                    </div>
-                </div>
-                <div id="duel-result" style="margin-top:24px;opacity:0;transition:opacity 0.5s;"></div>
-            </div>`;
-
-        setTimeout(()=>{
-            const l=document.getElementById('duel-left'), r=document.getElementById('duel-right');
-            if(l) l.style.animation='duelShakeL 0.4s ease-in-out 4';
-            if(r) r.style.animation='duelShakeR 0.4s ease-in-out 4';
-            if(overlay) overlay.style.animation='duelFlash 0.4s ease 4';
-        }, 300);
-
-        setTimeout(()=>{
-            const el=document.createElement('div');
-            el.className='duel-clash-emoji'; el.innerText='💥';
-            document.body.appendChild(el); setTimeout(()=>el.remove(),900);
-        }, 900);
-
-        setTimeout(()=>{
-            if(overlay) overlay.style.animation='';
-            const l=document.getElementById('duel-left'), r=document.getElementById('duel-right');
-            if(iWin){
-                if(l) l.style.animation='duelWinner 0.6s ease forwards';
-                if(r) r.style.animation='duelLoser 0.6s ease forwards';
-            } else {
-                if(r) r.style.animation='duelWinner 0.6s ease forwards';
-                if(l) l.style.animation='duelLoser 0.6s ease forwards';
-            }
-        }, 1800);
-
-        setTimeout(()=>{
-            const res=document.getElementById('duel-result');
-            if(!res) return;
-            res.style.opacity='1';
-            if(iWin){
-                spawnConfetti(window.innerWidth/2, window.innerHeight/2, 60);
-                const newWins = (myD.duelWins||0)+1;
-                const badgeNew = newWins>=10 && !(myD.cosmetics||[]).includes('bdg_duelist');
-                res.innerHTML=`
-                    <div style="font-size:36px;margin-bottom:10px;">🏆</div>
-                    <div style="font-size:20px;font-weight:900;color:gold;">ТЫ ПОБЕДИЛ!</div>
-                    <div style="font-size:13px;color:var(--secondary);margin-top:6px;">Ты получил оба подарка</div>
-                    <div style="font-size:12px;color:#4db4ff;margin-top:8px;">⚔️ Побед: ${newWins}/10</div>
-                    ${badgeNew?`<div style="margin-top:10px;background:linear-gradient(135deg,rgba(255,107,107,0.15),rgba(255,215,0,0.1));border:1px solid rgba(255,215,0,0.4);border-radius:14px;padding:10px;">
-                        <div style="font-size:22px;">⚔️</div>
-                        <div style="font-weight:bold;color:gold;font-size:13px;">Бейдж «Дуэлянт» разблокирован!</div>
-                    </div>`:''}`;
-                if(badgeNew) setTimeout(()=>showToast('⚔️ Бейдж «Дуэлянт» разблокирован!','gold'),500);
-            } else {
-                res.innerHTML=`
-                    <div style="font-size:36px;margin-bottom:10px;">💀</div>
-                    <div style="font-size:20px;font-weight:900;color:#ff6b6b;">ТЫ ПРОИГРАЛ</div>
-                    <div style="font-size:13px;color:var(--secondary);margin-top:6px;">${challengerName} забрал оба подарка</div>`;
-            }
-            setTimeout(()=>{
-                if(!document.getElementById('duel-close-btn')){
-                    const btn=document.createElement('button');
-                    btn.className='btn'; btn.id='duel-close-btn';
-                    btn.style.marginTop='16px'; btn.innerText='Закрыть';
-                    btn.onclick=closeModal;
-                    document.getElementById('duel-result').appendChild(btn);
-                }
-            }, 200);
-        }, 2600);
-
-        // Telegram уведомления
         if(iWin){
             getTgId(challengerId).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n😔 К сожалению, ты проиграл.\n❌ Утеряно: <b>${theirItemName}</b> ${theirEmoji}`));
         } else {
             getTgId(challengerId).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n🎉 Поздравляем, ты победил!\n✅ Получено: <b>${theirItemName}</b> ${theirEmoji}\n✅ Сохранено: <b>${myItem.n}</b> ${myEmoji2}`));
         }
+        // Save result for opponent (they see it when they open the app)
+        set(ref(db,`duelResults/${challengerId}/${Date.now()}`), {
+            winnerId, winnerName, iWon:!iWin,
+            item1:{n:myItem.n,i:myEmoji2}, item2:{n:theirItemName,i:theirEmoji}, ts:Date.now()
+        }).catch(()=>{});
+
+        // ── Epic duel animation (plays immediately) ────────────────────────
+        const overlay = document.getElementById('modal-overlay');
+        const myImg = resolveImg(myItem);
+        const theirImg = theirItem ? resolveImg(theirItem) : null;
+        document.getElementById('modal-content').innerHTML = `
+            <div style="text-align:center;padding:10px 0 0;" id="duel-anim-wrap">
+                <div style="font-size:10px;color:var(--secondary);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;opacity:0.7;">⚔️ ДУЭЛЬ</div>
+                <div style="display:flex;align-items:center;justify-content:center;">
+                    <div id="duel-left" style="text-align:center;flex:1;padding:0 6px;">
+                        <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#1a3a5c,#0d2035);border:3px solid rgba(77,180,255,0.7);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;box-shadow:0 0 20px rgba(77,180,255,0.4);">
+                            ${myImg?`<img src="${myImg}" style="width:42px;height:42px;object-fit:contain;" onerror="this.outerHTML='<span style=font-size:36px>${myEmoji2}</span>'">`:`<span style="font-size:36px;">${myEmoji2}</span>`}
+                        </div>
+                        <div style="font-size:11px;font-weight:bold;color:#4db4ff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;margin:0 auto;">${user.name}</div>
+                        <div style="font-size:9px;color:var(--secondary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;">${myItem.n}</div>
+                    </div>
+                    <div id="duel-vs" style="font-size:28px;font-weight:900;background:linear-gradient(135deg,#ff6b6b,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;flex-shrink:0;animation:duelVsFloat 0.9s ease infinite;">VS</div>
+                    <div id="duel-right" style="text-align:center;flex:1;padding:0 6px;">
+                        <div style="width:70px;height:70px;border-radius:50%;background:linear-gradient(135deg,#3a1a1a,#200d0d);border:3px solid rgba(255,107,107,0.7);display:flex;align-items:center;justify-content:center;margin:0 auto 8px;box-shadow:0 0 20px rgba(255,107,107,0.4);">
+                            ${theirImg?`<img src="${theirImg}" style="width:42px;height:42px;object-fit:contain;" onerror="this.outerHTML='<span style=font-size:36px>${theirEmoji}</span>'">`:`<span style="font-size:36px;">${theirEmoji}</span>`}
+                        </div>
+                        <div style="font-size:11px;font-weight:bold;color:#ff6b6b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;margin:0 auto;">${challengerName}</div>
+                        <div style="font-size:9px;color:var(--secondary);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px;">${theirItemName}</div>
+                    </div>
+                </div>
+                <div style="margin:14px 8px 0;height:3px;background:rgba(255,255,255,0.07);border-radius:4px;overflow:hidden;">
+                    <div id="duel-progress" style="height:100%;width:0%;background:linear-gradient(90deg,#4db4ff,#ff6b6b,#ffd700);border-radius:4px;transition:width 1.6s linear;"></div>
+                </div>
+                <div id="duel-result" style="margin-top:14px;display:none;"></div>
+            </div>`;
+
+        requestAnimationFrame(()=>{ setTimeout(()=>{ const pb=document.getElementById('duel-progress'); if(pb) pb.style.width='100%'; },50); });
+
+        setTimeout(()=>{
+            const l=document.getElementById('duel-left'),r=document.getElementById('duel-right');
+            if(l) l.style.animation='duelShakeL 0.45s ease-in-out 3';
+            if(r) r.style.animation='duelShakeR 0.45s ease-in-out 3';
+            if(overlay) overlay.style.animation='duelFlash 0.45s ease 3';
+        },300);
+
+        setTimeout(()=>{
+            [['💥',48,48,80],['✨',51,50,60],['⚡',46,52,50]].forEach(([em,t,l,sz],i)=>{
+                setTimeout(()=>{
+                    const el=document.createElement('div');
+                    el.style.cssText=`position:fixed;top:${t}%;left:${l}%;font-size:${sz}px;pointer-events:none;z-index:9999;animation:duelClash 0.9s ease forwards;`;
+                    el.innerText=em; document.body.appendChild(el); setTimeout(()=>el.remove(),900);
+                },i*130);
+            });
+        },700);
+
+        setTimeout(()=>{
+            if(overlay) overlay.style.animation='';
+            const l=document.getElementById('duel-left'),r=document.getElementById('duel-right');
+            const vs=document.getElementById('duel-vs'); if(vs) vs.style.animation='none';
+            if(iWin){ if(l) l.style.animation='duelWinner 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards'; if(r) r.style.animation='duelLoser 0.7s ease forwards'; }
+            else    { if(r) r.style.animation='duelWinner 0.7s cubic-bezier(0.34,1.56,0.64,1) forwards'; if(l) l.style.animation='duelLoser 0.7s ease forwards'; }
+        },1700);
+
+        setTimeout(()=>{
+            const res=document.getElementById('duel-result'); if(!res) return;
+            res.style.display='block'; res.style.animation='duelResultPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both';
+            const newWins=(myD.duelWins||0)+1;
+            const badgeNew=iWin&&newWins>=10&&!(myD.cosmetics||[]).includes('bdg_duelist');
+            if(iWin){
+                spawnConfetti(window.innerWidth/2,window.innerHeight/3,80);
+                res.innerHTML=`
+                    <div style="background:linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,107,107,0.05));border:2px solid rgba(255,215,0,0.45);border-radius:18px;padding:14px 10px;animation:duelGlow 1.5s ease infinite;">
+                        <div style="font-size:40px;margin-bottom:4px;">🏆</div>
+                        <div style="font-size:21px;font-weight:900;background:linear-gradient(90deg,gold,#ffa500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">ТЫ ПОБЕДИЛ!</div>
+                        <div style="display:flex;justify-content:center;gap:6px;margin-top:10px;">
+                            <div style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3);border-radius:10px;padding:5px 8px;font-size:10px;">✅ ${myItem.n}</div>
+                            <div style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3);border-radius:10px;padding:5px 8px;font-size:10px;">✅ ${theirItemName}</div>
+                        </div>
+                        <div style="font-size:11px;color:#4db4ff;margin-top:8px;">⚔️ Побед: ${newWins}</div>
+                        ${badgeNew?`<div style="margin-top:7px;background:rgba(255,215,0,0.1);border:1px solid gold;border-radius:10px;padding:6px;font-size:11px;color:gold;">⚔️ Бейдж «Дуэлянт» разблокирован!</div>`:''}
+                    </div>`;
+                if(badgeNew) setTimeout(()=>showToast('⚔️ Бейдж «Дуэлянт» разблокирован!','gold'),400);
+            } else {
+                res.innerHTML=`
+                    <div style="background:rgba(255,107,107,0.07);border:2px solid rgba(255,107,107,0.3);border-radius:18px;padding:14px 10px;">
+                        <div style="font-size:40px;margin-bottom:4px;">💀</div>
+                        <div style="font-size:21px;font-weight:900;color:#ff6b6b;">ТЫ ПРОИГРАЛ</div>
+                        <div style="font-size:11px;color:var(--secondary);margin-top:6px;">${challengerName} забрал оба подарка</div>
+                        <div style="background:rgba(255,255,255,0.04);border-radius:10px;padding:5px 8px;font-size:10px;color:var(--secondary);margin-top:8px;display:inline-block;">❌ ${myItem.n}</div>
+                    </div>`;
+            }
+            setTimeout(()=>{
+                if(!document.getElementById('duel-close-btn')){
+                    const btn=document.createElement('button');
+                    btn.className='btn'; btn.id='duel-close-btn';
+                    btn.style.cssText='margin-top:10px;background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);font-size:13px;';
+                    btn.innerText='Закрыть'; btn.onclick=closeModal;
+                    document.getElementById('duel-result').appendChild(btn);
+                }
+            },200);
+        },2400);
+
         } catch(err) {
             closeModal();
             const msg = err && err.message === 'disconnect'
@@ -5881,7 +5927,40 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
     }
 
     // ─── Рендер списка вызовов ────────────────────────────────────────────────
-    function renderDuelChallenges(challenges){
+        // ─── Результаты дуэлей ────────────────────────────────────────────────────
+    function listenDuelResults(){
+        onValue(ref(db,`duelResults/${user.id}`), snap => {
+            if(!snap.exists()) return;
+            Object.entries(snap.val()).forEach(([key,r]) => {
+                if(r.seen) return;
+                update(ref(db,`duelResults/${user.id}/${key}`),{seen:true}).catch(()=>{});
+                setTimeout(()=>showDuelResultNotification(r), 900);
+            });
+        });
+    }
+    function showDuelResultNotification(r){
+        const iWon=r.iWon, wn=r.winnerName||'?', i1=r.item1||{}, i2=r.item2||{};
+        const winColor='linear-gradient(135deg,rgba(255,215,0,0.12),rgba(255,107,107,0.05));border:2px solid rgba(255,215,0,0.45)';
+        const loseColor='rgba(255,107,107,0.07);border:2px solid rgba(255,107,107,0.3)';
+        document.getElementById('modal-content').innerHTML=`
+            <div style="text-align:center;padding:10px 0;">
+                <div style="font-size:10px;color:var(--secondary);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px;opacity:0.7;">⚔️ РЕЗУЛЬТАТ ДУЭЛИ</div>
+                <div style="background:${iWon?winColor:loseColor};border-radius:18px;padding:20px 14px;${iWon?'animation:duelGlow 1.5s ease infinite;':''}">
+                    <div style="font-size:48px;margin-bottom:8px;">${iWon?'🏆':'💀'}</div>
+                    <div style="font-size:22px;font-weight:900;${iWon?'background:linear-gradient(90deg,gold,#ffa500);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;':'color:#ff6b6b;'}">${iWon?'ТЫ ПОБЕДИЛ!':'ТЫ ПРОИГРАЛ'}</div>
+                    <div style="font-size:12px;color:var(--secondary);margin-top:8px;">${iWon?'Оба подарка твои':wn+' забрал оба подарка'}</div>
+                    <div style="display:flex;justify-content:center;gap:8px;margin-top:12px;">
+                        <div style="background:${iWon?'rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3)':'rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)'};border-radius:10px;padding:6px 10px;font-size:11px;">${iWon?'✅':'❌'} ${i1.i||''} ${i1.n||'?'}</div>
+                        <div style="background:${iWon?'rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3)':'rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)'};border-radius:10px;padding:6px 10px;font-size:11px;">${iWon?'✅':'❌'} ${i2.i||''} ${i2.n||'?'}</div>
+                    </div>
+                </div>
+                <button class="btn" onclick="closeModal()" style="margin-top:14px;background:rgba(255,255,255,0.07);border-color:rgba(255,255,255,0.12);">Закрыть</button>
+            </div>`;
+        openModal();
+        if(iWon) setTimeout(()=>spawnConfetti(window.innerWidth/2,window.innerHeight/3,70),200);
+    }
+
+function renderDuelChallenges(challenges){
         window._duelChallengesMap = challenges||{};
         const now  = Date.now();
         const entries = Object.entries(challenges).filter(([,ch])=>{
