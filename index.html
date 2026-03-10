@@ -5485,19 +5485,14 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const dPrivSnap=await get(ref(db,'users/'+friendId));
         const dPriv=(dPrivSnap.val()&&dPrivSnap.val().privacy)||{};
         if(!user.isAdm && dPriv.allowDuel===false) return showToast(`❌ Вы не можете вызвать ${friendName} на дуэль из-за его настроек конфиденциальности`,'var(--err)');
-
+        // Send duel challenge
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
         const myItem = toArr(d.cloudInv).find(x=>String(x.inst)==String(myInst));
         if(!myItem) return showToast('Подарок не найден!','var(--err)');
-
         const duelKey = `${user.id}_${Date.now()}`;
-        const _duelCatItem = catalog.find(c=>c.id==myItem.id);
         await set(ref(db,`duelChallenges/${friendId}/${duelKey}`),{
             fromId:user.id, fromName:user.name,
-            itemInst:myInst, itemName:myItem.n,
-            itemEmoji:myItem.i||(_duelCatItem&&_duelCatItem.i)||'🎁',
-            itemImg: myItem.img||(_duelCatItem&&_duelCatItem.img)||'',
-            itemId: myItem.id||'',
+            itemInst:myInst, itemName:myItem.n, itemEmoji:myItem.i||'🎁',
             ts:Date.now(), expiresAt: Date.now() + 15*60*1000
         });
         // Автоотмена через 15 минут
@@ -5513,54 +5508,28 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         showToast(`⚔️ Вызов отправлен ${friendName}!`,'#ff6b6b','⚔️');
     };
 
-    // Store current duel challenge context to avoid passing through onclick strings
-    let _currentDuelCtx = null;
-
     window.acceptDuelChallenge = async (duelKey, challenge) => {
-        // Save challenge context in variable (avoids type issues with inst passed as string)
-        _currentDuelCtx = { duelKey, challenge };
-        selectedDuelInst = null;
-
         // Show your gifts to pick your stake
         const s = await get(ref(db,'users/'+user.id)), d = s.val();
-        // 🛡️ Фильтруем заблокированные в других дуэлях предметы
         const myInv = toArr(d.cloudInv);
-        if(!myInv.length) return showToast('У тебя нет доступных подарков для дуэли!','var(--err)');
-
-        // Store inst->item map so selectDuelGift can find item by inst without passing via onclick
-        window._duelMyInvMap = {};
-        myInv.forEach(x => { window._duelMyInvMap[String(x.inst)] = x; });
-
+        if(!myInv.length) return showToast('У тебя нет подарков для дуэли!','var(--err)');
         const makeCard = (x) => {
             const cat = catalog.find(c=>c.id==x.id);
             const img = resolveImg(x);
-            const instKey = String(x.inst);
-            return `<div onclick="selectDuelGift('${instKey}',this)" style="cursor:pointer;text-align:center;background:#0a1520;border-radius:14px;padding:12px 8px;border:2px solid rgba(255,255,255,0.06);transition:all 0.2s;" class="duel-my-card">
-                ${img
-                    ? `<img src="${img}" style="width:52px;height:52px;object-fit:contain;display:block;margin:0 auto 6px;border-radius:8px;">`
-                    : `<div style="font-size:36px;line-height:1;margin-bottom:6px;">${x.i||(cat&&cat.i)||'🎁'}</div>`}
-                <div style="font-size:10px;font-weight:bold;color:white;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${(catalogMap.get(+x.id)||x).n}</div>
+            const emoji = x.i||(cat&&cat.i)||'🎁';
+            return `<div onclick="selectDuelGift('${x.inst}',this)" style="cursor:pointer;text-align:center;background:#0a1520;border-radius:14px;padding:10px 8px;border:2px solid rgba(255,255,255,0.06);transition:all 0.2s;" class="duel-my-card">
+                ${img?`<img src="${img}" style="width:40px;height:40px;object-fit:contain;display:block;margin:0 auto 5px;" onerror="this.style.display='none'">`:`<div style="font-size:32px;line-height:1;margin-bottom:5px;">${emoji}</div>`}
+                <div style="font-size:10px;font-weight:bold;color:white;">${(catalogMap.get(+x.id)||x).n}</div>
             </div>`;
         };
-
-        // Show their item with image too
-        const theirCat = catalog.find(c => c.id == challenge.itemId);
-        const theirImg = challenge.itemImg || (theirCat && theirCat.img) || '';
-        const theirEmoji = challenge.itemEmoji || (theirCat && theirCat.i) || '🎁';
-
         document.getElementById('modal-content').innerHTML=`
             <div style="padding:5px 0;">
                 <div style="text-align:center;margin-bottom:14px;">
                     <div style="font-size:32px;">⚔️</div>
                     <h3 style="margin:6px 0 4px;background:linear-gradient(90deg,#ff6b6b,#ffd700);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">Дуэль!</h3>
-                    <div style="background:#0a1520;border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:center;gap:12px;margin:10px 0;border:1px solid rgba(255,107,107,0.3);">
-                        ${theirImg
-                            ? `<img src="${theirImg}" style="width:44px;height:44px;object-fit:contain;border-radius:8px;" onerror="this.style.display='none'">`
-                            : `<div style="font-size:32px;">${theirEmoji}</div>`}
-                        <div>
-                            <div style="font-size:11px;color:var(--secondary);">СТАВКА ${challenge.fromName.toUpperCase()}</div>
-                            <div style="font-weight:bold;color:#ff6b6b;">${challenge.itemName}</div>
-                        </div>
+                    <div style="background:#0a1520;border-radius:12px;padding:10px;display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0;border:1px solid rgba(255,107,107,0.3);">
+                        <div style="font-size:24px;">${challenge.itemEmoji}</div>
+                        <div><div style="font-size:11px;color:var(--secondary);">СТАВКА ${challenge.fromName.toUpperCase()}</div><div style="font-weight:bold;color:#ff6b6b;">${challenge.itemName}</div></div>
                     </div>
                     <div style="font-size:12px;color:var(--secondary);">Выбери свою ставку:</div>
                 </div>
@@ -5571,7 +5540,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                     <div style="font-size:11px;color:var(--secondary);">ТВОЯ СТАВКА</div>
                     <div id="duel-selected-name" style="font-weight:bold;color:#ff6b6b;"></div>
                 </div>
-                <button id="duel-fight-btn" class="btn" style="background:linear-gradient(90deg,#e74c3c,#c0392b);display:none;" onclick="fightDuelFromCtx()">⚔️ В БОЙ!</button>
+                <button id="duel-fight-btn" class="btn" style="background:linear-gradient(90deg,#e74c3c,#c0392b);display:none;" onclick="fightDuel('${duelKey}','${challenge.fromId}','${challenge.itemInst}','${challenge.fromName}','${challenge.itemEmoji}','${challenge.itemName}')">⚔️ В БОЙ!</button>
                 <button class="btn" style="background:rgba(255,255,255,0.05);color:var(--secondary);margin-top:8px;" onclick="declineDuel('${duelKey}')">🏳️ Отказаться</button>
             </div>`;
         openModal();
@@ -5579,37 +5548,15 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
 
     let selectedDuelInst = null, selectedDuelEmoji = '🎁', selectedDuelName = '';
     window.selectDuelGift = (inst, el) => {
-        selectedDuelInst = String(inst);
-        // Deselect all
-        document.querySelectorAll('.duel-my-card').forEach(c=>{
-            c.style.border='2px solid rgba(255,255,255,0.06)';
-            c.style.background='#0a1520';
-        });
-        // Highlight selected
-        el.style.border='2px solid #ff6b6b';
-        el.style.background='rgba(255,107,107,0.15)';
-        // Get name from map
-        const item = window._duelMyInvMap && window._duelMyInvMap[selectedDuelInst];
-        selectedDuelName = item ? ((catalogMap.get(+item.id)||item).n || '?') : (el.querySelector('div[style*="font-weight:bold"]')?.innerText||'?');
-        selectedDuelEmoji = item ? (item.i || '🎁') : '🎁';
-        const infoEl = document.getElementById('duel-selected-info');
-        const nameEl = document.getElementById('duel-selected-name');
-        const btnEl = document.getElementById('duel-fight-btn');
-        if(infoEl) infoEl.style.display='block';
-        if(nameEl) nameEl.innerText = selectedDuelName;
-        if(btnEl) btnEl.style.display='block';
-    };
-
-    // Wrapper called from В БОЙ! button — reads from stored context
-    window.fightDuelFromCtx = async () => {
-        if (!_currentDuelCtx) return showToast('Ошибка: нет данных дуэли','var(--err)');
-        if (!selectedDuelInst) return showToast('Выбери ставку!','var(--err)');
-        const { duelKey } = _currentDuelCtx;
-        // Читаем вызов напрямую из Firebase — inst там хранится точно, без потерь
-        const freshSnap = await get(ref(db,`duelChallenges/${user.id}/${duelKey}`));
-        if (!freshSnap.exists()) { closeModal(); return showToast('Вызов уже отменён','var(--err)'); }
-        const fresh = freshSnap.val();
-        fightDuel(duelKey, fresh.fromId, fresh.itemInst, fresh.fromName, fresh.itemEmoji || '🎁', fresh.itemName);
+        selectedDuelInst = inst;
+        document.querySelectorAll('.duel-my-card').forEach(c=>{c.style.border='2px solid rgba(255,255,255,0.06)';c.style.background='#0a1520';});
+        el.style.border='2px solid #ff6b6b';el.style.background='rgba(255,107,107,0.1)';
+        const imgEl = el.querySelector('img');
+        selectedDuelEmoji = el.querySelector('div[style*="font-size:32px"]')?.innerText || '🎁';
+        selectedDuelName = el.querySelector('div[style*="font-weight:bold"]')?.innerText||'?';
+        document.getElementById('duel-selected-info').style.display='block';
+        document.getElementById('duel-selected-name').innerText=selectedDuelName;
+        document.getElementById('duel-fight-btn').style.display='block';
     };
 
     window.fightDuel = async (duelKey, challengerId, theirInst, challengerName, theirEmoji, theirItemName) => {
@@ -5617,7 +5564,7 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         // 🛡️ Rate limit
         const _rlD = _protection.duel(); if(!_rlD.ok) return showToast(_rlD.msg, '#e74c3c');
 
-        // 🛡️ Fetch both inventories
+        // 🛡️ Fetch both inventories для проверки наличия предметов
         const [mySnap, theirSnap] = await Promise.all([get(ref(db,'users/'+user.id)), get(ref(db,'users/'+challengerId))]);
         const myD = mySnap.val(), theirD = theirSnap.val();
         const myInvCheck = toArr(myD.cloudInv), theirInvCheck = toArr(theirD.cloudInv);
@@ -5625,70 +5572,55 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const theirItem = theirInvCheck.find(x=>String(x.inst)==String(theirInst));
         if(!myItem||!theirItem) { closeModal(); return showToast('Один из предметов уже недоступен!','var(--err)'); }
 
-        // Determine winner 50/50
+        // Determine winner 50/50 (до транзакций, результат фиксирован)
         const iWin = Math.random() < 0.5;
         const winnerId = iWin ? user.id : challengerId;
         const winnerName = iWin ? user.name : challengerName;
         const myEmoji2 = myItem.i||(catalog.find(c=>c.id==myItem.id)?.i)||'🎁';
         const _duelTs = Date.now();
 
-        // 🛡️ Сначала последовательно: сначала мой инвентарь
-        const myTx = await runTransaction(ref(db,'users/'+user.id), (current) => {
-            if(!current) return undefined; // abort
-            let inv = toArr(current.cloudInv);
-            if(!inv.some(x=>String(x.inst)==String(selectedDuelInst))) return undefined; // предмет уже ушёл — abort
-            inv = inv.filter(x=>String(x.inst)!=String(selectedDuelInst));
-            if(iWin) {
-                inv.push({...myItem, from:'⚔️ Дуэль', inst:_duelTs, seen:false});
-                inv.push({...theirItem, from:`⚔️ ${challengerName}`, seen:false, inst:_duelTs+1});
-            }
-            const winsUpdate = iWin ? {duelWins:(current.duelWins||0)+1} : {};
-            const ownedSet = new Set(current.cosmetics||[]);
-            if(iWin && (current.duelWins||0)+1 >= 10 && !ownedSet.has('bdg_duelist')) {
-                winsUpdate.cosmetics = [...(current.cosmetics||[]), 'bdg_duelist'];
-            }
-            const myRecent = [challengerId, ...(current.duelRecentOpponents||[]).filter(id=>id!==challengerId)].slice(0,5);
-            return {...current, cloudInv:inv, ...winsUpdate, duelRecentOpponents:myRecent};
-        });
-        if(!myTx.committed) {
+        // 🛡️ Атомарное обновление инвентарей обоих участников через runTransaction
+        const [myTx, theirTx] = await Promise.all([
+            runTransaction(ref(db,'users/'+user.id), (current) => {
+                if(!current) return;
+                let inv = toArr(current.cloudInv);
+                if(!inv.some(x=>String(x.inst)==String(selectedDuelInst))) return; // предмет уже ушёл
+                inv = inv.filter(x=>String(x.inst)!=String(selectedDuelInst));
+                if(iWin) {
+                    inv.push({...myItem, from:'⚔️ Дуэль', inst:_duelTs});
+                    inv.push({...theirItem, from:`⚔️ ${challengerName}`, seen:false, inst:_duelTs+1});
+                }
+                const winsUpdate = iWin ? {duelWins:(current.duelWins||0)+1} : {};
+                const ownedSet = new Set(current.cosmetics||[]);
+                if(iWin && (current.duelWins||0)+1 >= 10 && !ownedSet.has('bdg_duelist')) {
+                    winsUpdate.cosmetics = [...(current.cosmetics||[]), 'bdg_duelist'];
+                }
+                return {...current, cloudInv:inv, ...winsUpdate};
+            }),
+            runTransaction(ref(db,'users/'+challengerId), (current) => {
+                if(!current) return;
+                let inv = toArr(current.cloudInv);
+                if(!inv.some(x=>String(x.inst)==String(theirInst))) return; // предмет уже ушёл
+                inv = inv.filter(x=>String(x.inst)!=String(theirInst));
+                if(!iWin) {
+                    inv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:_duelTs});
+                    inv.push({...theirItem, from:'⚔️ Дуэль', inst:_duelTs+1});
+                }
+                return {...current, cloudInv:inv};
+            })
+        ]);
+        if(!myTx.committed || !theirTx.committed) {
             closeModal();
-            return showToast('Твой предмет уже был использован!','var(--err)');
+            return showToast('Один из предметов уже был использован!','var(--err)');
         }
-
-        // Потом инвентарь противника
-        const theirTx = await runTransaction(ref(db,'users/'+challengerId), (current) => {
-            if(!current) return undefined; // abort
-            let inv = toArr(current.cloudInv);
-            if(!inv.some(x=>String(x.inst)==String(theirInst))) return undefined; // предмет уже ушёл — abort
-            inv = inv.filter(x=>String(x.inst)!=String(theirInst));
-            if(!iWin) {
-                inv.push({...myItem, from:`⚔️ ${user.name}`, seen:false, inst:_duelTs});
-                inv.push({...theirItem, from:'⚔️ Дуэль', inst:_duelTs+1, seen:false});
-            }
-            const theirRecent = [user.id, ...(current.duelRecentOpponents||[]).filter(id=>id!==user.id)].slice(0,5);
-            return {...current, cloudInv:inv, duelRecentOpponents:theirRecent};
-        });
-        if(!theirTx.committed) {
-            // Откат — возвращаем предмет себе
-            await runTransaction(ref(db,'users/'+user.id), (current) => {
-                if(!current) return undefined;
-                let inv = toArr(current.cloudInv).filter(x=>String(x.inst)!=String(_duelTs)&&String(x.inst)!=String(_duelTs+1));
-                inv.push({...myItem});
-                const rollback = iWin ? {duelWins:Math.max(0,(current.duelWins||0)-1)} : {};
-                return {...current, cloudInv:inv, ...rollback};
-            }).catch(()=>{});
-            closeModal();
-            return showToast('Предмет противника уже был использован!','var(--err)');
-        }
-        _duelAllUsersCache = null;
         await remove(ref(db,`duelChallenges/${user.id}/${duelKey}`));
         logActivity('duel_result', {winner: winnerName, winnerId, loser: iWin ? challengerName : user.name, loserId: iWin ? challengerId : user.id, item1: myItem.n, item2: theirItem.n});
+        // XP: +50 победителю, -20 проигравшему
         awardXp(winnerId, 50);
         awardXp(iWin ? challengerId : user.id, -20);
 
-        // DUEL ANIMATION — модал уже открыт, просто обновляем контент
+        // DUEL ANIMATION
         const overlay = document.getElementById('modal-overlay');
-        if(!overlay) openModal();
         document.getElementById('modal-content').innerHTML = `
             <div style="text-align:center;padding:20px 0;" id="duel-anim-wrap">
                 <div style="font-size:13px;color:var(--secondary);margin-bottom:20px;letter-spacing:1px;text-transform:uppercase;">⚔️ Дуэль начинается!</div>
@@ -5706,15 +5638,20 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 <div id="duel-result" style="margin-top:24px;opacity:0;transition:opacity 0.5s;"></div>
             </div>`;
 
+        // Phase 1: shake
         setTimeout(()=>{
             document.getElementById('duel-left').style.animation='duelShakeL 0.4s ease-in-out 4';
             document.getElementById('duel-right').style.animation='duelShakeR 0.4s ease-in-out 4';
             overlay.style.animation='duelFlash 0.4s ease 4';
         },300);
+
+        // Phase 2: clash emoji
         setTimeout(()=>{
             const el=document.createElement('div');el.className='duel-clash-emoji';el.innerText='💥';
             document.body.appendChild(el);setTimeout(()=>el.remove(),900);
         },900);
+
+        // Phase 3: result
         setTimeout(()=>{
             overlay.style.animation='';
             if(iWin){
@@ -5725,6 +5662,8 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 document.getElementById('duel-left').style.animation='duelLoser 0.6s ease forwards';
             }
         },1800);
+
+        // Phase 4: show result text
         setTimeout(()=>{
             const res=document.getElementById('duel-result');
             if(!res) return;
@@ -5746,9 +5685,12 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
             },200);
         },2600);
 
+        // Уведомления с правильными предметами
         if(iWin) {
+            // challenger проиграл свою ставку (theirItem)
             getTgId(challengerId).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n😔 К сожалению, ты проиграл.\n❌ Утеряно: <b>${theirItemName}</b> ${theirEmoji}`));
         } else {
+            // challenger выиграл оба предмета
             getTgId(challengerId).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n🎉 Поздравляем, ты победил!\n✅ Получено: <b>${theirItemName}</b> ${theirEmoji}\n✅ Сохранено: <b>${myItem.n}</b> ${myEmoji2}`));
         }
     };
@@ -5760,47 +5702,27 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
     };
 
     // Listen for duel challenges
-    let _duelChallengesCache = {};
-    let _duelTimerInterval = null;
-
     function listenDuelChallenges() {
         onValue(ref(db,`duelChallenges/${user.id}`), snap => {
-            _duelChallengesCache = snap.val()||{};
-            renderDuelChallenges(_duelChallengesCache);
+            const challenges = snap.val()||{};
+            renderDuelChallenges(challenges);
         });
-        // Живой таймер — обновляет только текст таймеров каждую секунду
-        if(_duelTimerInterval) clearInterval(_duelTimerInterval);
-        _duelTimerInterval = setInterval(() => {
+        // Обновлять таймеры каждые 30 сек + удалять истёкшие
+        setInterval(async () => {
+            const snap = await get(ref(db,`duelChallenges/${user.id}`));
+            const challenges = snap.val()||{};
             const now = Date.now();
-            let hasExpired = false;
-            // Обновляем только элементы таймеров по data-атрибуту
-            document.querySelectorAll('[data-duel-expiry]').forEach(el => {
-                const expiry = parseInt(el.getAttribute('data-duel-expiry'));
-                const diff = expiry - now;
-                if(diff <= 0) {
-                    el.textContent = '⏳ 0:00';
-                    hasExpired = true;
-                } else {
-                    const m = Math.floor(diff/60000);
-                    const s = Math.floor((diff%60000)/1000);
-                    el.textContent = `⏳ ${m}:${String(s).padStart(2,'0')}`;
-                }
-            });
-            // Если что-то истекло — перерисовываем и чистим БД
-            if(hasExpired) {
-                const now2 = Date.now();
-                for(const [key, ch] of Object.entries(_duelChallengesCache)) {
-                    const expiry = ch.expiresAt || (ch.ts + 15*60*1000);
-                    if(now2 >= expiry) remove(ref(db,`duelChallenges/${user.id}/${key}`)).catch(()=>{});
-                }
-                renderDuelChallenges(_duelChallengesCache);
+            for(const [key, ch] of Object.entries(challenges)) {
+                const expiry = ch.expiresAt || (ch.ts + 15*60*1000);
+                if(now >= expiry) remove(ref(db,`duelChallenges/${user.id}/${key}`)).catch(()=>{});
             }
-        }, 1000);
+            renderDuelChallenges(challenges);
+        }, 30000);
     }
 
     function renderDuelChallenges(challenges) {
         const container = document.getElementById('duel-challenges-section');
-        const incomingSection = document.getElementById('duel-incoming-section');
+        if(!container) return;
         const now = Date.now();
         // Фильтруем истёкшие (на стороне UI)
         const entries = Object.entries(challenges).filter(([k,ch]) => {
@@ -5810,35 +5732,27 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         // Обновляем бейдж ⚔️
         const badge = document.getElementById('badge-duel');
         if(badge) { badge.style.display = entries.length > 0 ? 'flex' : 'none'; badge.textContent = entries.length; }
-
-        const makeHtml = (forDuelPage) => {
-            if(!entries.length) return '';
-            return `
-                <div style="background:linear-gradient(135deg,rgba(255,107,107,0.1),rgba(255,107,107,0.04));border:1px solid rgba(255,107,107,0.35);border-radius:18px;padding:14px;margin-bottom:12px;">
-                    <div style="font-size:11px;font-weight:bold;color:#ff6b6b;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">⚔️ Входящие вызовы (${entries.length})</div>
-                    ${entries.map(([key,ch])=>{
-                        const expiry = ch.expiresAt||(ch.ts+15*60*1000);
-                        const mLeft = Math.max(0,Math.floor((expiry-now)/60000));
-                        const sLeft = Math.max(0,Math.floor(((expiry-now)%60000)/1000));
-                        return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0a1520;border-radius:12px;padding:10px 12px;margin-bottom:8px;border:1px solid rgba(255,107,107,0.2);">
-                            <div style="display:flex;align-items:center;gap:10px;flex:1;">
-                                ${ch.itemImg
-                                    ? `<img src="${ch.itemImg}" style="width:44px;height:44px;object-fit:contain;border-radius:8px;flex-shrink:0;" onerror="this.style.display='none'">`
-                                    : `<div style="font-size:28px;flex-shrink:0;">${ch.itemEmoji}</div>`}
-                                <div>
-                                    <div style="font-weight:bold;font-size:13px;">${ch.itemName}</div>
-                                    <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName}</div>
-                                    <div data-duel-expiry="${expiry}" style="font-size:10px;color:var(--orange);">⏳ ${mLeft}:${String(sLeft).padStart(2,'0')}</div>
-                                </div>
+        if(!entries.length){container.innerHTML='';return;}
+        container.innerHTML=`
+            <div style="background:linear-gradient(135deg,rgba(255,107,107,0.08),rgba(255,107,107,0.03));border:1px solid rgba(255,107,107,0.3);border-radius:18px;padding:14px;margin-bottom:12px;">
+                <div style="font-size:11px;font-weight:bold;color:#ff6b6b;letter-spacing:0.5px;text-transform:uppercase;margin-bottom:10px;">⚔️ Вызовы на дуэль (${entries.length})</div>
+                ${entries.map(([key,ch])=>{
+                    const expiry = ch.expiresAt||(ch.ts+15*60*1000);
+                    const mLeft = Math.max(0,Math.floor((expiry-now)/60000));
+                    const sLeft = Math.max(0,Math.floor(((expiry-now)%60000)/1000));
+                    return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;background:#0a1520;border-radius:12px;padding:10px 12px;margin-bottom:8px;border:1px solid rgba(255,107,107,0.2);">
+                        <div style="display:flex;align-items:center;gap:10px;flex:1;">
+                            <div style="font-size:28px;">${ch.itemEmoji}</div>
+                            <div>
+                                <div style="font-weight:bold;font-size:13px;">${ch.itemName}</div>
+                                <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName}</div>
+                                <div style="font-size:10px;color:var(--orange);">⏳ ${mLeft}:${String(sLeft).padStart(2,'0')}</div>
                             </div>
-                            <button class="btn" style="padding:8px 14px;font-size:12px;width:auto;background:linear-gradient(90deg,#e74c3c,#c0392b);" onclick='acceptDuelChallenge("${key}",${JSON.stringify(ch)})'>⚔️ Принять</button>
-                        </div>`;
-                    }).join('')}
-                </div>`;
-        };
-
-        if(container) { if(!entries.length){container.innerHTML='';} else {container.innerHTML=makeHtml(false);} }
-        if(incomingSection) { incomingSection.innerHTML = makeHtml(true); }
+                        </div>
+                        <button class="btn" style="padding:8px 14px;font-size:12px;width:auto;background:linear-gradient(90deg,#e74c3c,#c0392b);" onclick='acceptDuelChallenge("${key}",${JSON.stringify(ch)})'>⚔️ Принять</button>
+                    </div>`;
+                }).join('')}
+            </div>`;
     }
 
     window.giftOpen = async (inst) => {
