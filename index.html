@@ -5559,12 +5559,14 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         if(!myItem) return showToast('Подарок не найден!','var(--err)');
 
         const duelKey = `${user.id}_${Date.now()}`;
+        const _catItem = catalog.find(c=>c.id==myItem.id)||{};
         await set(ref(db,`duelChallenges/${friendId}/${duelKey}`), {
             fromId:    user.id,
             fromName:  user.name,
-            itemInst:  String(myItem.inst),   // сохраняем как строку — избегаем проблем с типами
+            itemInst:  String(myItem.inst),
             itemName:  myItem.n,
-            itemEmoji: myItem.i || (catalog.find(c=>c.id==myItem.id)||{}).i || '🎁',
+            itemEmoji: myItem.i || _catItem.i || '🎁',
+            itemImg:   myItem.img || _catItem.img || '',
             ts:        Date.now(),
             expiresAt: Date.now() + 15*60*1000
         });
@@ -5806,9 +5808,13 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         awardXp(winnerId, 50);
         awardXp(iWin ? challengerId : user.id, -20);
         if(iWin){
+            // Я победил — challenger проиграл
             getTgId(challengerId).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n😔 К сожалению, ты проиграл.\n❌ Утеряно: <b>${theirItemName}</b> ${theirEmoji}`));
+            getTgId(user.id).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n🎉 Поздравляем, ты победил!\n✅ Получено: <b>${theirItemName}</b> ${theirEmoji}\n✅ Сохранено: <b>${myItem.n}</b> ${myEmoji2}`));
         } else {
-            getTgId(challengerId).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n🎉 Поздравляем, ты победил!\n✅ Получено: <b>${theirItemName}</b> ${theirEmoji}\n✅ Сохранено: <b>${myItem.n}</b> ${myEmoji2}`));
+            // Challenger победил — я проиграл
+            getTgId(challengerId).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n🎉 Поздравляем, ты победил!\n✅ Получено: <b>${myItem.n}</b> ${myEmoji2}\n✅ Сохранено: <b>${theirItemName}</b> ${theirEmoji}`));
+            getTgId(user.id).then(cid=>sendTg(cid,`⚔️ <b>Дуэль завершена!</b>\n\n🏆 Победитель: <b>${winnerName}</b>\n\n😔 К сожалению, ты проиграл.\n❌ Утеряно: <b>${myItem.n}</b> ${myEmoji2}`));
         }
         // Save result for opponent (they see it when they open the app)
         set(ref(db,`duelResults/${challengerId}/${Date.now()}`), {
@@ -6001,11 +6007,14 @@ function renderDuelChallenges(challenges){
                     const diff = Math.max(0, exp-now);
                     const m = Math.floor(diff/60000);
                     const s = Math.floor((diff%60000)/1000);
+                    const imgHtml = ch.itemImg
+                        ? `<img src="${ch.itemImg}" style="width:46px;height:46px;object-fit:contain;border-radius:8px;" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"><span style="display:none;font-size:30px;">${ch.itemEmoji||'🎁'}</span>`
+                        : `<span style="font-size:30px;">${ch.itemEmoji||'🎁'}</span>`;
                     return `<div style="display:flex;align-items:center;justify-content:space-between;
                         gap:10px;background:#0a1520;border-radius:12px;padding:10px 12px;
                         margin-bottom:8px;border:1px solid rgba(255,107,107,0.2);">
                         <div style="display:flex;align-items:center;gap:10px;flex:1;">
-                            <div style="font-size:28px;">${ch.itemEmoji||'🎁'}</div>
+                            <div style="width:46px;height:46px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">${imgHtml}</div>
                             <div>
                                 <div style="font-weight:bold;font-size:13px;">${ch.itemName||'?'}</div>
                                 <div style="font-size:11px;color:var(--secondary);">от ${ch.fromName||'?'}</div>
