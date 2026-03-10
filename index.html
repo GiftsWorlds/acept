@@ -5685,14 +5685,35 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
         const myEmoji2   = myItem.i||(catalog.find(c=>c.id==myItem.id)||{}).i||'🎁';
         const _ts        = Date.now();
 
-        // Атомарные транзакции (с ретраем при disconnect)
+        // ── Транзакции последовательно с компенсацией ──────────────────────────
+        // Сначала транзакция соперника (проверяем его предмет), потом своя.
+        // Если своя упала — откатываем соперника.
+
         let myTx, theirTx;
-        const _runDuelTx = async () => Promise.all([
-            runTransaction(ref(db,'users/'+user.id), cur => {
-                if(!cur) return undefined;  // АБОРТ — данные ещё не загружены (return null удалил бы профиль!)
+        try {
+            // 1. Транзакция соперника — убираем его предмет
+            theirTx = await runTransaction(ref(db,'users/'+challengerId), cur => {
+                if(!cur) return cur;  // null → Firebase сделает retry с реальными данными
                 let inv = toArr(cur.cloudInv);
-                console.log('[DUEL TX my] inst=', String(_selectedDuelInst), 'inv insts=', inv.map(x=>String(x.inst)));
-                if(!inv.some(x => String(x.inst) === String(_selectedDuelInst))) return undefined;   // abort — предмет ушёл
+                if(!inv.some(x => String(x.inst) === String(theirInst))) return undefined; // abort
+                inv = inv.filter(x => String(x.inst) !== String(theirInst));
+                if(!iWin){
+                    inv.push({...myItem,   from:`⚔️ ${user.name}`, inst:_ts,   seen:false});
+                    inv.push({...theirItem,from:'⚔️ Дуэль',         inst:_ts+1, seen:false});
+                }
+                return {...cur, cloudInv:inv};
+            });
+
+            if(!theirTx.committed){
+                closeModal();
+                return showToast('Предмет соперника уже недоступен — возможно он его продал','var(--err)');
+            }
+
+            // 2. Транзакция своя — убираем свой предмет
+            myTx = await runTransaction(ref(db,'users/'+user.id), cur => {
+                if(!cur) return cur;  // null → Firebase сделает retry с реальными данными
+                let inv = toArr(cur.cloudInv);
+                if(!inv.some(x => String(x.inst) === String(_selectedDuelInst))) return undefined; // abort
                 inv = inv.filter(x => String(x.inst) !== String(_selectedDuelInst));
                 if(iWin){
                     inv.push({...myItem,   from:'⚔️ Дуэль',            inst:_ts,   seen:false});
@@ -5702,45 +5723,34 @@ ${rarObj.icon} <b>${itm.n}</b> ${itm.i||''}
                 if(iWin && (cur.duelWins||0)+1>=10 && !(cur.cosmetics||[]).includes('bdg_duelist'))
                     wins.cosmetics=[...(cur.cosmetics||[]),'bdg_duelist'];
                 return {...cur, cloudInv:inv, ...wins};
-            }),
-            runTransaction(ref(db,'users/'+challengerId), cur => {
-                if(!cur) return undefined;  // АБОРТ — данные ещё не загружены (return null удалил бы профиль!)
-                let inv = toArr(cur.cloudInv);
-                console.log('[DUEL TX their] inst=', String(theirInst), 'inv insts=', inv.map(x=>String(x.inst)));
-                if(!inv.some(x => String(x.inst) === String(theirInst))) return undefined;   // abort — предмет ушёл
-                inv = inv.filter(x => String(x.inst) !== String(theirInst));
-                if(!iWin){
-                    inv.push({...myItem,   from:`⚔️ ${user.name}`, inst:_ts,   seen:false});
-                    inv.push({...theirItem,from:'⚔️ Дуэль',         inst:_ts+1, seen:false});
-                }
-                return {...cur, cloudInv:inv};
-            })
-        ]);
-        try {
-            [myTx, theirTx] = await _runDuelTx();
-        } catch(txErr) {
-            if(txErr && txErr.message === 'disconnect') {
-                // Ретрай один раз после переподключения
-                try {
-                    await new Promise(r => setTimeout(r, 1500));
-                    [myTx, theirTx] = await _runDuelTx();
-                } catch(txErr2) {
-                    closeModal();
-                    return showToast('Потеряно соединение, попробуй снова','var(--err)');
-                }
-            } else {
-                closeModal();
-                return showToast('Ошибка дуэли: ' + (txErr&&txErr.message||'неизвестная ошибка'),'var(--err)');
-            }
-        }
+            });
 
-        if(!myTx || !theirTx || !myTx.committed || !theirTx.committed){
-            console.log('[DUEL] TX result: myTx.committed=', myTx?.committed, 'theirTx.committed=', theirTx?.committed);
-            const msg = !myTx?.committed
-                ? 'Твой предмет уже недоступен (использован в другой дуэли)'
-                : 'Предмет соперника уже недоступен (использован в другой дуэли)';
+            if(!myTx.committed){
+                // Моя транзакция упала — откатываем соперника (возвращаем его предмет)
+                await runTransaction(ref(db,'users/'+challengerId), cur => {
+                    if(!cur) return cur;
+                    let inv = toArr(cur.cloudInv);
+                    // Возвращаем предмет только если его ещё нет
+                    if(!inv.some(x => String(x.inst) === String(theirInst))) {
+                        inv.push({...theirItem});
+                    }
+                    // Убираем выигрыш если был добавлен
+                    if(!iWin) {
+                        inv = inv.filter(x => x.inst !== _ts && x.inst !== _ts+1);
+                    }
+                    return {...cur, cloudInv:inv};
+                }).catch(()=>{});
+                closeModal();
+                return showToast('Твой предмет уже недоступен — возможно ты его продал','var(--eрr)');
+            }
+
+        } catch(txErr) {
+            const isDisconnect = txErr && (txErr.message === 'disconnect' || txErr.message === 'set');
             closeModal();
-            return showToast(msg,'var(--err)');
+            return showToast(isDisconnect
+                ? 'Потеряно соединение, попробуй снова'
+                : 'Ошибка дуэли: ' + (txErr.message||'?'),
+                'var(--err)');
         }
 
         // Удаляем вызов и пишем лог
